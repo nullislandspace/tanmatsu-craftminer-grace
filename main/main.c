@@ -1,236 +1,148 @@
-#include <stdio.h>
-#include "bsp/device.h"
-#include "bsp/display.h"
-#include "bsp/input.h"
-#include "bsp/led.h"
-#include "bsp/power.h"
-#include "gl_input.h"
-#include "driver/gpio.h"
-#include "esp_lcd_panel_ops.h"
-#include "esp_lcd_types.h"
+// =====================================================================
+//  CraftMiner  --  the app skeleton
+// ---------------------------------------------------------------------
+//  The whole app for now: one block turning in front of the camera, lit
+//  by a sun. It is here to prove the shape of an engine app end to end
+//  -- run loop, scene, lighting, input -- and to be the thing the block
+//  world grows out of.
+//
+//  The engine owns the loop (se_run): device bootstrap, the frame clock,
+//  the input pump, the device-global keys, vsync and the blit. This file
+//  is content plus per-frame logic, which is the whole point of the
+//  inversion: see synthengine3D/docs/architecture.md.
+//
+//  What is deliberately NOT here yet: the world, a mesh builder,
+//  textures, a camera that moves with the player. Those arrive with the
+//  game.
+// =====================================================================
+
+#include <math.h>
 #include "esp_log.h"
-#include "hal/lcd_types.h"
-#include "nvs_flash.h"
-#include "pax_fonts.h"
-#include "pax_gfx.h"
-#include "pax_text.h"
-#include "portmacro.h"
+#include "synthengine3d.h"  // the whole public API
 
-// Constants
-static char const TAG[] = "main";
+static char const TAG[] = "craftminer";
 
-// Global variables
-static size_t                       display_h_res        = 0;
-static size_t                       display_v_res        = 0;
-static bsp_display_color_format_t   display_color_format = BSP_DISPLAY_COLOR_FORMAT_16_565RGB;
-static bsp_display_endianness_t     display_data_endian  = BSP_DISPLAY_ENDIAN_LITTLE;
-static pax_buf_t                    fb                   = {0};
-static QueueHandle_t                input_event_queue    = NULL;
+// The one block: half-extent, where it sits, and how fast it turns.
+#define BLOCK_HALF 0.5f
+#define BLOCK_X    0.0f
+#define BLOCK_Y    0.0f
+#define BLOCK_Z    3.0f
+#define SPIN_RATE  0.6f  // radians per second
 
-#if defined(CONFIG_BSP_TARGET_KAMI)
-// Temporary addition for supporting epaper devices (irrelevant for Tanmatsu)
-static pax_col_t palette[] = {0xffffffff, 0xff000000, 0xffff0000};  // white, black, red
-#endif
+static float s_angle;  // block spin, radians
+static bool  s_spinning = true;
 
-void blit(void) {
-    bsp_display_blit(0, 0, display_h_res, display_v_res, pax_buf_get_pixels(&fb));
+// Grass on top, dirt underneath, grass-over-dirt on the sides: the
+// colours a block world starts from, before there are any textures.
+#define ARGB_GRASS 0xFF6BA13Au
+#define ARGB_SIDE  0xFF8A6A42u
+#define ARGB_DIRT  0xFF6B4F2Fu
+
+// --- The block ---------------------------------------------------------
+//
+// Eight corners, six faces, two triangles each, wound counter-clockwise
+// seen from outside so the engine's back-face cull keeps them. Written
+// out rather than generated: a mesh builder is the game's business, and
+// this file should stay readable as the one place that draws.
+
+static void block_face(float const a[3], float const b[3], float const c[3], float const d[3], uint32_t argb) {
+    scene_tri(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], argb, 0);
+    scene_tri(a[0], a[1], a[2], c[0], c[1], c[2], d[0], d[1], d[2], argb, 0);
+}
+
+static void draw_block(float angle) {
+    float const s = sinf(angle), c = cosf(angle);
+    float const h = BLOCK_HALF;
+
+    // The four corner offsets in the ground plane, turned by `angle`.
+    float const cx[4] = {-h, h, h, -h};
+    float const cz[4] = {-h, -h, h, h};
+    float       px[4], pz[4];
+    for (int i = 0; i < 4; i++) {
+        px[i] = BLOCK_X + cx[i] * c - cz[i] * s;
+        pz[i] = BLOCK_Z + cx[i] * s + cz[i] * c;
+    }
+    float const yb = BLOCK_Y - h, yt = BLOCK_Y + h;
+
+    // Corners: 0..3 bottom (ccw seen from above), 4..7 the same on top.
+    float bot[4][3], top[4][3];
+    for (int i = 0; i < 4; i++) {
+        bot[i][0] = px[i];
+        bot[i][1] = yb;
+        bot[i][2] = pz[i];
+        top[i][0] = px[i];
+        top[i][1] = yt;
+        top[i][2] = pz[i];
+    }
+
+    block_face(top[0], top[1], top[2], top[3], ARGB_GRASS);  // up
+    block_face(bot[3], bot[2], bot[1], bot[0], ARGB_DIRT);   // down
+    for (int i = 0; i < 4; i++) {                            // the four sides
+        int const j = (i + 1) & 3;
+        block_face(bot[i], bot[j], top[j], top[i], ARGB_SIDE);
+    }
+}
+
+// --- Callbacks ----------------------------------------------------------
+
+// Once, after the engine has booted the display, audio, input and scene.
+static void on_init(void* user) {
+    (void)user;
+    ESP_LOGI(TAG, "CraftMiner on SynthEngine3D %s", se_version_string());
+
+    se_splash_ex("CraftMiner", "a block world", 1.2f);
+
+    // A sun over the left shoulder. `brightness` is the directional
+    // share of the light; the rest is fill, so a face turned away goes
+    // dim rather than black.
+    se_light_set(&(se_light_t){.x = -600.0f, .y = 900.0f, .z = -400.0f, .brightness = 0.55f, .two_sided = false});
+
+    // Output-neutral scene passes, both off by default. Frustum culling
+    // is a near-pure win; depth ordering trades work against overdraw,
+    // so it waits until there are real scenes to measure.
+    scene_set_options(&(se_scene_options_t){.frustum_cull = true, .depth_order = false});
+}
+
+// Per frame. `dt` is seconds since the last frame, already clamped.
+static void on_update(float dt, void* user) {
+    (void)user;
+    if (s_spinning) s_angle += SPIN_RATE * dt;
+}
+
+// Whatever the engine did not consume itself (it takes volume, the
+// audio jack, and F1 while f1_exits is set). Scancodes arrive for the
+// release too, with BSP_INPUT_SCANCODE_RELEASE_MODIFIER set, so an exact
+// match fires on the press only.
+static void on_input(bsp_input_event_t const* ev, void* user) {
+    (void)user;
+    if (ev->type != INPUT_EVENT_TYPE_SCANCODE) return;
+    if (ev->args_scancode.scancode == BSP_INPUT_SCANCODE_SPACE) {
+        s_spinning = !s_spinning;
+        ESP_LOGI(TAG, "spin %s", s_spinning ? "on" : "off");
+    }
+}
+
+// Per frame, after the engine has cleared the backdrop.
+static void on_render(pax_buf_t* fb, void* user) {
+    (void)user;
+    // Eye slightly above the block, looking down the +z axis at it.
+    render_set_camera_6dof(0.0f, 0.9f, -1.2f, 0.0f, -0.22f, 0.0f);
+
+    scene_begin(fb);
+    draw_block(s_angle);
+    scene_render(SE_RENDER_ZBUFFER);
 }
 
 void app_main(void) {
-    // Start the GPIO interrupt service
-    gpio_install_isr_service(0);
-
-    // Initialize the Non Volatile Storage partition
-    esp_err_t res = nvs_flash_init();
-    if (res == ESP_ERR_NVS_NO_FREE_PAGES || res == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        res = nvs_flash_erase();
-        if (res != ESP_OK) {
-            ESP_LOGE(TAG, "Failed to erase NVS flash: %d", res);
-            return;
-        }
-        res = nvs_flash_init();
-    }
-    if (res != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize NVS flash: %d", res);
-        return;
-    }
-
-    // Initialize the Board Support Package
-    const bsp_configuration_t bsp_configuration = {
-        .display =
-            {
-                .requested_color_format = BSP_DISPLAY_COLOR_FORMAT_24_888RGB,
-                .num_fbs                = 1,
-            },
+    static se_app_config_t const cfg = {
+        .f1_exits      = true,         // the engine returns to the launcher
+        .backdrop_argb = 0xFF6EA8D8u,  // a flat daylight sky, for now
     };
-    res = bsp_device_initialize(&bsp_configuration);
-    if (res != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize BSP: %d", res);
-        return;
-    }
-
-    // Get display parameters and rotation
-    res = bsp_display_get_parameters(&display_h_res, &display_v_res, &display_color_format, &display_data_endian);
-    if (res != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to get display parameters: %d", res);
-        return;
-    }
-
-    // Convert BSP color format into PAX buffer type
-    pax_buf_type_t format = PAX_BUF_24_888RGB;
-    switch (display_color_format) {
-        case BSP_DISPLAY_COLOR_FORMAT_16_565RGB:
-            format = PAX_BUF_16_565RGB;
-            break;
-        case BSP_DISPLAY_COLOR_FORMAT_24_888RGB:
-            format = PAX_BUF_24_888RGB;
-            break;
-        default:
-            break;
-    }
-
-    // Convert BSP display rotation format into PAX orientation type
-    bsp_display_rotation_t display_rotation = bsp_display_get_default_rotation();
-    pax_orientation_t orientation = PAX_O_UPRIGHT;
-    switch (display_rotation) {
-        case BSP_DISPLAY_ROTATION_90:
-            orientation = PAX_O_ROT_CCW;
-            break;
-        case BSP_DISPLAY_ROTATION_180:
-            orientation = PAX_O_ROT_HALF;
-            break;
-        case BSP_DISPLAY_ROTATION_270:
-            orientation = PAX_O_ROT_CW;
-            break;
-        case BSP_DISPLAY_ROTATION_0:
-        default:
-            orientation = PAX_O_UPRIGHT;
-            break;
-    }
-
-        // Initialize graphics stack
-#if defined(CONFIG_BSP_TARGET_KAMI)
-    // Temporary addition for supporting epaper devices (irrelevant for Tanmatsu)
-    format = PAX_BUF_2_PAL;
-#endif
-    pax_buf_init(&fb, NULL, display_h_res, display_v_res, format);
-    pax_buf_reversed(&fb, display_data_endian == BSP_DISPLAY_ENDIAN_BIG);
-#if defined(CONFIG_BSP_TARGET_KAMI)
-    // Temporary addition for supporting epaper devices (irrelevant for Tanmatsu)
-    fb.palette      = palette;
-    fb.palette_size = sizeof(palette) / sizeof(pax_col_t);
-#endif
-    pax_buf_set_orientation(&fb, orientation);
-
-#if defined(CONFIG_BSP_TARGET_KAMI)
-#define BLACK 0
-#define WHITE 1
-#define RED   2
-#else
-#define BLACK 0xFF000000
-#define WHITE 0xFFFFFFFF
-#define RED   0xFFFF0000
-#endif
-
-    // Get input event queue from graceloader (merges native + USB keyboard)
-    ESP_ERROR_CHECK(gl_input_get_queue(&input_event_queue));
-
-    // LEDs
-    bsp_led_set_pixel(0, 0xFF0000);  // Red
-    bsp_led_set_pixel(1, 0x00FF00);  // Green
-    bsp_led_set_pixel(2, 0x0000FF);  // Blue
-    bsp_led_set_pixel(3, 0xFFFF00);  // Yellow
-    bsp_led_set_pixel(4, 0x00FFFF);  // Magenta
-    bsp_led_set_pixel(5, 0xFF00FF);  // Cyan
-    bsp_led_send();                  // Send data to the coprocessor
-    bsp_led_set_mode(false);         // Take control over all LEDs by disabling automatic mode
-
-    // Main section of the app
-
-    // This example shows how to read from the BSP event queue to read input events
-
-    // If you want to run something at an interval in this same main thread you can replace portMAX_DELAY with an amount
-    // of ticks to wait, for example pdMS_TO_TICKS(1000)
-
-    pax_background(&fb, WHITE);
-    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 0, "Welcome! Press any key to trigger an event.");
-    blit();
-
-    while (1) {
-        bsp_input_event_t event;
-        if (xQueueReceive(input_event_queue, &event, portMAX_DELAY) == pdTRUE) {
-            switch (event.type) {
-                case INPUT_EVENT_TYPE_KEYBOARD: {
-                    if (event.args_keyboard.ascii != '\b' ||
-                        event.args_keyboard.ascii != '\t') {  // Ignore backspace & tab keyboard events
-                        ESP_LOGI(TAG, "Keyboard event %c (%02x) %s", event.args_keyboard.ascii,
-                                 (uint8_t)event.args_keyboard.ascii, event.args_keyboard.utf8);
-                        pax_simple_rect(&fb, WHITE, 0, 0, pax_buf_get_width(&fb), 72);
-                        pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 0, "Keyboard event");
-                        char text[64];
-                        snprintf(text, sizeof(text), "ASCII:     %c (0x%02x)", event.args_keyboard.ascii,
-                                 (uint8_t)event.args_keyboard.ascii);
-                        pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 18, text);
-                        snprintf(text, sizeof(text), "UTF-8:     %s", event.args_keyboard.utf8);
-                        pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 36, text);
-                        snprintf(text, sizeof(text), "Modifiers: 0x%0" PRIX32, event.args_keyboard.modifiers);
-                        pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 54, text);
-                        blit();
-                    }
-                    break;
-                }
-                case INPUT_EVENT_TYPE_NAVIGATION: {
-                    ESP_LOGI(TAG, "Navigation event %0" PRIX32 ": %s", (uint32_t)event.args_navigation.key,
-                             event.args_navigation.state ? "pressed" : "released");
-
-                    if (event.args_navigation.key == BSP_INPUT_NAVIGATION_KEY_F1) {
-                        bsp_device_restart_to_launcher();
-                    }
-                    if (event.args_navigation.key == BSP_INPUT_NAVIGATION_KEY_F2) {
-                        bsp_input_set_backlight_brightness(0);
-                    }
-                    if (event.args_navigation.key == BSP_INPUT_NAVIGATION_KEY_F3) {
-                        bsp_input_set_backlight_brightness(100);
-                    }
-
-                    pax_simple_rect(&fb, WHITE, 0, 100, pax_buf_get_width(&fb), 72);
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 100 + 0, "Navigation event");
-                    char text[64];
-                    snprintf(text, sizeof(text), "Key:       0x%0" PRIX32, (uint32_t)event.args_navigation.key);
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 100 + 18, text);
-                    snprintf(text, sizeof(text), "State:     %s", event.args_navigation.state ? "pressed" : "released");
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 100 + 36, text);
-                    snprintf(text, sizeof(text), "Modifiers: 0x%0" PRIX32, event.args_navigation.modifiers);
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 100 + 54, text);
-                    blit();
-                    break;
-                }
-                case INPUT_EVENT_TYPE_ACTION: {
-                    ESP_LOGI(TAG, "Action event 0x%0" PRIX32 ": %s", (uint32_t)event.args_action.type,
-                             event.args_action.state ? "yes" : "no");
-                    pax_simple_rect(&fb, WHITE, 0, 200 + 0, pax_buf_get_width(&fb), 72);
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 200 + 0, "Action event");
-                    char text[64];
-                    snprintf(text, sizeof(text), "Type:      0x%0" PRIX32, (uint32_t)event.args_action.type);
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 200 + 36, text);
-                    snprintf(text, sizeof(text), "State:     %s", event.args_action.state ? "yes" : "no");
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 200 + 54, text);
-                    blit();
-                    break;
-                }
-                case INPUT_EVENT_TYPE_SCANCODE: {
-                    ESP_LOGI(TAG, "Scancode event 0x%0" PRIX32, (uint32_t)event.args_scancode.scancode);
-                    pax_simple_rect(&fb, WHITE, 0, 300 + 0, pax_buf_get_width(&fb), 72);
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 300 + 0, "Scancode event");
-                    char text[64];
-                    snprintf(text, sizeof(text), "Scancode:  0x%0" PRIX32, (uint32_t)event.args_scancode.scancode);
-                    pax_draw_text(&fb, BLACK, pax_font_sky_mono, 16, 0, 300 + 36, text);
-                    blit();
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
-    }
+    static se_app_callbacks_t const cb = {
+        .on_init   = on_init,
+        .on_input  = on_input,
+        .on_update = on_update,
+        .on_render = on_render,
+    };
+    se_run(&cfg, &cb, NULL);  // no user context yet: the state is static
 }
