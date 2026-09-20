@@ -206,8 +206,24 @@ static inline mesh_t* chunk_mesh(chunk_t* c, int lod, int sect) {
 
 // --- The resident set -------------------------------------------------
 
-#define CH_RING       16  // 16 x 16 slots: a residency radius up to 7
+#define CH_RING       16  // 16 x 16 slots
 #define CH_SLOT_COUNT (CH_RING * CH_RING)
+
+// The largest residency radius this ring can hold, and it is a HARD
+// limit, not a guideline.
+//
+// A radius R keeps a square 2R+1 chunks on a side. The slot is the low
+// four bits of the coordinate, so two chunks 16 apart land on the same
+// one. At 2R+1 > CH_RING that is guaranteed to happen inside the
+// resident set: the two fight over the slot, each evicting the other,
+// each then read as BLK_BARRIER and requested again -- a world that
+// reloads itself forever, and does it while the player is standing
+// still. R = 7 is the largest that cannot.
+//
+// chunk_render_set_view() clamps to this, and tools/worldcheck.c
+// asserts every view preset obeys it, so the two cannot drift apart
+// again.
+#define CH_EVICT_MAX ((CH_RING - 1) / 2)
 
 // Allocate the slab: every plane for every slot, once, at boot. Nothing
 // under here allocates again, so there is no fragmentation and the

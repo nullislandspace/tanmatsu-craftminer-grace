@@ -71,3 +71,24 @@ bool chunk_worker_idle(void);
 
 // For the boot log and the HUD's "Generating..." state.
 void chunk_worker_stats(int* queued, int* loaded_total, int* meshed_total);
+
+// Where the streaming is getting stuck, if it is.
+//
+// A world that lags behind the camera looks the same on screen whatever
+// the cause, and there are three: the worker cannot keep up (jobs
+// queued, `in_flight` near `capacity`, `refused` climbing), the MAIN
+// task is not taking delivery fast enough (`asked` running away from
+// `applied`), or nothing was asked for. Totals since boot; the caller
+// takes differences.
+typedef struct {
+    int in_flight;  // jobs submitted and not yet collected
+    int capacity;   // ... out of this many
+    int asked;      // jobs successfully queued
+    int applied;    // results taken delivery of
+    int refused;    // jobs the queue had no room for
+    int loaded;
+    int meshed;
+    int saved;
+} chunk_worker_flow_t;
+
+void chunk_worker_flow(chunk_worker_flow_t* f);

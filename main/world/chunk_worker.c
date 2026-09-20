@@ -56,6 +56,12 @@ static bool     s_sync = true;  // until the task starts, everything is inline
 static bool     s_running;
 static uint8_t* s_scratch;  // the worker's own mesher box (F-08)
 static int      s_loaded_total, s_meshed_total;
+// Why a frame's worth of work did not get done. A streaming world can
+// fail in three ways that all look identical on screen -- the world
+// lagging behind the camera -- and only these tell them apart: the job
+// queue full (the worker is behind), the result queue not drained (MAIN
+// is behind), or nothing asked for in the first place.
+static int      s_saved_total, s_refused_total, s_applied_total, s_asked_total;
 
 #ifndef CM_HOST
 static QueueHandle_t s_jobs;
@@ -148,6 +154,7 @@ static void apply(result_t* r) {
     }
 
     if (r->kind == JOB_SAVE) {
+        if (r->ok) s_saved_total++;
         if (mine && r->ok) c->flags &= (uint8_t)~CF_EDITED;
         if (mine && c->cstate == CS_SAVING) c->cstate = CS_READY;
     }
@@ -191,8 +198,12 @@ static bool submit(job_t const* j) {
         return true;
     }
 #ifndef CM_HOST
-    if (xQueueSend(s_jobs, j, 0) != pdTRUE) return false;
+    if (xQueueSend(s_jobs, j, 0) != pdTRUE) {
+        s_refused_total++;
+        return false;
+    }
     s_in_flight++;
+    s_asked_total++;
     return true;
 #else
     return false;
@@ -246,6 +257,7 @@ int chunk_worker_collect(int max_results) {
         s_in_flight--;
         n++;
     }
+    s_applied_total += n;
     return n;
 #else
     (void)max_results;
@@ -268,6 +280,23 @@ void chunk_worker_stats(int* queued, int* loaded_total, int* meshed_total) {
 #endif
     if (loaded_total != NULL) *loaded_total = s_loaded_total;
     if (meshed_total != NULL) *meshed_total = s_meshed_total;
+}
+
+void chunk_worker_flow(chunk_worker_flow_t* f) {
+    if (f == NULL) return;
+#ifndef CM_HOST
+    f->in_flight = s_sync ? 0 : s_in_flight;
+    f->capacity  = QUEUE_DEPTH;
+#else
+    f->in_flight = 0;
+    f->capacity  = 0;
+#endif
+    f->asked   = s_asked_total;
+    f->applied = s_applied_total;
+    f->refused = s_refused_total;
+    f->loaded  = s_loaded_total;
+    f->meshed  = s_meshed_total;
+    f->saved   = s_saved_total;
 }
 
 // --- Lifecycle --------------------------------------------------------

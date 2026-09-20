@@ -85,3 +85,8 @@ void chunk_render_submit(double eye_wx, double eye_wz);
 // `sections_drawn` is how many of the CH_SECT_N survived the cull --
 // the number that says whether sectioning is earning its keep.
 void chunk_render_stats(int* chunks_drawn, int* sections_drawn, int* resident, int* missing);
+
+// Chunks dropped from the resident set since boot. A number that climbs
+// while the camera is standing still means the residency radius and the
+// eviction radius are fighting each other.
+int chunk_render_evicted(void);

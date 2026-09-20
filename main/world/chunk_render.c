@@ -49,15 +49,44 @@ static bool       s_textured = true;
 static cm_view_t  s_view;
 static int32_t    s_origin_x, s_origin_z;
 static int        s_drawn, s_sections, s_resident, s_missing;
+static int        s_evicted_total;  // chunks dropped from the resident set, since boot
+
+// The three presets' radii, named so the compiler can check them.
+//
+// FAR's eviction radius used to be 8. A radius of 8 keeps a 17-wide
+// square of chunks, the ring is 16 across, and the slot is the low four
+// bits of the coordinate -- so two resident chunks landed on the same
+// slot and evicted each other forever, reloading the world while the
+// player stood still (F-41). The static assertions below are why that
+// cannot come back: raise a radius past what the ring holds and the
+// build stops.
+#define VIEW_NEAR_LOAD   3
+#define VIEW_NEAR_EVICT  5
+#define VIEW_MED_LOAD    5
+#define VIEW_MED_EVICT   7
+#define VIEW_FAR_LOAD    6
+#define VIEW_FAR_EVICT   7  // NOT 8: see above
+
+_Static_assert(VIEW_NEAR_EVICT <= CH_EVICT_MAX, "near view evicts beyond what the chunk ring can hold");
+_Static_assert(VIEW_MED_EVICT <= CH_EVICT_MAX, "medium view evicts beyond what the chunk ring can hold");
+_Static_assert(VIEW_FAR_EVICT <= CH_EVICT_MAX, "far view evicts beyond what the chunk ring can hold");
+// Hysteresis: eviction must run further out than loading, or a slot is
+// wanted before the chunk using it has let go.
+_Static_assert(VIEW_NEAR_LOAD < VIEW_NEAR_EVICT, "near view has no residency hysteresis");
+_Static_assert(VIEW_MED_LOAD < VIEW_MED_EVICT, "medium view has no residency hysteresis");
+_Static_assert(VIEW_FAR_LOAD < VIEW_FAR_EVICT, "far view has no residency hysteresis");
 
 cm_view_t cm_view_preset(int level) {
     switch (level) {
         case 0:
-            return (cm_view_t){8.0f, 14.0f, 24.0f, 40.0f, 18.0f, 44.0f, CM_SKY_ARGB, 3, 5};
+            return (cm_view_t){8.0f,  14.0f, 24.0f, 40.0f, 18.0f, 44.0f, CM_SKY_ARGB,
+                               VIEW_NEAR_LOAD, VIEW_NEAR_EVICT};
         case 2:
-            return (cm_view_t){12.0f, 20.0f, 40.0f, 72.0f, 30.0f, 78.0f, CM_SKY_ARGB, 6, 8};
+            return (cm_view_t){12.0f, 20.0f, 40.0f, 72.0f, 30.0f, 78.0f, CM_SKY_ARGB,
+                               VIEW_FAR_LOAD, VIEW_FAR_EVICT};
         default:
-            return (cm_view_t){12.0f, 20.0f, 32.0f, 56.0f, 24.0f, 60.0f, CM_SKY_ARGB, 5, 7};
+            return (cm_view_t){12.0f, 20.0f, 32.0f, 56.0f, 24.0f, 60.0f, CM_SKY_ARGB,
+                               VIEW_MED_LOAD, VIEW_MED_EVICT};
     }
 }
 
@@ -77,7 +106,16 @@ void chunk_render_shutdown(void) {
 }
 
 void chunk_render_set_view(cm_view_t const* v) {
-    if (v != NULL) s_view = *v;
+    if (v == NULL) return;
+    s_view = *v;
+    // The ring cannot hold a bigger radius than this, and exceeding it
+    // does not degrade -- it makes two chunks share a slot and evict
+    // each other for as long as the player stands there (chunk.h,
+    // CH_EVICT_MAX). Clamp rather than trust the caller: this is the
+    // one place every view setting passes through.
+    if (s_view.evict_radius > CH_EVICT_MAX) s_view.evict_radius = CH_EVICT_MAX;
+    if (s_view.load_radius >= s_view.evict_radius) s_view.load_radius = s_view.evict_radius - 1;
+    if (s_view.load_radius < 1) s_view.load_radius = 1;
 }
 cm_view_t const* chunk_render_view(void) {
     return &s_view;
@@ -96,6 +134,10 @@ void chunk_render_set_origin(int32_t wx, int32_t wz) {
 void chunk_render_origin(int32_t* ox, int32_t* oz) {
     if (ox != NULL) *ox = s_origin_x;
     if (oz != NULL) *oz = s_origin_z;
+}
+
+int chunk_render_evicted(void) {
+    return s_evicted_total;
 }
 
 void chunk_render_stats(int* chunks_drawn, int* sections_drawn, int* resident, int* missing) {
@@ -131,6 +173,7 @@ void chunk_render_stream(double wx, double wz) {
         c->lod_stale    = 0;
         c->lod_inflight = 0;
         c->cstate       = CS_FREE;
+        s_evicted_total++;
     }
 
     // Ask for what is missing, nearest first: a ring at a time outwards,
@@ -264,13 +307,35 @@ void chunk_render_submit(double eye_wx, double eye_wz) {
             if (sdist > s_view.draw_dist) continue;
             if (outside_view(slo, shi, eye, &basis)) continue;
 
-            // Mesh it if it is not ready. Until it is, the section is
-            // simply not drawn -- the fog covers the gap.
-            if ((c->lod_stale & CH_MESH_BIT(lod, sect)) != 0) {
+            // The level this section WANTS. If it is not built yet, ask
+            // for it -- and then draw a level that is, rather than
+            // nothing.
+            //
+            // That fallback is the whole difference between a world
+            // that streams and one that blinks. A level of detail is a
+            // separate mesh, so crossing a distance band asks for a
+            // mesh that has never existed; flying upwards moves every
+            // chunk into LOD_COARSE at once, which is a hundred and
+            // sixty section meshes that do not exist yet. Drawing
+            // nothing until they arrive is what "it reloaded the whole
+            // world" looks like from the outside. The wrong level for a
+            // few frames is not noticeable; a hole in the ground is.
+            int use = -1;
+            if ((c->lod_stale & CH_MESH_BIT(lod, sect)) == 0) {
+                use = lod;
+            } else {
                 chunk_worker_request_mesh(c->cx, c->cz, lod, sect);
-                continue;
+                // Nearest level that is ready, in detail order: a step
+                // too sharp reads better than a step too blurry.
+                for (int away = 1; away < LOD_COUNT && use < 0; away++) {
+                    int const lower = lod - away, higher = lod + away;
+                    if (lower >= 0 && (c->lod_stale & CH_MESH_BIT(lower, sect)) == 0) use = lower;
+                    else if (higher < LOD_COUNT && (c->lod_stale & CH_MESH_BIT(higher, sect)) == 0) use = higher;
+                }
             }
-            mesh_t const* m = chunk_mesh(c, lod, sect);
+            if (use < 0) continue;  // nothing built at all yet; the fog covers it
+
+            mesh_t const* m = chunk_mesh(c, use, sect);
             // Not "not built yet": a section of solid rock or open sky
             // meshes to nothing, and asking again every frame would
             // never stop. The stale bit above is what says "not built".

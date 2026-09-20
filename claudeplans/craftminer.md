@@ -767,6 +767,7 @@ frame time than the fell.
 | 2.2 | `chunk_render.c`: streamed LOD cache, `outside_view` with `top`/`bottom`, the view table | done | 2026-09-20: ring-at-a-time nearest-first loading, eviction with hysteresis and save-before-drop, three LOD bands, fog-tinted flat palette cached per fog step. |
 | 2.3 | G1: `mesh_tri_t.dir`, direction-grouped triangles, `mesh_submit_world()` | done | 2026-09-20: the free pad byte holds the face direction (F-01), so an axis-aligned back-face test is one compare. `meshcheck` proves every greedy face's direction matches its real normal and that plants carry none. Grouping was **skipped** — the per-triangle test is already cheap and submit time turned out to be elsewhere (F-32). |
 | 2.4 | A free-flying debug camera over a streamed world | done | 2026-09-20: a circular flight, a pure function of the show clock. 16.0 fps measured (F-31, F-32, F-33) — **that figure is wrong, see F-36**: the camera was pointing at the sky and flying sideways. Corrected, the same build is **12.3 fps**. |
+| 2.7 | The world reloading itself, reported from free flight | done | 2026-09-21: three causes (F-41). The far preset did not fit the chunk ring — two chunks per slot, evicting each other forever. A LOD change drew nothing until its mesh arrived. The result budget was still 2 a frame from before sectioning. Two of the three were mine, from D-34. |
 | 2.6 | Where the frame time really goes; the engine at -O2 | done | 2026-09-21: the user asked for SIMD and for internal-SRAM textures. **Neither is the answer, and both were measured rather than assumed** (F-37, F-38, F-40). What was: `-O2` and inline rounding, worth **13.4 -> 15.3 fps** (F-39). Spans average **6 pixels**, so the cost is per-span setup, not per-pixel work. |
 | 2.5 | Vertical render sections (D-34) and a hand-flown camera | done | 2026-09-21: `vox_grid_t.y0`; 4 sections a chunk, each culled and meshed on its own; meshes moved out of the static `chunk_t` into the PSRAM slab (**−35 KiB bss**). **12.6 → 13.6 fps** (F-35, two runs each). The mesh check proves the seam is exact by meshing a lump whole and in slices and comparing surface area and volume — and fails when the offset or the border is broken. Free flight (WASD / arrows / Space / Shift, T and V toggles) whenever no test is running (D-38). |
 | | **Accept host:** `make scenecheck` no cap overflow at any view distance; `make meshcheck` `dir` matches every normal. **Accept device:** `make cycle TEST="perf scene=flyover secs=20"`; **submit must be under 6 ms** | | |
@@ -1191,6 +1192,41 @@ frame time than the fell.
   The measurements live in `main/game/membench.c` and in the engine's
   `scene_fill_stats()`, so any of this can be re-checked rather than believed.
 
+- **F-41** 2026-09-21, **the user, flying by hand**: "it sometimes seems to
+  reload all the chunks". Three separate causes, found by logging the
+  streaming's flow per second (`stream/s:` in the app log) rather than by
+  reading the code:
+
+  1. **The far view preset did not fit the chunk ring, and this one really
+     does reload everything.** `evict_radius` 8 keeps a 17-chunk square; the
+     ring is 16 across and a slot is the low four bits of the coordinate, so
+     two resident chunks land on the same slot. Each evicts the other, each is
+     then read as `BLK_BARRIER` and requested again, **forever, even while the
+     player stands still.** `CH_RING`'s own comment said "a residency radius up
+     to 7" and the preset asked for 8. Fixed to 7, clamped in
+     `chunk_render_set_view()`, and `_Static_assert`-ed against `CH_EVICT_MAX`
+     so the build stops rather than the world thrashing -- verified by putting
+     8 back and watching it fail to compile.
+
+  2. **A level-of-detail change drew nothing until its mesh arrived.** Each
+     level is a separate mesh, so crossing a distance band asks for one that
+     has never existed. Flying *upwards* moves every chunk into `LOD_COARSE` at
+     once: ~160 section meshes that do not exist, at ~30 applied a second. The
+     renderer now falls back to whichever level IS built while the wanted one
+     is queued. A frame at the wrong detail is not noticeable; a hole in the
+     ground is.
+
+  3. **The result budget had not kept up with D-34.** `CHUNK_RESULTS_PER_FRAME`
+     was 2 -- about 30 a second -- chosen when a chunk had 3 meshes. Sectioning
+     made it 12, and a fast flight wants ~90 a second. The worker then fills
+     its 48-deep result queue and **blocks**, which stops loads as well as
+     meshes. Measured at startup: `asked 80, applied 36, queue 44/48`. At a
+     budget of 8: `asked 82, applied 82, queue 0/48`.
+
+  Causes 2 and 3 are **regressions I introduced with D-34** and did not think
+  to look for: sectioning multiplied the number of mesh jobs by four and I left
+  every budget around it alone.
+
 ### Decisions (D-n), each with date and who decided
 
 - **D-01** 2026-09-20, Claude: **a floating render origin.** The engine subtracts
@@ -1265,6 +1301,16 @@ frame time than the fell.
   floor, and 99% of its triangles are in one section). The rule now: any claim
   about "the terrain" or "a chunk" is measured over a sample spread across the
   world, and the sample size goes in the finding.
+
+- **D-43** 2026-09-21, Claude: **a limit the ring imposes is checked by the
+  compiler, not by a comment.** `CH_RING`'s comment had said "a residency
+  radius up to 7" since it was written, and a preset asked for 8 anyway
+  (F-41). `CH_EVICT_MAX` plus `_Static_assert` makes that a build failure.
+
+- **D-44** 2026-09-21, Claude: **never draw nothing when something is
+  available.** If the level of detail a section wants is not built yet, draw
+  one that is. A streaming world's visible quality is set by what it does while
+  it waits, and "wait with a hole in the ground" is the worst of the options.
 
 - **D-39** 2026-09-21, the user: **engine work is authorised**, and the engine
   stays at **version 2.1** while it is being worked on -- no bump per change.

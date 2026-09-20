@@ -41,10 +41,18 @@
 
 static char const TAG[] = "craftminer";
 
-// How many finished chunk jobs to take delivery of per frame. Applying
-// a mesh means freeing the old one and touching the new, so a burst of
-// completions has to be spread out or it lands as a dropped frame.
-#define CHUNK_RESULTS_PER_FRAME 2
+// How many finished chunk jobs to take delivery of per frame.
+//
+// Taking delivery is a pointer swap and a free, so the budget only
+// needs to stop a burst landing as one dropped frame -- and it has to
+// be big enough to keep up with what is asked for, or the worker fills
+// its result queue, blocks, and stops loading chunks as well. Two was
+// right when a chunk had three meshes. It now has twelve (CH_MESH_N),
+// and two a frame is about thirty a second against a fast flight's
+// ninety: the world falls behind the camera and looks like it is
+// reloading itself. Eight covers it with room to spare, and each one
+// is a quarter the size it used to be.
+#define CHUNK_RESULTS_PER_FRAME 8
 
 // --- Quarter-resolution rendering -----------------------------------------
 //
@@ -250,6 +258,19 @@ static void frame_stats(void) {
     chunk_render_stats(&drawn, &sections, &resident, &missing);
     ESP_LOGI(TAG, "world: %d chunks / %d sections drawn of %d resident (%d missing), %d tris tested -> %d submitted",
              drawn, sections, resident, missing, tested, passed);
+
+    // The streaming's flow, as rates. A world that lags behind the
+    // camera looks the same whatever the cause: this says which it is.
+    static chunk_worker_flow_t prev;
+    static int                 prev_evicted;
+    chunk_worker_flow_t        f;
+    chunk_worker_flow(&f);
+    int const evicted = chunk_render_evicted();
+    ESP_LOGI(TAG, "stream/s: asked %d applied %d refused %d | loaded %d meshed %d saved %d evicted %d | queue %d/%d",
+             f.asked - prev.asked, f.applied - prev.applied, f.refused - prev.refused, f.loaded - prev.loaded,
+             f.meshed - prev.meshed, f.saved - prev.saved, evicted - prev_evicted, f.in_flight, f.capacity);
+    prev         = f;
+    prev_evicted = evicted;
 
     s_window_us = 0;
     s_frames    = 0;
