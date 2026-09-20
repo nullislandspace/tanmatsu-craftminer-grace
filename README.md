@@ -1,6 +1,24 @@
-# Tanmatsu graceloader template app project
+# CraftMiner
 
-This template project shows how to build an app for Tanmatsu using [Graceloader](https://github.com/nullislandspace/tanmatsu-graceloader)
+A block world for the [Tanmatsu](https://nicolaielectronics.nl/), built on
+[SynthEngine3D](https://github.com/nullislandspace/synthengine3D) and loaded by
+[Graceloader](https://github.com/nullislandspace/tanmatsu-graceloader).
+
+Slug `at.cavac.craftminer`. It installs to the **SD card only** — `metadata.json`
+says `external_only`, so the launcher will not put it in internal flash, and
+`make install` uploads to `/sd/apps/at.cavac.craftminer`.
+
+The project comes from
+[tanmatsu-template-grace](https://github.com/nullislandspace/tanmatsu-template-grace),
+which stays as the `upstream` remote: `git fetch upstream && git merge upstream/main`
+brings in graceloader's symbol-export updates. Its facilities are documented below.
+
+```sh
+git clone --recursive git@github.com:nullislandspace/tanmatsu-craftminer-grace.git
+make badgelink     # once: the flashing/file-transfer tools
+make build         # app.so
+make install run   # onto the SD card, then start it
+```
 
 ## 3D: SynthEngine3D
 
