@@ -153,17 +153,19 @@ recover:
 # clear whether the app is alive, wedged, or never started.
 BADGECTL = python3 tools/badgectl.py --port "$(PORT)" --badgelink "$(BADGELINKPORT)"
 
+# These go through tools/testrun.py's serial code, which needs pyserial
+# -- so they source the IDF environment like every other device target.
 .PHONY: ping
 ping:
-	$(BADGECTL) ping
+	source "$(IDF_SOURCE)" >/dev/null && $(BADGECTL) ping
 
 .PHONY: mode
 mode:
-	$(BADGECTL) mode
+	source "$(IDF_SOURCE)" >/dev/null && $(BADGECTL) mode
 
 .PHONY: exitapp
 exitapp:
-	$(BADGECTL) exitapp
+	source "$(IDF_SOURCE)" >/dev/null && $(BADGECTL) exitapp
 
 .PHONY: badgelink
 badgelink:

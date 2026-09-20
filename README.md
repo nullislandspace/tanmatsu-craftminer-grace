@@ -51,6 +51,27 @@ Engine settings (list caps and the like) are compile definitions that must reach
 `synthengine3d` target, so set them with `add_compile_definitions()` **before**
 `add_subdirectory(synthengine3D)` — see the engine's `docs/configuration.md`.
 
+## Flying it by hand
+
+There is no player yet, so the build hands you a camera instead. Free flight is
+on **whenever no test is running** — start a `perf` or `shots` test and the
+camera switches to the scripted path, because a reproducible frame cannot depend
+on which keys are held.
+
+| key | |
+|---|---|
+| `W` `A` `S` `D` | move horizontally, along where you are looking |
+| `Space` / `L-Shift` | up / down |
+| cursor keys | look |
+| `L-Ctrl` | three times the speed |
+| `T` | textured ⇄ flat mean colours |
+| `V` | view distance: near → medium → far |
+| `P` | pause the scripted flight |
+| `F1` | back to the launcher |
+
+It hangs above sea level until the chunk beneath it arrives, then drops onto the
+ground.
+
 ## The world, and how to work on it
 
 `claudeplans/craftminer.md` is the living plan: the design, a step-by-step

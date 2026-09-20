@@ -3,9 +3,7 @@
 // =====================================================================
 
 #include "world/chunk_worker.h"
-
 #include <string.h>
-
 #include "common/psram.h"
 #include "world/chunkmesh.h"
 #include "world/worldgen.h"
@@ -29,13 +27,17 @@ static char const TAG[] = "cmworker";
 #define QUEUE_DEPTH  48
 #endif
 
-typedef enum { JOB_LOAD = 0, JOB_MESH, JOB_SAVE } job_kind_t;
+typedef enum {
+    JOB_LOAD = 0,
+    JOB_MESH,
+    JOB_SAVE
+} job_kind_t;
 
 typedef struct {
     uint8_t kind;
     uint8_t lod;
-    uint8_t seq;  // the chunk's edit_seq when this was queued
-    uint8_t pad;
+    uint8_t seq;   // the chunk's edit_seq when this was queued
+    uint8_t sect;  // JOB_MESH only: which vertical section (D-34)
     int32_t cx, cz;
 } job_t;
 
@@ -43,6 +45,7 @@ typedef struct {
     uint8_t kind;
     uint8_t lod;
     uint8_t seq;
+    uint8_t sect;
     uint8_t ok;
     int32_t cx, cz;
     mesh_t  mesh;  // JOB_MESH only; ownership passes to main on receive
@@ -89,8 +92,8 @@ static bool do_load(int32_t cx, int32_t cz) {
     return true;
 }
 
-static bool do_mesh(int32_t cx, int32_t cz, int lod, mesh_t* out) {
-    return chunkmesh_build(cx, cz, lod, s_scratch, out);
+static bool do_mesh(int32_t cx, int32_t cz, int lod, int sect, mesh_t* out) {
+    return chunkmesh_build(cx, cz, lod, sect, s_scratch, out);
 }
 
 static bool do_save(int32_t cx, int32_t cz) {
@@ -108,7 +111,7 @@ static bool do_save(int32_t cx, int32_t cz) {
 // chunk's visible state happens here, which is what makes the contract
 // hold without locks.
 static void apply(result_t* r) {
-    chunk_t* c = &(*chunk_slot_at(chunk_slot(r->cx, r->cz)));
+    chunk_t*   c    = &(*chunk_slot_at(chunk_slot(r->cx, r->cz)));
     bool const mine = c->cx == r->cx && c->cz == r->cz;
 
     if (r->kind == JOB_LOAD) {
@@ -116,7 +119,7 @@ static void apply(result_t* r) {
             c->cstate = r->ok ? CS_READY : CS_FREE;
             if (r->ok) {
                 s_loaded_total++;
-                for (int l = 0; l < LOD_COUNT; l++) c->lod_stale[l] = true;
+                c->lod_stale = CH_MESH_ALL;
             }
         }
         return;
@@ -126,16 +129,21 @@ static void apply(result_t* r) {
         // Stale if the slot moved on, or the chunk was edited after the
         // job was queued. Either way the mesh describes a world that no
         // longer exists, so throw it away rather than show it.
+        bool const valid = r->lod < LOD_COUNT && r->sect < CH_SECT_N;
         bool const fresh = mine && c->cstate == CS_READY && c->edit_seq == r->seq && r->ok;
-        if (fresh && r->lod < LOD_COUNT) {
-            mesh_free(&c->lod[r->lod]);
-            c->lod[r->lod]       = r->mesh;  // the swap: one pointer, between frames
-            c->lod_stale[r->lod] = false;
+        if (fresh && valid) {
+            mesh_t* slot = chunk_mesh(c, r->lod, r->sect);
+            mesh_free(slot);
+            *slot         = r->mesh;  // the swap: one pointer, between frames
+            // Only now is it not stale -- and only if nothing marked it
+            // again while the job was in flight, which the edit_seq
+            // check above has already ruled out.
+            c->lod_stale &= (uint16_t)~CH_MESH_BIT(r->lod, r->sect);
             memset(&r->mesh, 0, sizeof(r->mesh));
             s_meshed_total++;
         }
         if (r->mesh.v != NULL || r->mesh.t != NULL) mesh_free(&r->mesh);
-        if (mine && r->lod < LOD_COUNT) c->lod_inflight &= (uint8_t)~(1u << r->lod);
+        if (mine && valid) c->lod_inflight &= (uint16_t)~CH_MESH_BIT(r->lod, r->sect);
         return;
     }
 
@@ -152,14 +160,22 @@ static void run_job(job_t const* j, result_t* r) {
     r->kind = j->kind;
     r->lod  = j->lod;
     r->seq  = j->seq;
+    r->sect = j->sect;
     r->cx   = j->cx;
     r->cz   = j->cz;
 
     switch (j->kind) {
-        case JOB_LOAD: r->ok = do_load(j->cx, j->cz) ? 1 : 0; break;
-        case JOB_MESH: r->ok = do_mesh(j->cx, j->cz, j->lod, &r->mesh) ? 1 : 0; break;
-        case JOB_SAVE: r->ok = do_save(j->cx, j->cz) ? 1 : 0; break;
-        default: break;
+        case JOB_LOAD:
+            r->ok = do_load(j->cx, j->cz) ? 1 : 0;
+            break;
+        case JOB_MESH:
+            r->ok = do_mesh(j->cx, j->cz, j->lod, j->sect, &r->mesh) ? 1 : 0;
+            break;
+        case JOB_SAVE:
+            r->ok = do_save(j->cx, j->cz) ? 1 : 0;
+            break;
+        default:
+            break;
     }
 }
 
@@ -194,14 +210,15 @@ bool chunk_worker_request_load(int32_t cx, int32_t cz) {
     return true;
 }
 
-bool chunk_worker_request_mesh(int32_t cx, int32_t cz, int lod) {
+bool chunk_worker_request_mesh(int32_t cx, int32_t cz, int lod, int sect) {
     chunk_t* c = chunk_find(cx, cz);
-    if (c == NULL || lod < 0 || lod >= LOD_COUNT) return false;
-    if ((c->lod_inflight & (1u << lod)) != 0) return true;  // already asked
+    if (c == NULL || lod < 0 || lod >= LOD_COUNT || sect < 0 || sect >= CH_SECT_N) return false;
+    if ((c->lod_inflight & CH_MESH_BIT(lod, sect)) != 0) return true;  // already asked
 
-    job_t const j = {.kind = JOB_MESH, .lod = (uint8_t)lod, .seq = c->edit_seq, .cx = cx, .cz = cz};
+    job_t const j = {
+        .kind = JOB_MESH, .lod = (uint8_t)lod, .sect = (uint8_t)sect, .seq = c->edit_seq, .cx = cx, .cz = cz};
     if (!submit(&j)) return false;
-    if (!s_sync) c->lod_inflight |= (uint8_t)(1u << lod);
+    if (!s_sync) c->lod_inflight |= CH_MESH_BIT(lod, sect);
     return true;
 }
 

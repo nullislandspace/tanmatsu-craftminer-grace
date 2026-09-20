@@ -18,17 +18,18 @@
 
 #include <math.h>
 #include <string.h>
+#include "common/texcache.h"
 #include "esp_heap_caps.h"
-#include "esp_timer.h"
 #include "esp_log.h"
+#include "esp_timer.h"
+#include "game/flycam.h"
+#include "gl_input.h"
+#include "graceloader.h"
+#include "math/mesh_render.h"
 #include "synthengine3d.h"  // the whole public API
-
 #include "testkit/devtest.h"
 #include "testkit/profile.h"
 #include "testkit/showtime.h"
-#include "graceloader.h"
-#include "common/texcache.h"
-#include "math/mesh_render.h"
 #include "world/chunk.h"
 #include "world/chunk_render.h"
 #include "world/chunk_worker.h"
@@ -62,37 +63,59 @@ static char const TAG[] = "craftminer";
 static se_ppa_layer_t s_half;
 static bool           s_quarter = true;
 
-// --- The flight ---------------------------------------------------------
+// --- The camera ---------------------------------------------------------
 //
-// Step 2.4: there is no player yet, so a camera flies a fixed path over
-// the streamed world. It exists to answer the question the whole render
-// plan rests on -- what frame rate does a real voxel view cost? -- and
-// to be something to look at while the streaming is wrong.
+// There is no player yet (block 2), so the world is looked at two ways,
+// and which one is in charge is decided by whether a test is running:
 //
-// A pure function of the show clock, so the `shots` test can render an
-// exact instant and hash it (devtest.h).
+//   A TEST IS RUNNING   a fixed circular path, a pure function of the
+//                       show clock. That is what makes the `shots`
+//                       framebuffer hashes mean anything and the `perf`
+//                       numbers comparable between runs (devtest.h).
+//
+//   NOBODY IS WATCHING  free flight off the keyboard (game/flycam.h),
+//                       so the world can be looked at from wherever it
+//                       is suspected of being wrong.
+//
+// The scripted path is also what answers the question the whole render
+// plan rests on: what does a real voxel view cost?
 
-#define FLY_SPEED   6.0f   // blocks a second
-#define FLY_RADIUS  90.0f  // of the circle it walks
-#define FLY_EYE_H   3.0f   // above the ground below it
+#define FLY_SPEED  6.0f   // blocks a second
+#define FLY_RADIUS 90.0f  // of the circle it walks
+#define FLY_EYE_H  3.0f   // above the ground below it
+#define FLY_PITCH  0.18f  // POSITIVE IS DOWN (se_scene.c, camera_build_basis)
 
-static double s_time_off;   // show time subtracted while paused
-static double s_paused_at;
-static bool   s_flying = true;
+static double   s_time_off;  // show time subtracted while paused
+static double   s_paused_at;
+static bool     s_flying = true;
+static flycam_t s_free;
+static bool     s_free_ready;  // the free camera has been put somewhere sensible
 
 static double fly_time(void) {
     return (s_flying ? showtime_now() : s_paused_at) - s_time_off;
 }
 
-// Where the camera is, in WORLD coordinates. The render origin turns
-// this into the small numbers the scene sees.
+// Where the scripted camera is, in WORLD coordinates. The render origin
+// turns this into the small numbers the scene sees.
 static void fly_pose(double t, double* wx, double* wz, float* yaw) {
     double const a = (double)FLY_SPEED * t / (double)FLY_RADIUS;
     *wx            = cos(a) * (double)FLY_RADIUS;
     *wz            = sin(a) * (double)FLY_RADIUS;
-    // Looking along the direction of travel.
-    *yaw = (float)(a + 1.5707963);
+    // Along the direction of travel, which is d/da of the position:
+    // (-sin a, cos a). The engine's forward in x and z is
+    // (sin yaw, cos yaw), so the yaw that matches both components is
+    // -a. (The showreel's +pi/2 matched neither, and the flight has
+    // been looking sideways ever since.)
+    *yaw           = (float)(-a);
 }
+
+// This frame's camera, in world coordinates, filled in on_update and
+// used by on_render. One place decides, so the streaming and the
+// drawing can never disagree about where the eye is.
+static struct {
+    double wx, wz;
+    float  wy, yaw, pitch;
+} s_cam;
 
 // --- Memory ---------------------------------------------------------------
 //
@@ -132,16 +155,24 @@ static double      s_content_t0;
 
 static bool content_select(char const* name) {
     if (name == NULL || strcmp(name, "block") != 0) return false;
-    s_content     = "block";
-    s_content_t0  = showtime_now();
-    s_time_off    = s_content_t0;  // the content's own t = 0
-    s_flying      = true;
+    s_content    = "block";
+    s_content_t0 = showtime_now();
+    s_time_off   = s_content_t0;  // the content's own t = 0
+    s_flying     = true;
     return true;
 }
-static float       content_duration(void) { return -1.0f; }  // endless
-static double      content_started(void) { return s_content_t0; }
-static char const* content_name(void) { return s_content; }
-static char const* content_shot(void) { return ""; }
+static float content_duration(void) {
+    return -1.0f;
+}  // endless
+static double content_started(void) {
+    return s_content_t0;
+}
+static char const* content_name(void) {
+    return s_content;
+}
+static char const* content_shot(void) {
+    return "";
+}
 
 static devtest_content_t const CONTENT = {
     .select    = content_select,
@@ -181,11 +212,11 @@ static void frame_stats(void) {
     prof_flush(split, sizeof(split), frame_ms);
     ESP_LOGI(TAG, "%s", split);
 
-    int tested = 0, passed = 0, drawn = 0, resident = 0, missing = 0;
+    int tested = 0, passed = 0, drawn = 0, sections = 0, resident = 0, missing = 0;
     mesh_submit_counters(&tested, &passed);
-    chunk_render_stats(&drawn, &resident, &missing);
-    ESP_LOGI(TAG, "world: %d chunks drawn of %d resident (%d missing), %d tris tested -> %d submitted", drawn,
-             resident, missing, tested, passed);
+    chunk_render_stats(&drawn, &sections, &resident, &missing);
+    ESP_LOGI(TAG, "world: %d chunks / %d sections drawn of %d resident (%d missing), %d tris tested -> %d submitted",
+             drawn, sections, resident, missing, tested, passed);
 
     s_window_us = 0;
     s_frames    = 0;
@@ -288,36 +319,90 @@ static void on_init(void* user) {
 // unused for now: the content is drawn from the show clock instead.
 static void on_update(float dt, void* user) {
     (void)user;
-    (void)dt;
     showtime_frame();
     devtest_update();
 
     // Where the camera will be this frame decides what has to exist.
-    double wx, wz;
-    float  yaw;
-    fly_pose(fly_time(), &wx, &wz, &yaw);
+    if (devtest_running()) {
+        float yaw;
+        fly_pose(fly_time(), &s_cam.wx, &s_cam.wz, &yaw);
+        s_cam.yaw        = yaw;
+        s_cam.pitch      = FLY_PITCH;
+        // Follows the ground, so the flight stays over the terrain
+        // rather than through it.
+        int const ground = world_ground((int32_t)floor(s_cam.wx), (int32_t)floor(s_cam.wz));
+        s_cam.wy         = (float)(ground > 0 ? ground : CH_SEA_LEVEL) + FLY_EYE_H;
+    } else {
+        if (!s_free_ready) {
+            // Start where the scripted path starts, so the first thing
+            // seen by hand is the same view the tests measure.
+            double wx, wz;
+            float  yaw;
+            fly_pose(0.0, &wx, &wz, &yaw);
+            flycam_reset(&s_free, wx, wz, (float)CH_SEA_LEVEL + 8.0f, yaw);
+            s_free_ready = true;
+        }
+        flycam_update(&s_free, dt);
+        s_cam.wx    = s_free.wx;
+        s_cam.wz    = s_free.wz;
+        s_cam.wy    = s_free.wy;
+        s_cam.yaw   = s_free.yaw;
+        s_cam.pitch = s_free.pitch;
+    }
 
     // Take delivery of what core 1 finished, with a budget so a burst
     // cannot blow a frame, then ask for what is still missing.
     chunk_worker_collect(CHUNK_RESULTS_PER_FRAME);
-    chunk_render_stream(wx, wz);
+    chunk_render_stream(s_cam.wx, s_cam.wz);
 }
 
 // Whatever the engine did not consume itself (it takes volume, the
 // audio jack, and F1 while f1_exits is set). Scancodes arrive for the
 // release too, with BSP_INPUT_SCANCODE_RELEASE_MODIFIER set, so an exact
 // match fires on the press only.
+//
+// Movement is NOT here: flycam.h polls the keys it wants, because a key
+// held down is a state and not an event. What is here is the handful of
+// things that toggle, which is exactly what an event is for.
+//
+//   P  pause the scripted flight (free flight has nothing to pause)
+//   T  textures <-> flat mean colours
+//   V  view distance: near / medium / far
 static void on_input(bsp_input_event_t const* ev, void* user) {
     (void)user;
     if (ev->type != INPUT_EVENT_TYPE_SCANCODE) return;
-    if (ev->args_scancode.scancode == BSP_INPUT_SCANCODE_SPACE) {
-        if (s_flying) {
-            s_paused_at = showtime_now();
-        } else {
-            s_time_off += showtime_now() - s_paused_at;
-        }
-        s_flying = !s_flying;
-        ESP_LOGI(TAG, "flight %s", s_flying ? "on" : "off");
+    switch (ev->args_scancode.scancode) {
+        case BSP_INPUT_SCANCODE_P:
+            if (s_flying) {
+                s_paused_at = showtime_now();
+            } else {
+                s_time_off += showtime_now() - s_paused_at;
+            }
+            s_flying = !s_flying;
+            ESP_LOGI(TAG, "scripted flight %s", s_flying ? "on" : "off");
+            break;
+
+        case BSP_INPUT_SCANCODE_T:
+            chunk_render_set_textured(!chunk_render_textured());
+            ESP_LOGI(TAG, "shading: %s", chunk_render_textured() ? "textured" : "flat");
+            break;
+
+        case BSP_INPUT_SCANCODE_V: {
+            // 0 near, 1 medium, 2 far -- and back round. Told apart by
+            // the draw distance, which is what the presets differ in.
+            static int level  = 0;
+            level             = (level + 1) % 3;
+            cm_view_t const v = cm_view_preset(level);
+            chunk_render_set_view(&v);
+            ESP_LOGI(TAG, "view distance: %s (%d blocks, %d chunks resident)",
+                     level == 0   ? "near"
+                     : level == 1 ? "medium"
+                                  : "far",
+                     (int)v.draw_dist, v.load_radius);
+        } break;
+
+        default:
+            break;
     }
 }
 
@@ -335,26 +420,16 @@ static void on_backdrop(pax_buf_t* fb, void* user) {
 static void on_render(pax_buf_t* fb, void* user) {
     (void)user;
 
-    double const t = fly_time();
-    double       wx, wz;
-    float        yaw;
-    fly_pose(t, &wx, &wz, &yaw);
-
-    // The camera follows the ground, so the flight stays over the
-    // terrain rather than through it.
-    int const   ground = world_ground((int32_t)floor(wx), (int32_t)floor(wz));
-    float const eye_y  = (float)(ground > 0 ? ground : CH_SEA_LEVEL) + FLY_EYE_H;
-
     // Everything is submitted relative to an integer origin near the
     // camera, so the floats the rasteriser sees stay small however far
     // out this is (D-01). The camera goes into the same space.
-    chunk_render_set_origin((int32_t)floor(wx), (int32_t)floor(wz));
+    chunk_render_set_origin((int32_t)floor(s_cam.wx), (int32_t)floor(s_cam.wz));
     int32_t ox, oz;
     chunk_render_origin(&ox, &oz);
 
     float rx, ry, rz;
-    chunk_render_rel(ox, oz, wx, (double)eye_y, wz, &rx, &ry, &rz);
-    render_set_camera_6dof(rx, ry, rz, yaw, -0.18f, 0.0f);
+    chunk_render_rel(ox, oz, s_cam.wx, (double)s_cam.wy, s_cam.wz, &rx, &ry, &rz);
+    render_set_camera_6dof(rx, ry, rz, s_cam.yaw, s_cam.pitch, 0.0f);
 
     pax_buf_t* const target = s_quarter ? &s_half.buf : fb;
     scene_set_render_scale(s_quarter ? 2 : 1);
@@ -373,7 +448,7 @@ static void on_render(pax_buf_t* fb, void* user) {
 
     prof_begin(PROF_SUBMIT);
     mesh_submit_counters_reset();
-    chunk_render_submit(wx, wz);
+    chunk_render_submit(s_cam.wx, s_cam.wz);
     prof_end(PROF_SUBMIT);
 
     prof_begin(PROF_PREPARE);

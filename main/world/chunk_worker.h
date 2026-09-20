@@ -35,7 +35,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
 #include "world/chunk.h"
 
 // Start the task. `seed` is the world's; the worker generates any chunk
@@ -54,8 +53,9 @@ bool chunk_worker_synchronous(void);
 // queue is full, in which case the caller simply asks again next frame.
 bool chunk_worker_request_load(int32_t cx, int32_t cz);
 
-// Ask for a level of detail to be (re)built. The chunk must be resident.
-bool chunk_worker_request_mesh(int32_t cx, int32_t cz, int lod);
+// Ask for a level of detail of one vertical section to be (re)built
+// (chunk.h, CH_SECT). The chunk must be resident.
+bool chunk_worker_request_mesh(int32_t cx, int32_t cz, int lod, int sect);
 
 // Ask for a chunk to be written to the card. Used on eviction and at an
 // explicit save.

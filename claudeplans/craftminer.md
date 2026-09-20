@@ -629,6 +629,9 @@ The split matters because it says where work pays:
 - **About 21 ms is the game's**, and most of it is waste: 68% of every chunk's
   mesh is cave walls (F-33), so ~7000 triangles are submitted to draw ~1000.
   Vertical render sections (D-34) are the fix and they touch no engine code.
+  **Read F-35 with this**: sectioning is done and measured, and it is worth
+  about 8%, not the 2.6x F-33 implied. The 68% was measured from one chunk, and
+  that chunk was sea floor.
 - **About 43 ms is the engine's**, and it is the documented cost of a software
   rasteriser, not a defect. The game chooses the pixel count -- view distance,
   render scale, textured against flat -- but not the rate per pixel.
@@ -763,7 +766,8 @@ frame time than the fell.
 | 2.1 | `chunk_worker.c`: task, queues, ownership contract, synchronous mode | done | 2026-09-20: core 1 at `configMAX_PRIORITIES-6`, 48-deep job and result queues, worker-owned 21 KiB mesher scratch (F-08 closed). Host-tested through the synchronous path (F-30). |
 | 2.2 | `chunk_render.c`: streamed LOD cache, `outside_view` with `top`/`bottom`, the view table | done | 2026-09-20: ring-at-a-time nearest-first loading, eviction with hysteresis and save-before-drop, three LOD bands, fog-tinted flat palette cached per fog step. |
 | 2.3 | G1: `mesh_tri_t.dir`, direction-grouped triangles, `mesh_submit_world()` | done | 2026-09-20: the free pad byte holds the face direction (F-01), so an axis-aligned back-face test is one compare. `meshcheck` proves every greedy face's direction matches its real normal and that plants carry none. Grouping was **skipped** — the per-triangle test is already cheap and submit time turned out to be elsewhere (F-32). |
-| 2.4 | A free-flying debug camera over a streamed world | done | 2026-09-20: a circular flight, a pure function of the show clock. **16.0 fps** measured (F-31, F-32, F-33). |
+| 2.4 | A free-flying debug camera over a streamed world | done | 2026-09-20: a circular flight, a pure function of the show clock. 16.0 fps measured (F-31, F-32, F-33) — **that figure is wrong, see F-36**: the camera was pointing at the sky and flying sideways. Corrected, the same build is **12.3 fps**. |
+| 2.5 | Vertical render sections (D-34) and a hand-flown camera | done | 2026-09-21: `vox_grid_t.y0`; 4 sections a chunk, each culled and meshed on its own; meshes moved out of the static `chunk_t` into the PSRAM slab (**−35 KiB bss**). **12.6 → 13.6 fps** (F-35, two runs each). The mesh check proves the seam is exact by meshing a lump whole and in slices and comparing surface area and volume — and fails when the offset or the border is broken. Free flight (WASD / arrows / Space / Shift, T and V toggles) whenever no test is running (D-38). |
 | | **Accept host:** `make scenecheck` no cap overflow at any view distance; `make meshcheck` `dir` matches every normal. **Accept device:** `make cycle TEST="perf scene=flyover secs=20"`; **submit must be under 6 ms** | | |
 | **3** | **The player** | | |
 | 3.1 | `physics.c`: swept AABB (0.6 x 1.8), gravity, jump, step-up | todo | |
@@ -1042,6 +1046,61 @@ frame time than the fell.
   before D-11 traded it away for keeping the donor mesher untouched; the trade
   is measurably worse than expected.
 
+  **CORRECTED 2026-09-21 by F-35. The 68% figure does not survive a wider
+  sample, and the single chunk it came from was a bad one to have picked.**
+  Chunk (0,0) is sea floor: it meshes to 346 triangles, not 1094, and 344 of
+  them are in one section. The finding should never have been stated from one
+  chunk. Sectioning is still right, for the reasons F-35 gives -- but not for
+  the reason given here, and not by the factor claimed.
+
+- **F-35** 2026-09-21, step 2.5, measured on the host over **49 chunks sampled
+  across 4000 blocks of world** (not one chunk, which is what went wrong in
+  F-33) and on the badge:
+
+  | where the triangles are | share |
+  |---|---|
+  | y 0-15 (underground, caves) | 34% |
+  | y 16-31 (the surface band) | 47% |
+  | y 32-47 (hills above it) | 17% |
+  | y 48-63 (sky) | 0% |
+
+  Only 6 of the 49 chunks have 90% or more of their triangles in a single
+  section, so **the geometry really is spread over three sections** and a
+  frustum test per section has something to reject. But it is 34% underground,
+  not 68%, and a box test is conservative -- the near chunks' underground
+  sections are partly in view from three blocks above the ground.
+
+  On the badge, same camera path, same 20-second window: **12.32 and 12.83 fps
+  without sections, 13.95 and 13.25 with** -- about **8% faster**, rasterise
+  51.2 -> 49.9 ms, ~15% fewer triangles submitted. Two runs each; the spread
+  within one build is ~5%, so this is a real gain but a modest one, and it is
+  smaller than F-33 promised.
+
+  The terrain itself is fine and was briefly suspected of not being: over 94864
+  samples the height runs y14..41, median 27, 24% at or below sea level, which
+  matches what step 1.2 recorded. **The origin is simply ocean**, which is why
+  the one chunk F-33 measured looked the way it did.
+
+  Sectioning earns its keep in two further ways that are not in the frame time:
+  a section is only meshed when it is about to be drawn, so the underground of
+  a chunk you never look into is **never built at all**; and a block edit now
+  dirties 4096 cells instead of 16384, which is what break-and-place in step 3.5
+  will pay for.
+
+- **F-36** 2026-09-21, step 2.5: **the 16.0 fps in F-31 was measured with the
+  camera pointing at the sky.** Two bugs, both in the debug flight and both
+  invisible until the camera became steerable:
+  * the engine's forward vector is `(sin yaw, cos yaw)` in x and z, and the
+    scripted flight's `yaw = a + pi/2` matched *neither* component of its own
+    direction of travel -- it had been flying sideways since it was written.
+    The yaw that matches both is `-a`.
+  * **positive pitch looks DOWN** (`se_scene.c`, `camera_build_basis`:
+    `fwd.y = -sin pitch`). The flight passed `-0.18`, tilting it up into empty
+    sky, which is cheap to fill.
+  Corrected, the same build measures 12.3 rather than 16.0. Every frame rate
+  recorded before this one is optimistic by roughly that much. The convention
+  is now written down at both places that use it.
+
 - **F-34** 2026-09-20, step 2.4: the engine's rasteriser is **scalar C**. No
   PIE/SIMD appears anywhere in `synthengine3D/src/se_scene.c`; the engine's only
   SIMD mention is minimp3's x86/ARM paths, disabled by `MINIMP3_NO_SIMD`. The
@@ -1078,7 +1137,8 @@ frame time than the fell.
   at 4096 (F-04); set before `add_subdirectory(synthengine3D)`.
 - **D-10** 2026-09-20, Claude: **stay on `SE_RENDER_ZBUFFER`** with `frustum_cull`
   and `depth_order` on (F-03).
-- **D-11** 2026-09-20, Claude: **chunk 16 x 16 x 64, one column, no vertical
+- **D-11** 2026-09-20, Claude (render half **reversed** by D-34, storage half
+  still standing): **chunk 16 x 16 x 64, one column, no vertical
   chunking.** 32 is too shallow for mining plus build room plus a bedrock-to-sky
   wall; 64 keeps the single-column layout the donor mesher and `fill_fine` want.
   Revisit sectioning only if remeshing shows up in a profile.
@@ -1107,7 +1167,30 @@ frame time than the fell.
   render half of D-11. Chunk storage stays one 16 x 16 x 64 column -- the
   planes, the codec and the save format are all fine -- but its *mesh* splits
   into 16-high sections with a bounding box each, so the frustum cull can reject
-  everything below the ground. Measured cause in F-33. Not yet implemented.
+  everything below the ground. Measured cause in F-33.
+  **Done 2026-09-21.** `vox_grid_t` gained `y0`; a chunk keeps `CH_MESH_N` = 12
+  meshes (3 levels x 4 sections) in the store's PSRAM slab rather than in the
+  static `chunk_t`, which took 35 KiB *off* the internal-SRAM bss as a
+  side-effect. The level of detail stays the **chunk's**, not the section's:
+  two stacked sections at different resolutions would not line up where they
+  meet and the coarse skirt only closes the sides. Worth about 8% (F-35), which
+  is less than F-33 predicted -- kept because the structure is right, the
+  meshing saving is real, and it is what step 3.5's block edits need.
+
+- **D-37** 2026-09-21, Claude: **a finding measured from one chunk is not a
+  finding.** F-33 was stated from chunk (0,0), which turned out to be the one
+  place in the world where the claim was both true and meaningless (it is sea
+  floor, and 99% of its triangles are in one section). The rule now: any claim
+  about "the terrain" or "a chunk" is measured over a sample spread across the
+  world, and the sample size goes in the finding.
+
+- **D-38** 2026-09-21, Claude: **free flight when no test is running, the
+  scripted path when one is.** `devtest_running()` decides. A `shots` test needs
+  the frame to be a pure function of the show clock, and a camera driven by
+  which keys are held is not -- but a world nobody can steer through is a world
+  whose bugs are only found by accident. Both, chosen automatically, is the way
+  to have the two properties at once. The debug camera deliberately does **not**
+  go through `se_bindings`: those slots are the player's (D-05).
 - **D-35** 2026-09-20, Claude: **an empty `on_backdrop` is required**, not
   optional, for any game that covers the screen itself. See F-31: the default
   clear costs 13 ms a frame and is invisible in the phase split.

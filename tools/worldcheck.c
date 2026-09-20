@@ -1343,31 +1343,86 @@ static void check_streaming(void) {
     CHECK(scratch != NULL, "no scratch for the mesher");
     if (scratch == NULL) return;
     for (int lod = 0; lod < LOD_COUNT; lod++) {
-        mesh_t m;
-        CHECK(chunkmesh_build(0, 0, lod, scratch, &m), "chunkmesh_build failed at lod %d", lod);
-        printf("  lod %d: %d verts, %d tris\n", lod, m.vn, m.tn);
-        CHECK(m.tn > 0, "lod %d produced no triangles", lod);
-        CHECK(m.vn <= 40000, "lod %d produced %d vertices, close to mesh_t's 65535 limit (F-13)", lod, m.vn);
+        int total = 0, surface = 0, empty = 0;
+        for (int sect = 0; sect < CH_SECT_N; sect++) {
+            mesh_t m;
+            CHECK(chunkmesh_build(0, 0, lod, sect, scratch, &m), "chunkmesh_build failed at lod %d section %d", lod,
+                  sect);
+            total += m.tn;
+            if (m.tn == 0) empty++;
+            CHECK(m.vn <= 40000, "lod %d section %d produced %d vertices, close to mesh_t's 65535 limit (F-13)", lod,
+                  sect, m.vn);
 
-        // Every greedy face must carry a direction, or the renderer's
-        // cull silently drops it.
-        int none = 0;
-        for (int i = 0; i < m.tn; i++) none += (m.t[i].dir == MESH_DIR_NONE);
-        CHECK(none == 0 || lod == LOD_FANCY, "lod %d has %d triangles with no face direction", lod, none);
+            // Every greedy face must carry a direction, or the
+            // renderer's cull silently drops it.
+            int none = 0;
+            for (int i = 0; i < m.tn; i++) none += (m.t[i].dir == MESH_DIR_NONE);
+            CHECK(none == 0 || lod == LOD_FANCY, "lod %d section %d has %d triangles with no face direction", lod,
+                  sect, none);
 
-        // The mesh must fit inside its chunk, or the renderer's bounding
-        // box and its frustum cull are both lies.
-        float const span = lod == LOD_COARSE ? (float)CH_W : (float)CH_W;
-        for (int i = 0; i < m.vn; i++) {
-            CHECK(m.v[i].x >= -0.01f && m.v[i].x <= span + 0.01f, "lod %d vertex %d is outside the chunk in x (%g)",
-                  lod, i, m.v[i].x);
-            CHECK(m.v[i].z >= -0.01f && m.v[i].z <= span + 0.01f, "lod %d vertex %d is outside the chunk in z (%g)",
-                  lod, i, m.v[i].z);
-            CHECK(m.v[i].y >= -0.01f && m.v[i].y <= (float)CH_H + 0.01f, "lod %d vertex %d is outside in y (%g)", lod,
-                  i, m.v[i].y);
+            // The mesh must fit inside ITS SECTION's box, or the
+            // renderer's per-section bounding box and its frustum cull
+            // are both lies -- and a section drawn in the wrong band is
+            // exactly the bug sectioning could introduce (D-34).
+            float const ylo = (float)(sect * CH_SECT), yhi = ylo + (float)CH_SECT;
+            for (int i = 0; i < m.vn; i++) {
+                CHECK(m.v[i].x >= -0.01f && m.v[i].x <= (float)CH_W + 0.01f,
+                      "lod %d section %d vertex %d is outside the chunk in x (%g)", lod, sect, i, m.v[i].x);
+                CHECK(m.v[i].z >= -0.01f && m.v[i].z <= (float)CH_D + 0.01f,
+                      "lod %d section %d vertex %d is outside the chunk in z (%g)", lod, sect, i, m.v[i].z);
+                CHECK(m.v[i].y >= ylo - 0.01f && m.v[i].y <= yhi + 0.01f,
+                      "lod %d section %d vertex %d is at y %g, outside its band %g..%g", lod, sect, i, m.v[i].y, ylo,
+                      yhi);
+                if (s_fail) break;
+            }
+
+            // Which section the ground is in, for the line below: the
+            // one holding the most triangles.
+            if (m.tn > surface) surface = m.tn;
+            mesh_free(&m);
             if (s_fail) break;
         }
-        mesh_free(&m);
+        printf("  lod %d: %d tris over %d sections (%d empty, biggest %d)\n", lod, total, CH_SECT_N, empty, surface);
+        CHECK(total > 0, "lod %d produced no triangles at all", lod);
+        if (s_fail) break;
+    }
+
+    // Where a chunk's triangles sit, per section (D-34).
+    //
+    // THIS IS THE ORIGIN, AND THE ORIGIN IS OCEAN. Do not read a claim
+    // about the world out of these three numbers -- that is exactly the
+    // mistake F-33 made, and D-37 is the rule that came out of it. The
+    // world-wide figures are in F-35, measured over 49 chunks spread
+    // across 4000 blocks: 34% underground, 47% surface, 17% above. This
+    // print is here so that a change which quietly moves geometry
+    // between sections shows up in `make check` at all.
+    if (!s_fail) {
+        int by_sect[CH_SECT_N];
+        memset(by_sect, 0, sizeof(by_sect));
+        int chunks = 0;
+        for (int32_t cz = -1; cz <= 1; cz++) {
+            for (int32_t cx = -1; cx <= 1; cx++) {
+                if (chunk_find(cx, cz) == NULL) continue;
+                chunks++;
+                for (int sect = 0; sect < CH_SECT_N; sect++) {
+                    mesh_t m;
+                    if (!chunkmesh_build(cx, cz, LOD_FAST, sect, scratch, &m)) continue;
+                    by_sect[sect] += m.tn;
+                    mesh_free(&m);
+                }
+            }
+        }
+        int total = 0, top = 0;
+        for (int i = 0; i < CH_SECT_N; i++) {
+            total += by_sect[i];
+            if (by_sect[i] > by_sect[top]) top = i;
+        }
+        printf("  the origin 3x3 (ocean, not typical -- F-35): %d chunks, %d tris: ", chunks, total);
+        for (int i = 0; i < CH_SECT_N; i++) {
+            printf("y %2d-%2d: %d%s", i * CH_SECT, (i + 1) * CH_SECT - 1, by_sect[i], i + 1 < CH_SECT_N ? ", " : "");
+        }
+        printf("\n");
+        CHECK(by_sect[top] > 0, "every section of the origin 3x3 meshed to nothing");
     }
     free(scratch);
 

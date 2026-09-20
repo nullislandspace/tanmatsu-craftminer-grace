@@ -9,10 +9,8 @@
 // =====================================================================
 
 #include "world/chunk_render.h"
-
 #include <math.h>
 #include <string.h>
-
 #include "common/texcache.h"
 #include "math/camera.h"
 #include "math/mesh_render.h"
@@ -50,7 +48,7 @@ static bool       s_ready;
 static bool       s_textured = true;
 static cm_view_t  s_view;
 static int32_t    s_origin_x, s_origin_z;
-static int        s_drawn, s_resident, s_missing;
+static int        s_drawn, s_sections, s_resident, s_missing;
 
 cm_view_t cm_view_preset(int level) {
     switch (level) {
@@ -100,8 +98,9 @@ void chunk_render_origin(int32_t* ox, int32_t* oz) {
     if (oz != NULL) *oz = s_origin_z;
 }
 
-void chunk_render_stats(int* chunks_drawn, int* resident, int* missing) {
+void chunk_render_stats(int* chunks_drawn, int* sections_drawn, int* resident, int* missing) {
     if (chunks_drawn != NULL) *chunks_drawn = s_drawn;
+    if (sections_drawn != NULL) *sections_drawn = s_sections;
     if (resident != NULL) *resident = s_resident;
     if (missing != NULL) *missing = s_missing;
 }
@@ -119,7 +118,7 @@ void chunk_render_stream(double wx, double wz) {
         chunk_t* c = chunk_slot_at(i);
         if (c->cstate != CS_READY) continue;
         int32_t const dx = c->cx - pcx, dz = c->cz - pcz;
-        int32_t const d  = (dx < 0 ? -dx : dx) > (dz < 0 ? -dz : dz) ? (dx < 0 ? -dx : dx) : (dz < 0 ? -dz : dz);
+        int32_t const d = (dx < 0 ? -dx : dx) > (dz < 0 ? -dz : dz) ? (dx < 0 ? -dx : dx) : (dz < 0 ? -dz : dz);
         if (d <= s_view.evict_radius) continue;
 
         if ((c->flags & CF_EDITED) != 0) {
@@ -128,8 +127,10 @@ void chunk_render_stream(double wx, double wz) {
             chunk_worker_request_save(c->cx, c->cz);
             continue;
         }
-        for (int l = 0; l < LOD_COUNT; l++) mesh_free(&c->lod[l]);
-        c->cstate = CS_FREE;
+        for (int m = 0; m < CH_MESH_N; m++) mesh_free(&c->lod[m]);
+        c->lod_stale    = 0;
+        c->lod_inflight = 0;
+        c->cstate       = CS_FREE;
     }
 
     // Ask for what is missing, nearest first: a ring at a time outwards,
@@ -167,6 +168,14 @@ static uint32_t mix_argb(uint32_t a, uint32_t b, float f) {
     return out;
 }
 
+// Distance from the eye to the box lo..hi, zero inside it.
+static float box_dist(vec3_t lo, vec3_t hi, vec3_t eye) {
+    float const dx = fmaxf(fmaxf(lo.x - eye.x, eye.x - hi.x), 0.0f);
+    float const dy = fmaxf(fmaxf(lo.y - eye.y, eye.y - hi.y), 0.0f);
+    float const dz = fmaxf(fmaxf(lo.z - eye.z, eye.z - hi.z), 0.0f);
+    return sqrtf(dx * dx + dy * dy + dz * dz);
+}
+
 // Whether the box lo..hi is wholly outside the view: all eight corners
 // beyond one of its planes. Camera space, using the engine's own
 // projection constants, so it tracks the FOV automatically.
@@ -193,18 +202,19 @@ static bool outside_view(vec3_t lo, vec3_t hi, vec3_t eye, mat3_t const* b) {
 
 void chunk_render_submit(double eye_wx, double eye_wz) {
     if (!s_ready) return;
-    s_drawn = 0;
+    s_drawn    = 0;
+    s_sections = 0;
 
     vec3_t const eye   = camera_eye();
     mat3_t const basis = camera_basis();
     (void)eye_wx;
     (void)eye_wz;
 
-    // The flat palette depends only on how foggy a chunk is, so it is
-    // built once per fog step rather than once per chunk -- it was 54
-    // lroundf calls per chunk, for a colour the eye cannot tell from
-    // its neighbour's.
-    #define FOG_STEPS 12
+// The flat palette depends only on how foggy a chunk is, so it is
+// built once per fog step rather than once per chunk -- it was 54
+// lroundf calls per chunk, for a colour the eye cannot tell from
+// its neighbour's.
+#define FOG_STEPS 12
     static mesh_mat_t flat_cache[FOG_STEPS][VM_COUNT];
     bool              flat_built[FOG_STEPS] = {false};
 
@@ -217,49 +227,75 @@ void chunk_render_submit(double eye_wx, double eye_wz) {
         float const ox = (float)(c->cx * CH_W - s_origin_x);
         float const oz = (float)(c->cz * CH_D - s_origin_z);
 
+        // The whole chunk first, as one box: most of the resident set
+        // is behind the eye or past the fog, and rejecting it here
+        // saves four section tests.
         vec3_t const lo = v3(ox, (float)c->bottom, oz);
         vec3_t const hi = v3(ox + CH_W, (float)c->top_max + 1.0f, oz + CH_D);
 
-        // Distance from the eye to the box, zero inside it.
-        float const dx = fmaxf(fmaxf(lo.x - eye.x, eye.x - hi.x), 0.0f);
-        float const dy = fmaxf(fmaxf(lo.y - eye.y, eye.y - hi.y), 0.0f);
-        float const dz = fmaxf(fmaxf(lo.z - eye.z, eye.z - hi.z), 0.0f);
-        float const dist = sqrtf(dx * dx + dy * dy + dz * dz);
-
+        float const dist = box_dist(lo, hi, eye);
         if (dist > s_view.draw_dist) continue;
         if (outside_view(lo, hi, eye, &basis)) continue;
 
-        int const lod = dist < s_view.fancy_dist  ? LOD_FANCY
-                        : dist < s_view.coarse_dist ? LOD_FAST
-                                                    : LOD_COARSE;
+        // THE LEVEL OF DETAIL IS THE CHUNK'S, not the section's. Two
+        // stacked sections at different resolutions would not line up
+        // where they meet, and the coarse skirt only closes the sides
+        // (chunkmesh.c). Sections decide what is DRAWN, not how.
+        int const lod = dist < s_view.fancy_dist ? LOD_FANCY : dist < s_view.coarse_dist ? LOD_FAST : LOD_COARSE;
 
-        // Mesh it if it is not ready. Until it is, the chunk is simply
-        // not drawn -- the fog covers the gap.
-        if (c->lod_stale[lod] || c->lod[lod].tn == 0) {
-            chunk_worker_request_mesh(c->cx, c->cz, lod);
-            if (c->lod_stale[lod]) continue;
-        }
-        if (c->lod[lod].tn == 0) continue;
+        vec3_t const at  = v3(ox, 0.0f, oz);
+        bool         any = false;
 
-        vec3_t const at = v3(ox, 0.0f, oz);
+        // Now the sections. This is the whole point of D-34: a chunk's
+        // underground half is 68% of its triangles (F-33) and none of
+        // it is visible from the surface, so the frustum test gets to
+        // throw it away -- and, because a section is only meshed when
+        // it is about to be drawn, never builds it in the first place.
+        for (int sect = 0; sect < CH_SECT_N; sect++) {
+            int const ylo = sect * CH_SECT, yhi = ylo + CH_SECT;
+            // Below `bottom` is buried stone and above `top_max` is
+            // sky: neither can carry a face.
+            if (yhi <= (int)c->bottom || ylo >= (int)c->top_max) continue;
 
-        if (s_textured && dist < s_view.tex_dist) {
-            mesh_submit_world(&c->lod[lod], at, s_tex_mats, VM_COUNT);
-        } else {
-            // Flat, fading into the fog. Three to four times cheaper to
-            // fill than textured, which is what makes the far half of
-            // the view affordable at all.
-            float const f    = fminf(fmaxf((dist - s_view.fog0) / (s_view.fog1 - s_view.fog0), 0.0f), 1.0f);
-            int const   step = (int)(f * (FOG_STEPS - 1) + 0.5f);
-            if (!flat_built[step]) {
-                float const qf = (float)step / (float)(FOG_STEPS - 1);
-                for (int m = 0; m < VM_COUNT; m++) {
-                    flat_cache[step][m] = (mesh_mat_t){NULL, mix_argb(s_mean[m], s_view.fog_argb, qf), 0};
-                }
-                flat_built[step] = true;
+            vec3_t const slo = v3(lo.x, (float)(ylo > (int)c->bottom ? ylo : (int)c->bottom), lo.z);
+            vec3_t const shi = v3(hi.x, (float)(yhi < (int)c->top_max ? yhi : (int)c->top_max), hi.z);
+
+            float const sdist = box_dist(slo, shi, eye);
+            if (sdist > s_view.draw_dist) continue;
+            if (outside_view(slo, shi, eye, &basis)) continue;
+
+            // Mesh it if it is not ready. Until it is, the section is
+            // simply not drawn -- the fog covers the gap.
+            if ((c->lod_stale & CH_MESH_BIT(lod, sect)) != 0) {
+                chunk_worker_request_mesh(c->cx, c->cz, lod, sect);
+                continue;
             }
-            mesh_submit_world(&c->lod[lod], at, flat_cache[step], VM_COUNT);
+            mesh_t const* m = chunk_mesh(c, lod, sect);
+            // Not "not built yet": a section of solid rock or open sky
+            // meshes to nothing, and asking again every frame would
+            // never stop. The stale bit above is what says "not built".
+            if (m->tn == 0) continue;
+
+            if (s_textured && sdist < s_view.tex_dist) {
+                mesh_submit_world(m, at, s_tex_mats, VM_COUNT);
+            } else {
+                // Flat, fading into the fog. Three to four times cheaper
+                // to fill than textured, which is what makes the far
+                // half of the view affordable at all.
+                float const f    = fminf(fmaxf((sdist - s_view.fog0) / (s_view.fog1 - s_view.fog0), 0.0f), 1.0f);
+                int const   step = (int)(f * (FOG_STEPS - 1) + 0.5f);
+                if (!flat_built[step]) {
+                    float const qf = (float)step / (float)(FOG_STEPS - 1);
+                    for (int mi = 0; mi < VM_COUNT; mi++) {
+                        flat_cache[step][mi] = (mesh_mat_t){NULL, mix_argb(s_mean[mi], s_view.fog_argb, qf), 0};
+                    }
+                    flat_built[step] = true;
+                }
+                mesh_submit_world(m, at, flat_cache[step], VM_COUNT);
+            }
+            s_sections++;
+            any = true;
         }
-        s_drawn++;
+        if (any) s_drawn++;
     }
 }

@@ -86,6 +86,15 @@ void devtest_start(devtest_config_t const* cfg);
 // advances its own content: takes commands and steers the clock.
 void devtest_update(void);
 
+// Whether a test is running right now.
+//
+// This is how an app keeps a debug mode and reproducible tests in the
+// same build. A test needs the frame to be a pure function of the show
+// clock (above); anything driven by the keyboard, by real elapsed time
+// or by where the user happens to have wandered is not. So the app asks
+// this, and runs its scripted content while it is true.
+bool devtest_running(void);
+
 // Per frame, in on_render after the frame is finished (for the engine,
 // after scene_rasterize()): captures shots, accumulates perf.
 // `rast_us` is this frame's rasterize time, or 0 if the app has no

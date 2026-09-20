@@ -96,9 +96,20 @@ int voxel_face_mat(uint8_t block, vox_face_t face);
 typedef struct {
     uint8_t const* cells;
     int            w, h, d;
-    int            x0, z0;  // world position of cell (0, 0, 0), in cells (y starts at 0)
-    int            step;    // blocks per cell: 1, or 2 for a half-resolution world
-    bool           skirt;   // side faces on the box's outer edges whatever is beyond
+    // Where cell (0, 0, 0) sits, in cells -- multiplied by `step` like
+    // every other coordinate, so a half-resolution box offsets by the
+    // same number of blocks as a full-resolution one.
+    //
+    // `y0` is what makes a VERTICAL SECTION possible: a tall chunk is
+    // meshed as several short boxes stacked up, each carrying its own
+    // bounding box so the frustum test can throw away the half that is
+    // underground (D-34). The cells above and below a section come from
+    // the sections next door, as the one-cell border, so the faces at
+    // the seam come out exactly as they would have from one tall box --
+    // which is what tools/meshcheck_assets.h checks.
+    int            x0, y0, z0;
+    int            step;   // blocks per cell: 1, or 2 for a half-resolution world
+    bool           skirt;  // side faces on the box's outer edges whatever is beyond
 } vox_grid_t;
 
 // A single block for drawing outside the world (a dropped item, a block

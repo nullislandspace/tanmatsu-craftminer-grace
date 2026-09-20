@@ -38,7 +38,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
 #include "math/mesh.h"
 #include "world/blocks.h"
 
@@ -49,13 +48,36 @@
 // 32 leaves no room for mining under a build, and 128 doubles both the
 // memory and the meshing for sky nobody visits.
 
-#define CH_W 16
-#define CH_H 64
-#define CH_D 16
+#define CH_W     16
+#define CH_H     64
+#define CH_D     16
 #define CH_CELLS (CH_W * CH_H * CH_D)
 
 #define CH_SEA_LEVEL 24
 #define CH_BEDROCK   0
+
+// --- Render sections --------------------------------------------------
+//
+// STORAGE is one 64-tall column (above). RENDERING is not: a chunk's
+// mesh is cut into CH_SECT_N boxes of CH_SECT blocks, each with its own
+// bounding box, so the frustum test can throw away the underground
+// half instead of dragging it through the rasteriser. Measured cause:
+// 68% of a chunk's triangles are cave walls nobody can see (F-33); the
+// fix is D-34.
+//
+// This is a render-side split only. The planes, the codec, the region
+// files and the save format all still see one column, and nothing on
+// disk changes.
+//
+// 16 is the natural size: it matches x and z, it divides 64 exactly,
+// and it is the granularity a block edit dirties -- placing a torch
+// remeshes 4096 cells instead of 16384.
+#define CH_SECT   16
+#define CH_SECT_N (CH_H / CH_SECT)
+
+static inline int ch_sect_of(int y) {
+    return y / CH_SECT;
+}
 
 // A cell's index. Columns are contiguous: (x, z) picks a column, y runs
 // along it. This is the mesher's order (voxel_mesh.h), not an accident.
@@ -129,10 +151,10 @@ static inline uint8_t st_with_growth(uint8_t st, uint8_t g) {
 // --- A chunk ----------------------------------------------------------
 
 typedef enum {
-    CS_FREE = 0,   // the slot holds nothing
-    CS_LOADING,    // the worker is filling it; main must not look
-    CS_READY,      // resident and readable
-    CS_SAVING,     // resident and readable; a save is in flight
+    CS_FREE = 0,  // the slot holds nothing
+    CS_LOADING,   // the worker is filling it; main must not look
+    CS_READY,     // resident and readable
+    CS_SAVING,    // resident and readable; a save is in flight
 } chunk_state_t;
 
 #define CF_GENERATED 0x01u  // terrain exists (as opposed to loaded-from-disk)
@@ -140,7 +162,20 @@ typedef enum {
 
 // Levels of detail, nearest first. The same mesh serves FAST and the
 // flat far view; COARSE is a half-resolution grid (voxel_mesh.h).
-typedef enum { LOD_FANCY = 0, LOD_FAST, LOD_COARSE, LOD_COUNT } chunk_lod_t;
+typedef enum {
+    LOD_FANCY = 0,
+    LOD_FAST,
+    LOD_COARSE,
+    LOD_COUNT
+} chunk_lod_t;
+
+// A chunk keeps one mesh per (level, section). There are 12, which fits
+// a 16-bit mask exactly -- so "which are stale" and "which are queued"
+// are each one word rather than an array to walk.
+#define CH_MESH_N              (LOD_COUNT * CH_SECT_N)
+#define CH_MESH_IDX(lod, sect) ((lod) * CH_SECT_N + (sect))
+#define CH_MESH_BIT(lod, sect) ((uint16_t)1u << CH_MESH_IDX(lod, sect))
+#define CH_MESH_ALL            ((uint16_t)((1u << CH_MESH_N) - 1u))
 
 typedef struct {
     uint8_t* id;  // CH_CELLS block ids -- the mesher's input, verbatim
@@ -155,11 +190,19 @@ typedef struct {
     uint8_t top_max;           // the tallest of those, for the chunk's bounding box
     uint8_t bottom;            // lowest y that can have a face: tightens the render AABB
 
-    mesh_t   lod[LOD_COUNT];
-    bool     lod_stale[LOD_COUNT];
-    uint8_t  lod_inflight;  // bitmask of levels queued to the worker
+    // CH_MESH_N meshes, indexed by CH_MESH_IDX. They live in the
+    // store's slab rather than in this struct: 12 mesh_t per slot times
+    // 256 slots is PSRAM's business, and chunk_t is a static array.
+    mesh_t*  lod;
+    uint16_t lod_stale;     // CH_MESH_BIT: needs (re)building
+    uint16_t lod_inflight;  // CH_MESH_BIT: queued to the worker
     uint32_t last_seen_frame;
 } chunk_t;
+
+// The mesh for one level of detail of one vertical section.
+static inline mesh_t* chunk_mesh(chunk_t* c, int lod, int sect) {
+    return &c->lod[CH_MESH_IDX(lod, sect)];
+}
 
 // --- The resident set -------------------------------------------------
 

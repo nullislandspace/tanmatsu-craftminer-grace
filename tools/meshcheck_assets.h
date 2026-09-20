@@ -57,7 +57,7 @@ static void vg_case(char const* name, vox_mesh_mode_t mode, int step, bool skirt
     }
     mesh_t m;
     mesh_init(&m);
-    vox_grid_t const g = {s_vg, VG, VG, VG, 0, 0, step, skirt};
+    vox_grid_t const g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = step, .skirt = skirt};
     voxel_mesh_build(&m, &g, mode);
     check_mesh(name, &m, false);
     float const st = (float)step, vol = vg_volume(&m), area = vg_area(&m);
@@ -111,7 +111,7 @@ static void check_voxel_mesher(void) {
     {
         mesh_t m;
         mesh_init(&m);
-        vox_grid_t const g = {s_vg, VG, VG, VG, 0, 0, 1, false};
+        vox_grid_t const g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1};
         voxel_mesh_build(&m, &g, VOX_MESH_FANCY);
         printf("voxel: two leaf blocks, fancy: %d tris\n", m.tn);
         // 6 outer quads (merged across both) + the 2 inner faces.
@@ -125,7 +125,7 @@ static void check_voxel_mesher(void) {
     {
         mesh_t m;
         mesh_init(&m);
-        vox_grid_t const g = {s_vg, VG, VG, VG, 0, 0, 1, false};
+        vox_grid_t const g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1};
         voxel_mesh_build(&m, &g, VOX_MESH_FANCY);
         check_mesh("voxel: a flower (fancy)", &m, false);
         CHECK(m.tn == 8, "voxel: flower: %d triangles, expected 8", m.tn);
@@ -172,7 +172,7 @@ static void check_face_dirs(void) {
 
     mesh_t m;
     mesh_init(&m);
-    vox_grid_t const g = {s_vg, VG, VG, VG, 0, 0, 1, false};
+    vox_grid_t const g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1};
     voxel_mesh_build(&m, &g, VOX_MESH_FAST);
 
     int checked = 0, none = 0;
@@ -217,7 +217,7 @@ static void check_plant_dirs(void) {
 
     mesh_t m;
     mesh_init(&m);
-    vox_grid_t const g = {s_vg, VG, VG, VG, 0, 0, 1, false};
+    vox_grid_t const g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1};
     voxel_mesh_build(&m, &g, VOX_MESH_FANCY);
 
     int plant_tris = 0;
@@ -232,10 +232,95 @@ static void check_plant_dirs(void) {
     mesh_free(&m);
 }
 
+// Vertical sections (D-34). A chunk is no longer meshed as one tall
+// box: it is cut into CH_SECT-high slices, each meshed on its own with
+// the slices above and below supplying its border, and each carrying a
+// bounding box so the frustum test can reject the underground ones.
+//
+// The thing that could go wrong is the seam. A face on the boundary
+// between two slices must be emitted by exactly one of them -- emit it
+// twice and the surface is doubled, emit it in neither and there is a
+// hole. Both failures are invisible in a screenshot of solid ground
+// and fatal the moment you dig.
+//
+// Surface area and enclosed volume catch both, exactly: the union of
+// the slice meshes must be the same closed surface the whole box gave.
+// A missing face opens the solid (the divergence-theorem volume stops
+// matching) and a doubled one adds area.
+static void vg_sub_box(uint8_t* out, int y0, int hh) {
+    // A box of VG x hh x VG cells from s_vg, with a border of one cell
+    // all round taken from s_vg as well -- so the cells above and below
+    // the slice are the real neighbours, not air.
+    for (int z = -1; z <= VG; z++) {
+        for (int x = -1; x <= VG; x++) {
+            for (int y = -1; y <= hh; y++) {
+                uint8_t const b = *vg_cell(x, y0 + y, z);
+                out[((size_t)(z + 1) * (VG + 2) + (size_t)(x + 1)) * (size_t)(hh + 2) + (size_t)(y + 1)] = b;
+            }
+        }
+    }
+}
+
+static void check_sectioned_mesher(void) {
+    // A lump with overhangs and a hollow, so there are faces in every
+    // direction and some of them land on the seam.
+    vg_clear();
+    vg_fill(0, 0, 0, VG - 1, 3, VG - 1, BLK_STONE);
+    vg_fill(2, 1, 2, 3, 2, 3, BLK_AIR);  // a cave, straddling the seam at y = 2
+    vg_fill(1, 4, 1, 2, 5, 2, BLK_STONE);  // a pillar above it
+    vg_fill(4, 2, 4, 5, 4, 5, BLK_GRASS);  // and a block of something else
+
+    mesh_t whole;
+    mesh_init(&whole);
+    vox_grid_t const g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1};
+    voxel_mesh_build(&whole, &g, VOX_MESH_FAST);
+    float const wv = vg_volume(&whole), wa = vg_area(&whole);
+    printf("voxel: sectioning: whole box %d tris, volume %.3f, area %.3f\n", whole.tn, wv, wa);
+    CHECK(whole.tn > 0, "the sectioning test's lump meshed to nothing");
+
+    // The same lump in three slices of two cells, stacked.
+    #define SH 2
+    static uint8_t sub[(VG + 2) * (SH + 2) * (VG + 2)];
+    mesh_t         parts;
+    mesh_init(&parts);
+    for (int y0 = 0; y0 < VG; y0 += SH) {
+        vg_sub_box(sub, y0, SH);
+        vox_grid_t const sg = {.cells = sub, .w = VG, .h = SH, .d = VG, .y0 = y0, .step = 1};
+        voxel_mesh_build(&parts, &sg, VOX_MESH_FAST);
+    }
+    float const pv = vg_volume(&parts), pa = vg_area(&parts);
+    printf("voxel: sectioning: %d slices %d tris, volume %.3f, area %.3f\n", VG / SH, parts.tn, pv, pa);
+
+    CHECK(fabsf(pv - wv) < 1e-3f, "sectioned volume %g, whole %g: the seam has a hole or a doubled face", pv, wv);
+    CHECK(fabsf(pa - wa) < 1e-3f, "sectioned area %g, whole %g: the seam has a hole or a doubled face", pa, wa);
+    // Greedy runs cannot merge across a slice boundary, so the slices
+    // emit at least as many triangles -- never fewer.
+    CHECK(parts.tn >= whole.tn, "sectioning produced FEWER triangles (%d) than one box (%d): faces went missing",
+          parts.tn, whole.tn);
+
+    // And the section offset must actually have moved the geometry: a
+    // slice meshed with y0 must sit in its own band, or every section
+    // would be drawn on top of the bottom one.
+    mesh_t top;
+    mesh_init(&top);
+    vg_sub_box(sub, VG - SH, SH);
+    vox_grid_t const tg = {.cells = sub, .w = VG, .h = SH, .d = VG, .y0 = VG - SH, .step = 1};
+    voxel_mesh_build(&top, &tg, VOX_MESH_FAST);
+    for (int i = 0; i < top.vn; i++) {
+        CHECK(top.v[i].y >= (float)(VG - SH) - 0.01f, "a y0 = %d slice put a vertex at y = %g", VG - SH, top.v[i].y);
+    }
+    printf("voxel: a y0 = %d slice has all %d vertices at or above it\n", VG - SH, top.vn);
+    mesh_free(&top);
+    mesh_free(&parts);
+    mesh_free(&whole);
+    #undef SH
+}
+
 // The entry point tools/meshcheck.c calls.
 static void check_assets(void) {
     check_voxel_mesher();
     check_voxel_cube();
     check_face_dirs();
     check_plant_dirs();
+    check_sectioned_mesher();
 }

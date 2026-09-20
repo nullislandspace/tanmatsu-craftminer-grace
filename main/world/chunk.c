@@ -3,51 +3,70 @@
 // =====================================================================
 
 #include "world/chunk.h"
-
 #include <string.h>
-
 #include "common/psram.h"
 
-static chunk_t s_slots[CH_SLOT_COUNT];
-static uint8_t* s_slab;       // one allocation for every plane of every slot
+static chunk_t  s_slots[CH_SLOT_COUNT];
+static uint8_t* s_slab;  // one allocation for every plane of every slot
 static size_t   s_slab_bytes;
+static mesh_t*  s_meshes;  // CH_SLOT_COUNT x CH_MESH_N, likewise
 
 // Two planes per slot, so a slot's bytes are contiguous and the whole
 // resident set is one allocation. Nothing here allocates again.
 #define SLOT_BYTES ((size_t)CH_CELLS * 2u)
+
+// Free every mesh a slot holds. An empty section never allocated, so
+// most of these are no-ops.
+static void free_slot_meshes(chunk_t* c) {
+    if (c->lod == NULL) return;
+    for (int i = 0; i < CH_MESH_N; i++) mesh_free(&c->lod[i]);
+    c->lod_stale    = 0;
+    c->lod_inflight = 0;
+}
 
 bool chunk_store_init(void) {
     if (s_slab != NULL) return true;
 
     s_slab_bytes = SLOT_BYTES * (size_t)CH_SLOT_COUNT;
     s_slab       = cm_calloc(s_slab_bytes, 1);
-    if (s_slab == NULL) {
+    // The mesh headers go to PSRAM too. They are only headers -- the
+    // vertices and triangles each mesh_t points at are allocated by
+    // mesh.c as they are built -- but 256 slots x 12 of them is far too
+    // much to carry in a static array, which is where chunk_t lives.
+    s_meshes     = cm_calloc((size_t)CH_SLOT_COUNT * CH_MESH_N, sizeof(mesh_t));
+    if (s_slab == NULL || s_meshes == NULL) {
+        cm_free(s_slab);
+        cm_free(s_meshes);
+        s_slab       = NULL;
+        s_meshes     = NULL;
         s_slab_bytes = 0;
         return false;
     }
 
     memset(s_slots, 0, sizeof(s_slots));
     for (int i = 0; i < CH_SLOT_COUNT; i++) {
-        uint8_t* base    = s_slab + (size_t)i * SLOT_BYTES;
+        uint8_t* base     = s_slab + (size_t)i * SLOT_BYTES;
         s_slots[i].id     = base;
         s_slots[i].st     = base + CH_CELLS;
+        s_slots[i].lod    = s_meshes + (size_t)i * CH_MESH_N;
         s_slots[i].cstate = CS_FREE;
+        for (int m = 0; m < CH_MESH_N; m++) mesh_init(&s_slots[i].lod[m]);
     }
     return true;
 }
 
 void chunk_store_shutdown(void) {
-    for (int i = 0; i < CH_SLOT_COUNT; i++) {
-        for (int l = 0; l < LOD_COUNT; l++) mesh_free(&s_slots[i].lod[l]);
-    }
+    for (int i = 0; i < CH_SLOT_COUNT; i++) free_slot_meshes(&s_slots[i]);
     cm_free(s_slab);
+    cm_free(s_meshes);
     s_slab       = NULL;
+    s_meshes     = NULL;
     s_slab_bytes = 0;
     memset(s_slots, 0, sizeof(s_slots));
 }
 
 size_t chunk_store_bytes(void) {
-    return s_slab_bytes;
+    return s_slab_bytes + (s_slab_bytes != 0 ? (size_t)CH_SLOT_COUNT * CH_MESH_N * sizeof(mesh_t) : 0);
 }
 
 chunk_t* chunk_slot_at(int index) {
@@ -78,20 +97,17 @@ chunk_t* chunk_claim(int32_t cx, int32_t cz) {
     if (c->cstate == CS_LOADING || c->cstate == CS_SAVING) return NULL;
     if (c->cstate == CS_READY && (c->flags & CF_EDITED) != 0) return NULL;
 
-    for (int l = 0; l < LOD_COUNT; l++) {
-        mesh_free(&c->lod[l]);
-        c->lod_stale[l] = true;
-    }
+    free_slot_meshes(c);
+    c->lod_stale = CH_MESH_ALL;
     memset(c->id, BLK_AIR, CH_CELLS);
     memset(c->st, 0, CH_CELLS);
     memset(c->top, 0, sizeof(c->top));
 
-    c->cx           = cx;
-    c->cz           = cz;
-    c->cstate       = CS_LOADING;
-    c->flags        = 0;
-    c->bottom       = 0;
-    c->lod_inflight = 0;
+    c->cx     = cx;
+    c->cz     = cz;
+    c->cstate = CS_LOADING;
+    c->flags  = 0;
+    c->bottom = 0;
     c->edit_seq++;
     return c;
 }
@@ -100,7 +116,7 @@ chunk_t* chunk_claim(int32_t cx, int32_t cz) {
 
 void chunk_resummarise(chunk_t* c) {
     if (c == NULL) return;
-    int lowest = CH_H;
+    int lowest  = CH_H;
     int tallest = 0;
     for (int z = 0; z < CH_D; z++) {
         for (int x = 0; x < CH_W; x++) {
@@ -145,28 +161,36 @@ uint8_t world_state(int32_t x, int32_t y, int32_t z) {
     return c->st[CH_IDX(chunk_off(x), y, chunk_off(z))];
 }
 
-// Mark a chunk's meshes stale. Every level, because a block can be
-// visible at any of them.
-static void mark_stale(chunk_t* c) {
+// Mark the meshes a change at height `y` invalidates: every level (a
+// block can be visible at any of them) of the section it sits in -- and
+// of the section next door when it sits on the boundary, because the
+// face between the two belongs to whichever section owns the cell, and
+// the other side's mesh reads it as border.
+static void mark_stale(chunk_t* c, int y) {
     if (c == NULL) return;
-    for (int l = 0; l < LOD_COUNT; l++) c->lod_stale[l] = true;
+    int const s = ch_sect_of(y);
+    for (int l = 0; l < LOD_COUNT; l++) {
+        c->lod_stale |= CH_MESH_BIT(l, s);
+        if (y % CH_SECT == 0 && s > 0) c->lod_stale |= CH_MESH_BIT(l, s - 1);
+        if (y % CH_SECT == CH_SECT - 1 && s < CH_SECT_N - 1) c->lod_stale |= CH_MESH_BIT(l, s + 1);
+    }
 }
 
 void world_set(int32_t x, int32_t y, int32_t z, uint8_t block, uint8_t state) {
     if (y < 0 || y >= CH_H) return;
     int32_t const cx = chunk_of(x), cz = chunk_of(z);
-    chunk_t*      c  = chunk_find(cx, cz);
+    chunk_t*      c = chunk_find(cx, cz);
     if (c == NULL) return;
 
     int const    lx = chunk_off(x), lz = chunk_off(z);
     size_t const i = CH_IDX(lx, y, lz);
     if (c->id[i] == block && c->st[i] == state) return;
 
-    c->id[i] = block;
-    c->st[i] = state;
+    c->id[i]  = block;
+    c->st[i]  = state;
     c->flags |= CF_EDITED;
     c->edit_seq++;
-    mark_stale(c);
+    mark_stale(c, (int)y);
 
     // The column summary, kept incrementally.
     uint8_t* t = &c->top[lz * CH_W + lx];
@@ -188,10 +212,10 @@ void world_set(int32_t x, int32_t y, int32_t z, uint8_t block, uint8_t state) {
     // A cell on a border shows a face to the chunk next door, and that
     // face lives in the NEIGHBOUR's mesh. Without this the two would
     // disagree and a seam would open.
-    if (lx == 0) mark_stale(chunk_find(cx - 1, cz));
-    if (lx == CH_W - 1) mark_stale(chunk_find(cx + 1, cz));
-    if (lz == 0) mark_stale(chunk_find(cx, cz - 1));
-    if (lz == CH_D - 1) mark_stale(chunk_find(cx, cz + 1));
+    if (lx == 0) mark_stale(chunk_find(cx - 1, cz), (int)y);
+    if (lx == CH_W - 1) mark_stale(chunk_find(cx + 1, cz), (int)y);
+    if (lz == 0) mark_stale(chunk_find(cx, cz - 1), (int)y);
+    if (lz == CH_D - 1) mark_stale(chunk_find(cx, cz + 1), (int)y);
 }
 
 int world_ground(int32_t x, int32_t z) {

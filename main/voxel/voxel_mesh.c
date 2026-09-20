@@ -242,10 +242,13 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                         hq++;
                     }
                     for (int j = 0; j < hq; j++) memset(&mask[(q + j) * pn + p], 0, (size_t)wp);
-                    // World cells: x and z are offset, y is not.
-                    int const sw = dir.axis == 1 ? slice : slice + (dir.axis == 0 ? g->x0 : g->z0);
+                    // Into the box's own coordinates. Which of x0/y0/z0
+                    // applies depends on which axis the face looks
+                    // along: `slice` runs along that axis, `p` and `q`
+                    // across the other two.
+                    int const sw = slice + (dir.axis == 0 ? g->x0 : dir.axis == 1 ? g->y0 : g->z0);
                     int const pw = p + (dir.axis == 0 ? g->z0 : g->x0);
-                    int const qw = q0 + q + (dir.axis == 1 ? g->z0 : 0);
+                    int const qw = q0 + q + (dir.axis == 1 ? g->z0 : g->y0);
                     emit(m, dir, sw, pw, qw, wp, hq, step, (uint8_t)(v - 1));
                     p += wp;
                 }
@@ -261,11 +264,11 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
             for (int y = ylo; y <= yhi; y++) {
                 uint8_t const      b = CELL(x, y, z);
                 block_kind_t const k = block_kind(b);
-                int const          X = x + g->x0, Z = z + g->z0;
-                if (k == K_PLANT && mode == VOX_MESH_FANCY) emit_plant(m, X, y, Z, (uint8_t)voxel_face_mat(b, VF_SIDE));
+                int const          X = x + g->x0, Y = y + g->y0, Z = z + g->z0;
+                if (k == K_PLANT && mode == VOX_MESH_FANCY) emit_plant(m, X, Y, Z, (uint8_t)voxel_face_mat(b, VF_SIDE));
                 if (k == K_TORCH) {
                     float const cx = (float)X + 0.5f, cz = (float)Z + 0.5f, r = 1.0f / 16.0f;
-                    emit_box(m, v3(cx - r, (float)y, cz - r), v3(cx + r, (float)y + 0.625f, cz + r), VM_TORCH);
+                    emit_box(m, v3(cx - r, (float)Y, cz - r), v3(cx + r, (float)Y + 0.625f, cz + r), VM_TORCH);
                 }
             }
         }

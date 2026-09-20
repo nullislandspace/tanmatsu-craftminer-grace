@@ -26,7 +26,6 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-
 #include "synthengine3d.h"
 
 // The distance ladder. Blocks.
@@ -37,8 +36,8 @@ typedef struct {
     float    draw_dist;
     float    fog0, fog1;
     uint32_t fog_argb;
-    int      load_radius;  // chunks kept resident
-    int      evict_radius; // ... and dropped beyond (hysteresis)
+    int      load_radius;   // chunks kept resident
+    int      evict_radius;  // ... and dropped beyond (hysteresis)
 } cm_view_t;
 
 #define CM_SKY_ARGB 0xFF8EC4F0u
@@ -81,5 +80,8 @@ void chunk_render_stream(double wx, double wz);
 // Submit everything visible. The camera must already be set.
 void chunk_render_submit(double eye_wx, double eye_wz);
 
-// What the last submit did, for the HUD and the perf records.
-void chunk_render_stats(int* chunks_drawn, int* resident, int* missing);
+// What the last submit did, for the HUD and the perf records. A chunk
+// counts as drawn when any of its vertical sections was (D-34), and
+// `sections_drawn` is how many of the CH_SECT_N survived the cull --
+// the number that says whether sectioning is earning its keep.
+void chunk_render_stats(int* chunks_drawn, int* sections_drawn, int* resident, int* missing);

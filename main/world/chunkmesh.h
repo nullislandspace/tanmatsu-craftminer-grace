@@ -22,7 +22,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
 #include "math/mesh.h"
 #include "world/chunk.h"
 
@@ -30,9 +29,17 @@
 // of detail; the coarse one needs less and simply uses part of it.
 size_t chunkmesh_scratch_bytes(void);
 
-// Build `lod` of the chunk at (cx, cz) into `out`, which is initialised
-// here (the caller frees it). `scratch` must be at least
-// chunkmesh_scratch_bytes() and is used only during the call.
+// Build `lod` of vertical section `sect` of the chunk at (cx, cz) into
+// `out`, which is initialised here (the caller frees it). `scratch`
+// must be at least chunkmesh_scratch_bytes() and is used only during
+// the call.
+//
+// ONE SECTION, NOT THE COLUMN (D-34). The cells directly above and
+// below the section are read as its border, so a face at a seam is
+// emitted by whichever section owns the block -- exactly once, exactly
+// as a single 64-tall box would have. tools/meshcheck_assets.h proves
+// that by meshing a lump whole and in halves and comparing the surface
+// area and the enclosed volume.
 //
 // Reads the chunk and its four neighbours through world_block(), so a
 // neighbour that is not resident reads as BLK_BARRIER and the border
@@ -41,4 +48,4 @@ size_t chunkmesh_scratch_bytes(void);
 // arrives.
 //
 // False if the chunk is not resident or the mesh could not be built.
-bool chunkmesh_build(int32_t cx, int32_t cz, int lod, uint8_t* scratch, mesh_t* out);
+bool chunkmesh_build(int32_t cx, int32_t cz, int lod, int sect, uint8_t* scratch, mesh_t* out);

@@ -209,6 +209,10 @@ void devtest_update(void) {
     if (s_test == T_SHOTS && s_t_i < s_t_n) showtime_set(s_cfg->content->started() + (double)s_t[s_t_i]);
 }
 
+bool devtest_running(void) {
+    return s_test != T_IDLE;
+}
+
 static uint32_t fnv1a(void const* data, size_t n) {
     uint8_t const* p = data;
     uint32_t       h = 0x811C9DC5u;
