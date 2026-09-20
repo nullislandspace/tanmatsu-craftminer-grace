@@ -38,6 +38,22 @@ build:
 	cd $(BUILD) && cmake .. && make
 	@echo "=== Build complete: $(BUILD)/app.so ==="
 
+# SynthEngine3D, the 3D engine: not part of the template, added per app as a
+# git submodule (CMakeLists.txt builds it when synthengine3D/ is there, and is
+# untouched otherwise). Run this once in a new app that wants 3D; afterwards a
+# fresh clone needs `git clone --recursive` or `git submodule update --init`.
+ENGINE_URL ?= git@github.com:nullislandspace/synthengine3D.git
+ENGINE_REF ?= main
+
+.PHONY: engine
+engine:
+	if test -d synthengine3D; then \
+	  echo "synthengine3D/ is already there -- 'git submodule update --remote synthengine3D' updates it"; exit 1; \
+	fi
+	git submodule add -b $(ENGINE_REF) $(ENGINE_URL) synthengine3D
+	git submodule update --init --recursive synthengine3D
+	@echo "=== SynthEngine3D added. Commit .gitmodules and synthengine3D, then #include \"synthengine3d.h\" ==="
+
 # Badgelink
 .PHONY: badgelink
 badgelink:
