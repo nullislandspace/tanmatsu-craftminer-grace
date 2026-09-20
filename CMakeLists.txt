@@ -13,6 +13,19 @@ set(APP_SOURCES
     main/crt0.c
 )
 
+# Automated device tests (main/testkit/, README "Automated device tests").
+# Opt-in: uncomment to build them in, and set where shots go. An app
+# without SynthEngine3D adds TESTKIT_NO_ENGINE to the definitions.
+# list(APPEND APP_SOURCES
+#     main/testkit/debugcon.c
+#     main/testkit/devtest.c
+#     main/testkit/profile.c
+#     main/testkit/report.c
+#     main/testkit/screenshot.c
+#     main/testkit/showtime.c
+# )
+# add_compile_definitions(SCREENSHOT_DIR="/sd/myapp")
+
 # Include directories — add paths to your headers here
 set(APP_INCLUDES
     main
