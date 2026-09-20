@@ -1,0 +1,756 @@
+#!/usr/bin/env python3
+"""Generate CraftMiner's block textures into textures/ (one
+subdirectory per reel segment, as the code in main/<segment>/).
+
+Procedural and seeded, so the PNGs are reproducible from this script
+instead of being opaque binaries: change a number here, re-run, commit
+both. Every texture tiles seamlessly -- all noise is built periodic
+(FFT smoothing wraps around) and every feature is drawn modulo the
+texture size -- because the ship repeats them across large faces.
+
+Plates are 64x64: the engine needs power-of-two edges (it wraps with a
+mask), and at 2 bytes a texel in RGB565 a plate costs 8 KB of internal
+SRAM. The flame is 64x8 (1 KB); the two planet maps are 128x64
+(equirectangular, 16 KB).
+
+    python3 tools/make_textures.py            # write textures/<segment>/*.png
+    python3 tools/make_textures.py --preview  # also write a 4x contact sheet
+"""
+
+# Lifted from tanmatsu-showreel-grace (tools/make_textures.py); trimmed to CraftMiner's
+# own blocks. The showreel remains the origin to diff against.
+import sys
+from pathlib import Path
+
+import numpy as np
+from PIL import Image
+
+N = 64
+OUT = Path(__file__).resolve().parent.parent / "textures"
+rng = np.random.default_rng(0x5E3D)
+
+
+def periodic_noise(sx, sy, gen=None):
+    """Tileable noise: white noise low-passed with a Gaussian in the FFT
+    domain (convolution there is circular, so the result wraps). sx/sy
+    are the blur radii in texels; unequal radii give streaks. `gen` is
+    the random generator (default: the shared one of the hull plates)."""
+    white = (gen or rng).standard_normal((N, N))
+    fy = np.fft.fftfreq(N)[:, None]
+    fx = np.fft.fftfreq(N)[None, :]
+    g = np.exp(-2 * (np.pi ** 2) * ((fx * sx) ** 2 + (fy * sy) ** 2))
+    out = np.real(np.fft.ifft2(np.fft.fft2(white) * g))
+    return out / (np.abs(out).max() + 1e-9)          # roughly -1..1
+
+
+def to_rgb(lum, tint):
+    """Luminance offsets around a base colour -> clipped uint8 RGB."""
+    base = np.array(tint, dtype=float)[None, None, :]
+    return np.clip(base + lum[:, :, None], 0, 255).astype(np.uint8)
+
+
+def seam(lum, dark=-48, light=22):
+    """A panel seam along row 0 / column 0, lit from the top-left: a dark
+    groove with a bright lip below / right of it. Repeating the texture
+    turns that into a plate grid."""
+    lum[0, :] += dark
+    lum[:, 0] += dark
+    lum[1, 1:] += light
+    lum[1:, 1] += light
+
+
+def rivet(lum, x, y):
+    """A 3x3 domed rivet head: bright top-left, shadow bottom-right."""
+    for dy in range(-1, 2):
+        for dx in range(-1, 2):
+            lum[(y + dy) % N, (x + dx) % N] += 26 - 16 * (dx + dy)
+    lum[(y + 2) % N, (x + 2) % N] -= 34
+
+
+def riveted():
+    """Fuselage: mid steel, soft mottling, one plate per tile with a
+    rivet line inset along its two seams."""
+    lum = 9 * periodic_noise(6, 6) + 4 * periodic_noise(1.2, 1.2)
+    seam(lum)
+    for k in range(4, N, 8):
+        rivet(lum, k, 4)
+        rivet(lum, 4, k)
+    return to_rgb(lum, (148, 151, 156))
+
+
+def brushed():
+    """Wings: bright brushed steel -- long horizontal grain -- with a
+    single seam, so the wing reads as a few large sheets."""
+    lum = 15 * periodic_noise(14, 0.45) + 5 * periodic_noise(3, 0.8)
+    seam(lum, dark=-40, light=18)
+    return to_rgb(lum, (176, 179, 184))
+
+
+def gunmetal():
+    """Pods: dark blue-grey, vertical cooling grooves every 8 texels and
+    a few bright scratches."""
+    lum = 7 * periodic_noise(5, 5)
+    for x in range(0, N, 8):
+        lum[:, x] -= 30
+        lum[:, (x + 1) % N] += 14
+    for _ in range(6):
+        x0, y0 = rng.integers(0, N, 2)
+        length = rng.integers(8, 22)
+        dx = rng.choice([-1, 1])
+        for i in range(length):
+            lum[(y0 + i) % N, (x0 + dx * i) % N] += 30
+    return to_rgb(lum, (92, 98, 110))
+
+
+def tread():
+    """Undersides: diamond tread plate -- raised lozenges on a 16-texel
+    grid, alternating 45-degree orientation checkerboard-style, each lit
+    from the top-left."""
+    lum = 6 * periodic_noise(4, 4)
+    yy, xx = np.mgrid[0:N, 0:N]
+    cell = 16
+    for cy in range(0, N, cell):
+        for cx in range(0, N, cell):
+            flip = ((cx // cell) + (cy // cell)) % 2
+            mx, my = cx + cell // 2, cy + cell // 2
+            # Distance to the cell centre, wrapped so edge lozenges tile.
+            ddx = (xx - mx + N // 2) % N - N // 2
+            ddy = (yy - my + N // 2) % N - N // 2
+            a = (ddx + ddy) if not flip else (ddx - ddy)   # along the lozenge
+            b = (ddx - ddy) if not flip else (ddx + ddy)   # across it
+            body = (np.abs(a) <= 7) & (np.abs(b) <= 1.5)
+            lum[body] += 22
+            # Lit edge on the upper-left side, shadow on the lower-right.
+            edge = (np.abs(a) <= 7) & (np.abs(b) > 1.5) & (np.abs(b) <= 2.6)
+            upper = (ddy + ddx) < 0 if flip else (ddy - ddx) < 0
+            lum[edge & upper] += 12
+            lum[edge & ~upper] -= 26
+    return to_rgb(lum, (122, 124, 129))
+
+
+def flame():
+    """Engine flame, 64x8: u (x) runs along the flame from the nozzle
+    (x = 0) to the tip, v (y) around it. A white-hot core fading through
+    blue to a deep blue tip, with faint lengthwise streaks that fade in
+    after the core so the white stays clean. Drawn emissive, so these
+    are the exact on-screen colours. Not tiled along u: the flame maps it
+    once, stopping short of the right edge so the tip never wraps back
+    to white."""
+    w, h = 64, 8
+    stops = [(0.00, (235, 250, 255)), (0.15, (150, 212, 255)), (0.40, (60, 132, 255)),
+             (0.75, (26, 62, 205)), (1.00, (10, 26, 112))]
+    xs = np.linspace(0.0, 1.0, w)
+    ramp = np.zeros((w, 3))
+    for c in range(3):
+        ramp[:, c] = np.interp(xs, [p for p, _ in stops], [col[c] for _, col in stops])
+    streak = np.array([1.00, 0.90, 1.06, 0.94, 1.00, 0.88, 1.05, 0.95])[:, None, None]
+    fade = np.clip((xs - 0.12) / 0.3, 0.0, 1.0)[None, :, None]   # no streaks in the core
+    img = ramp[None, :, :] * (1.0 + (streak - 1.0) * fade)
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+# --- Station and marauder textures -----------------------------------
+#
+# Their own generator, so adding them left the hull plates above (which
+# share `rng`, in order) byte-identical.
+rng2 = np.random.default_rng(0x57A7)
+
+
+def panel_grid(lum, step, dark=-34, light=14):
+    """Panel seams every `step` texels (tileable when step divides N)."""
+    for k in range(0, N, step):
+        lum[k, :] += dark
+        lum[:, k] += dark
+        lum[(k + 1) % N, :] += light
+        lum[:, (k + 1) % N] += light
+
+
+def station_hull():
+    """Station hub and faces: the 2001 station's off-white, large panels
+    (two per tile each way), soft mottling and a few small dark vents."""
+    lum = 5 * periodic_noise(7, 7, rng2) + 2 * periodic_noise(1.5, 1.5, rng2)
+    panel_grid(lum, 32)
+    for _ in range(5):
+        x0, y0 = rng2.integers(2, N - 8, 2)
+        w, h = rng2.integers(3, 7), rng2.integers(2, 4)
+        lum[y0:y0 + h, x0:x0 + w] -= 70
+        lum[y0 + h, x0:x0 + w] += 20      # lit lower lip
+    return to_rgb(lum, (200, 202, 204))
+
+
+def station_ring():
+    """Ring walls: the hull panelling with a band of lit windows across
+    the middle -- read as habitation. (Lit only by the scene light, not
+    emissive: on the night side the windows go dark with the wall.)"""
+    lum = 5 * periodic_noise(7, 7, rng2)
+    panel_grid(lum, 32)
+    img = to_rgb(lum, (198, 200, 202)).astype(int)
+    band = slice(26, 38)
+    img[band, :, :] = (img[band, :, :] * 0.35).astype(int)      # dark window band
+    for x in range(2, N, 8):                                     # 8 windows per tile
+        on = rng2.random() < 0.8
+        col = (255, 226, 150) if on else (60, 66, 80)
+        img[29:35, x:x + 4, :] = col
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def marauder_wear():
+    """Shared by both marauder liveries, so the two ships are visibly the
+    same type: panel seams, grime (a luminance field) and a mask of where
+    the paint is scratched or chipped down to bare metal."""
+    grime = 16 * periodic_noise(5, 5, rng2) + 6 * periodic_noise(1.2, 1.2, rng2)
+    panel_grid(grime, 16, dark=-40, light=10)
+    bare = np.zeros((N, N), bool)
+    for _ in range(9):                                   # scratches
+        x0, y0 = rng2.integers(0, N, 2)
+        length = rng2.integers(6, 20)
+        dx = rng2.choice([-1, 1])
+        for i in range(length):
+            bare[(y0 + i // 2) % N, (x0 + dx * i) % N] = True
+    chips = periodic_noise(2.2, 2.2, rng2) > 0.55        # chipped patches
+    return grime, bare | chips
+
+
+_WEAR = None
+
+
+def marauder(paint):
+    global _WEAR
+    if _WEAR is None:
+        _WEAR = marauder_wear()
+    grime, bare = _WEAR
+    img = to_rgb(grime, paint).astype(int)
+    metal = to_rgb(grime * 0.6, (128, 130, 134)).astype(int)
+    img[bare] = metal[bare]
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def marauder_green():
+    """Marauder #1: old, dirty green paint."""
+    return marauder((70, 94, 56))
+
+
+def marauder_yellow():
+    """Marauder #2: darkened, sooty yellow."""
+    return marauder((150, 124, 38))
+
+
+def flame_red():
+    """Marauder engine flame, 64x8: the counterpart of flame(), running
+    white-hot -> orange -> deep red."""
+    w, h = 64, 8
+    stops = [(0.00, (255, 246, 222)), (0.15, (255, 196, 96)), (0.40, (255, 112, 32)),
+             (0.75, (196, 38, 16)), (1.00, (92, 12, 8))]
+    xs = np.linspace(0.0, 1.0, w)
+    ramp = np.zeros((w, 3))
+    for c in range(3):
+        ramp[:, c] = np.interp(xs, [p for p, _ in stops], [col[c] for _, col in stops])
+    streak = np.array([1.00, 0.90, 1.06, 0.94, 1.00, 0.88, 1.05, 0.95])[:, None, None]
+    fade = np.clip((xs - 0.12) / 0.3, 0.0, 1.0)[None, :, None]
+    img = ramp[None, :, :] * (1.0 + (streak - 1.0) * fade)
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+# --- Planet base, asteroid and planet textures (full reel, step 9.1) ---
+#
+# Again their own generator, so everything above stays byte-identical.
+rng3 = np.random.default_rng(0xB0D5)
+
+
+def pnoise(h, w, sx, sy, gen=rng3):
+    """periodic_noise() for an h x w texture (the planet maps are 128x64)."""
+    white = gen.standard_normal((h, w))
+    fy = np.fft.fftfreq(h)[:, None]
+    fx = np.fft.fftfreq(w)[None, :]
+    g = np.exp(-2 * (np.pi ** 2) * ((fx * sx) ** 2 + (fy * sy) ** 2))
+    out = np.real(np.fft.ifft2(np.fft.fft2(white) * g))
+    return out / (np.abs(out).max() + 1e-9)
+
+
+def ground():
+    """The apron round the landing pad: packed ochre dust, darker gravel
+    speckle, a few paler patches. Its average colour is what the PPA's flat
+    ground has to match where the apron ends."""
+    lum = 12 * pnoise(N, N, 6, 6) + 7 * pnoise(N, N, 1.4, 1.4) + 5 * pnoise(N, N, 0.6, 0.6)
+    speck = rng3.random((N, N))
+    lum[speck < 0.06] -= 26                       # gravel
+    lum[speck > 0.97] += 18                       # pale grit
+    return to_rgb(lum, (112, 92, 64))
+
+
+def pad():
+    """Landing pad: poured concrete slabs (two per tile each way) with
+    tar-filled joints, scorch mottling from engine blasts and oil stains."""
+    lum = 6 * pnoise(N, N, 5, 5) + 3 * pnoise(N, N, 1.0, 1.0)
+    for k in (0, 32):
+        lum[k, :] -= 46
+        lum[:, k] -= 46
+        lum[(k + 1) % N, :] += 10
+        lum[:, (k + 1) % N] += 10
+    lum += np.minimum(0, 30 * pnoise(N, N, 9, 9)) * 1.2   # soot, only darkens
+    for _ in range(4):                                     # oil stains
+        cx, cy = rng3.integers(0, N, 2)
+        r = rng3.integers(2, 5)
+        yy, xx = np.mgrid[0:N, 0:N]
+        d = ((xx - cx + N // 2) % N - N // 2) ** 2 + ((yy - cy + N // 2) % N - N // 2) ** 2
+        lum[d <= r * r] -= 30
+    return to_rgb(lum, (150, 148, 142))
+
+
+def industrial_wall():
+    """Factory siding: vertical corrugated steel (a rib every 4 texels, lit
+    from the left), one horizontal panel seam per tile, and rust running
+    down from the seam."""
+    xs = np.arange(N)
+    rib = 16 * np.cos(2 * np.pi * xs / 4.0)[None, :].repeat(N, axis=0)
+    lum = rib + 5 * pnoise(N, N, 4, 4)
+    lum[0, :] -= 40
+    lum[1, :] += 14
+    img = to_rgb(lum, (118, 124, 128)).astype(int)
+    rust = np.clip(pnoise(N, N, 1.2, 9) * 1.4, 0, 1)       # streaks: stretched vertically
+    fall = np.linspace(1.0, 0.2, N)[:, None]               # strongest just below the seam
+    w = (rust * fall)[:, :, None]
+    img = img * (1 - w) + np.array([124, 70, 38])[None, None, :] * w
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def rock():
+    """Asteroid: grey-brown rock at several scales, pocked with small
+    craters (dark bowl, bright rim on the lit upper-left side)."""
+    lum = 18 * pnoise(N, N, 8, 8) + 10 * pnoise(N, N, 2.5, 2.5) + 5 * pnoise(N, N, 0.7, 0.7)
+    yy, xx = np.mgrid[0:N, 0:N]
+    for _ in range(9):
+        cx, cy = rng3.integers(0, N, 2)
+        r = rng3.uniform(2.0, 6.0)
+        dx = (xx - cx + N // 2) % N - N // 2
+        dy = (yy - cy + N // 2) % N - N // 2
+        d = np.sqrt(dx * dx + dy * dy)
+        lum[d < r] -= 22
+        rim = (d >= r) & (d < r + 1.5)
+        lum[rim & (dx + dy < 0)] += 20
+        lum[rim & (dx + dy >= 0)] -= 10
+    return to_rgb(lum, (112, 104, 96))
+
+
+def planet_terran():
+    """The industrial planet from orbit, 128x64 equirectangular (u wraps
+    round the equator): ochre continents, dark slate seas, grey ice at the
+    poles and thin cloud."""
+    h, w = 64, 128
+    height = pnoise(h, w, 7, 7) + 0.35 * pnoise(h, w, 2, 2)
+    land = height > 0.05
+    img = np.zeros((h, w, 3))
+    img[:] = (44, 60, 72)                                   # sea
+    shade = (height - 0.05)[:, :, None] * 120
+    img[land] = (np.array([150, 118, 72])[None, :] + shade[land]).clip(0, 255)
+    lat = np.abs(np.linspace(-1, 1, h))[:, None]
+    ice = lat + 0.08 * pnoise(h, w, 3, 3) > 0.82
+    img[ice] = (196, 200, 206)
+    cloud = np.clip((pnoise(h, w, 4, 1.5) - 0.25) * 2.2, 0, 1)[:, :, None]
+    img = img * (1 - 0.7 * cloud) + 225 * 0.7 * cloud
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def planet_gas():
+    """The gas giant of the second system, 128x64 equirectangular:
+    latitude bands in cream, tan and rust, their edges torn by turbulence,
+    and one oval storm."""
+    h, w = 64, 128
+    y = np.linspace(-1, 1, h)[:, None].repeat(w, axis=1)
+    warp = 0.09 * pnoise(h, w, 10, 2.5) + 0.03 * pnoise(h, w, 2, 1)
+    yw = y + warp
+    # Broad belts of uneven width: two latitude frequencies beating.
+    b = 0.65 * np.sin(yw * np.pi * 3.1) + 0.35 * np.sin(yw * np.pi * 7.7 + 1.3)
+    stops = np.array([[92, 50, 34], [176, 118, 72], [222, 196, 150], [196, 150, 100]], float)
+    t = (b + 1) / 2 * (len(stops) - 1)
+    i = np.clip(t.astype(int), 0, len(stops) - 2)
+    f = (t - i)[:, :, None]
+    img = stops[i] * (1 - f) + stops[i + 1] * f
+    yy, xx = np.mgrid[0:h, 0:w]
+    storm = ((xx - 88) / 9.0) ** 2 + ((yy - 40) / 4.0) ** 2
+    img[storm < 1] = img[storm < 1] * 0.4 + np.array([200, 96, 60]) * 0.6
+    img[(storm >= 1) & (storm < 1.6)] *= 1.12
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+# --- CraftMiner block textures (claudeplans/craftminer.md, step 1.1) ---
+#
+# 16x16, drawn texel by texel (the engine samples nearest-texel, so each
+# texel shows as a crisp square). Every texture has its own generator,
+# seeded from its own tag, so adding or reordering one leaves the others
+# byte-identical. All tile: features wrap modulo 16.
+B = 16
+
+
+def cm_gen(tag):
+    return np.random.default_rng([0xC4AF7, tag])
+
+
+def cm_speckle(gen, tint, spread, h=B, w=B):
+    """A base colour with independent per-texel brightness steps -- the
+    pixel-art grain of every block."""
+    lum = gen.integers(-spread, spread + 1, (h, w)).astype(float)
+    return lum, tint
+
+
+def cm_rgb(lum, tint):
+    return to_rgb(lum, tint)
+
+
+def cm_dirt_lum(gen):
+    lum = gen.integers(-14, 15, (B, B)).astype(float)
+    for _ in range(10):                               # darker clods, lighter grit
+        x, y = gen.integers(0, B, 2)
+        lum[y, x] -= 22
+    for _ in range(6):
+        x, y = gen.integers(0, B, 2)
+        lum[y, x] += 18
+    return lum
+
+
+DIRT = (122, 86, 58)
+GRASS = (92, 150, 52)
+
+
+def cm_dirt():
+    return cm_rgb(cm_dirt_lum(cm_gen(1)), DIRT)
+
+
+def cm_grass_top():
+    gen = cm_gen(2)
+    lum = gen.integers(-16, 17, (B, B)).astype(float)
+    for _ in range(14):                               # darker blades
+        x, y = gen.integers(0, B, 2)
+        lum[y, x] -= 20
+    return cm_rgb(lum, GRASS)
+
+
+def cm_grass_side():
+    """Dirt with the grass hanging over the top edge, 2-5 texels deep per
+    column. v = 0 is the top of the block."""
+    gen = cm_gen(3)
+    img = cm_rgb(cm_dirt_lum(gen), DIRT).astype(int)
+    grass = cm_rgb(gen.integers(-16, 17, (B, B)).astype(float), GRASS).astype(int)
+    depth = 3 + gen.integers(-1, 2, B)
+    depth[gen.integers(0, B, 3)] += 2                 # a few longer drips
+    for x in range(B):
+        img[: depth[x], x] = grass[: depth[x], x]
+    return img.astype(np.uint8)
+
+
+def cm_stone():
+    gen = cm_gen(4)
+    lum = 10 * pnoise(B, B, 1.2, 1.2, gen) + gen.integers(-8, 9, (B, B))
+    for _ in range(3):                                # short dark streaks
+        x, y = gen.integers(0, B, 2)
+        n = int(gen.integers(2, 5))
+        for k in range(n):
+            lum[y % B, (x + k) % B] -= 20
+            y += int(gen.integers(0, 2))
+    return cm_rgb(lum, (122, 122, 124))
+
+
+def cm_cobble():
+    """Rounded stones in mortar: each texel belongs to its nearest seed
+    (distance wraps, so the pattern tiles); texels near a cell edge are
+    mortar."""
+    gen = cm_gen(5)
+    # One stone per cell of a jittered 3x3 grid, so they spread evenly.
+    grid = (np.mgrid[0:3, 0:3].reshape(2, -1).T + 0.5) * (B / 3)
+    seeds = grid + gen.uniform(-1.3, 1.3, grid.shape)
+    shade = gen.integers(-9, 10, len(seeds))
+    ys, xs = np.mgrid[0:B, 0:B] + 0.5
+    d = []
+    for sx, sy in seeds:
+        dx = np.abs(xs - sx)
+        dy = np.abs(ys - sy)
+        dx = np.minimum(dx, B - dx)
+        dy = np.minimum(dy, B - dy)
+        d.append(np.sqrt(dx * dx + dy * dy))
+    d = np.array(d)
+    order = np.sort(d, axis=0)
+    cell = np.argmin(d, axis=0)
+    # Rounded: brightest at the stone's middle, darker towards its edge.
+    lum = shade[cell] + 22 - 2.2 * order[0] + gen.integers(-5, 6, (B, B))
+    lum[(order[1] - order[0]) < 0.7] = -40             # mortar
+    return cm_rgb(lum, (118, 118, 118))
+
+
+def cm_sand():
+    gen = cm_gen(6)
+    lum = gen.integers(-10, 11, (B, B)).astype(float)
+    return cm_rgb(lum, (214, 200, 150))
+
+
+def cm_water():
+    """Opaque (no transparency): deep blue with lighter wave crests,
+    running across u so a scrolled u reads as flowing water."""
+    gen = cm_gen(7)
+    lum = gen.integers(-6, 7, (B, B)).astype(float)
+    for y in range(0, B, 4):
+        off = int(gen.integers(0, B))
+        for k in range(5):
+            lum[(y + (k % 2)) % B, (off + k) % B] += 26
+    return cm_rgb(lum, (48, 84, 196))
+
+
+def cm_log_side():
+    """Bark: vertical furrows, v along the trunk."""
+    gen = cm_gen(8)
+    col = gen.integers(-12, 13, B).astype(float)
+    lum = np.tile(col[None, :], (B, 1)) + gen.integers(-6, 7, (B, B))
+    for x in gen.choice(B, 4, replace=False):         # deep furrows, broken
+        for y in range(B):
+            if gen.random() < 0.8:
+                lum[y, x] -= 26
+    return cm_rgb(lum, (100, 76, 46))
+
+
+def cm_log_top():
+    """The cut end: rings round the centre, bark round the rim."""
+    gen = cm_gen(9)
+    ys, xs = np.mgrid[0:B, 0:B] + 0.5
+    r = np.maximum(np.abs(xs - B / 2), np.abs(ys - B / 2))   # squarish rings
+    ring = np.floor(r).astype(int)
+    lum = np.where(ring % 2 == 0, 10.0, -8.0) + gen.integers(-5, 6, (B, B))
+    img = cm_rgb(lum, (168, 132, 82)).astype(int)
+    bark = cm_rgb(gen.integers(-10, 11, (B, B)).astype(float), (100, 76, 46)).astype(int)
+    rim = r >= B / 2 - 1
+    img[rim] = bark[rim]
+    return img.astype(np.uint8)
+
+
+def cm_planks():
+    """Four boards per block, 4 texels each, joints staggered."""
+    gen = cm_gen(10)
+    lum = gen.integers(-7, 8, (B, B)).astype(float)
+    for board in range(4):
+        y0 = board * 4
+        lum[y0 : y0 + 4, :] += int(gen.integers(-8, 9))
+        lum[y0 + 3, :] -= 30                          # the gap under the board
+        j = (board * 7 + 3) % B                       # its end joint
+        lum[y0 : y0 + 3, j] -= 24
+        for x in gen.integers(0, B, 3):               # grain
+            lum[y0 + int(gen.integers(0, 3)), x] -= 12
+    return cm_rgb(lum, (164, 128, 78))
+
+
+def cm_alpha(rgb, holes):
+    """RGB plus a hole mask -> RGBA: the engine draws alpha < 128 as a
+    hole (cut-out transparency), everything else opaque."""
+    a = np.where(holes, 0, 255).astype(np.uint8)[:, :, None]
+    return np.concatenate([rgb, a], axis=2)
+
+
+def cm_leaves_lum():
+    gen = cm_gen(11)
+    lum = gen.integers(-18, 19, (B, B)).astype(float)
+    holes = gen.random((B, B)) < 0.22
+    return lum, holes
+
+
+def cm_leaves():
+    """Leaves with gaps (cut-out): the sky and the branches behind show
+    through, as in Minecraft's "fancy" leaves. For canopies close by."""
+    lum, holes = cm_leaves_lum()
+    return cm_alpha(cm_rgb(lum, (58, 112, 38)), holes)
+
+
+def cm_leaves_fast():
+    """The same leaves, opaque: the gaps dark ("fast" leaves), for the
+    textured canopies further off, which are drawn without their
+    insides."""
+    lum, holes = cm_leaves_lum()
+    lum[holes] = -52
+    return cm_rgb(lum, (58, 112, 38))
+
+
+def cm_coal_ore():
+    img = cm_stone().astype(int)
+    gen = cm_gen(12)
+    lump = [(0, 0), (1, 0), (0, 1), (1, 1), (2, 1), (1, 2), (-1, 1), (2, 0)]
+    for _ in range(5):                                # black lumps of 5-8 texels
+        x, y = (int(v) for v in gen.integers(0, B, 2))
+        for dx, dy in lump[: int(gen.integers(5, 9))]:
+            img[(y + dy) % B, (x + dx) % B] = (26 + gen.integers(0, 18),) * 3
+    return img.astype(np.uint8)
+
+
+def cm_face():
+    """The miner's face, the head's front: skin, dark eyes with a white
+    glint, bushy brows, a big brown moustache. v = 0 is the top."""
+    gen = cm_gen(13)
+    skin = (222, 170, 128)
+    lum = gen.integers(-5, 6, (B, B)).astype(float)
+    img = cm_rgb(lum, skin).astype(int)
+    brow, hair, eye_w, eye_d, mouth = (70, 46, 28), (96, 62, 36), (240, 240, 236), (40, 44, 70), (150, 80, 70)
+    img[0:3, :] = hair                                # hair under the hat's brim
+    img[5, 2:7] = brow
+    img[5, 9:14] = brow
+    img[7, 3:6] = eye_w
+    img[7, 10:13] = eye_w
+    img[7, 4] = eye_d
+    img[7, 11] = eye_d
+    img[8, 3:6] = eye_d
+    img[8, 10:13] = eye_d
+    img[9:11, 7:9] = (200, 140, 104)                  # the nose, shaded
+    img[11, 3:13] = hair                              # the moustache
+    img[12, 2:6] = hair
+    img[12, 10:14] = hair
+    img[13, 6:10] = mouth
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+def cm_sprite(tag, stem, bloom):
+    """A plant on a cross of two quads (cut-out): a green stem with two
+    leaves, and a bloom of `bloom` colours on top; the rest is holes."""
+    gen = cm_gen(tag)
+    rgb = np.zeros((B, B, 3), np.uint8)
+    holes = np.ones((B, B), bool)
+
+    def px(x, y, c):
+        rgb[y, x] = np.clip(np.array(c) + gen.integers(-10, 11, 3), 0, 255)
+        holes[y, x] = False
+
+    for y in range(7, B):
+        px(7, y, stem)
+    for k in range(3):                                # the two leaves
+        px(6 - k, 12 - k, stem)
+        px(8 + k, 11 - k, stem)
+    for dy, row in enumerate(bloom):
+        for dx, c in enumerate(row):
+            if c is not None:
+                px(5 + dx, 2 + dy, c)
+    return cm_alpha(rgb, holes)
+
+
+R, Y, W, K = (214, 40, 36), (250, 212, 40), (250, 244, 214), (96, 40, 20)
+
+
+def cm_flower_red():
+    return cm_sprite(14, (60, 130, 40), [[None, R, R, R, None], [R, R, K, R, R], [R, K, Y, K, R], [R, R, K, R, R],
+                                          [None, R, R, R, None]])
+
+
+def cm_flower_yellow():
+    return cm_sprite(15, (70, 140, 44), [[None, None, Y, None, None], [None, Y, Y, Y, None], [Y, Y, W, Y, Y],
+                                          [None, Y, Y, Y, None], [None, None, Y, None, None]])
+
+
+def cm_tall_grass():
+    """Tufts of grass blades (cut-out), for crossed quads."""
+    gen = cm_gen(16)
+    rgb = np.zeros((B, B, 3), np.uint8)
+    holes = np.ones((B, B), bool)
+    for x in range(1, B - 1):
+        if gen.random() < 0.35:
+            continue
+        top = int(gen.integers(3, 12))
+        lean = int(gen.integers(-1, 2))
+        for y in range(top, B):
+            xx = x + (lean if y < top + 3 else 0)
+            rgb[y, xx] = np.clip(np.array(GRASS) + gen.integers(-22, 12, 3) - 6 * (B - y) // 4, 0, 255)
+            holes[y, xx] = False
+    return cm_alpha(rgb, holes)
+
+
+def cm_glass():
+    """A window pane (cut-out): a frame round the edge and a few white
+    glints; the rest is holes -- no blending, so clear glass is empty."""
+    gen = cm_gen(17)
+    rgb = np.zeros((B, B, 3), np.uint8)
+    holes = np.ones((B, B), bool)
+    frame = (200, 216, 222)
+    for i in range(B):
+        for x, y in ((i, 0), (i, B - 1), (0, i), (B - 1, i)):
+            rgb[y, x] = frame
+            holes[y, x] = False
+    for x, y in ((4, 3), (3, 4), (5, 3), (3, 5), (11, 9), (10, 10), (9, 11)):
+        rgb[y, x] = (236, 244, 248)
+        holes[y, x] = False
+    return cm_alpha(rgb, holes)
+
+
+def cm_torch():
+    """The torch's stick: dark wood, with a glowing coal band at the top
+    (the flame itself is the shared flame asset)."""
+    gen = cm_gen(18)
+    lum = gen.integers(-10, 11, (B, B)).astype(float)
+    img = cm_rgb(lum, (110, 80, 44)).astype(int)
+    img[0:3, :] = (255, 214, 96)
+    img[3, :] = (200, 110, 40)
+    return img.astype(np.uint8)
+
+
+def cm_torch_flame():
+    """Torch flame, 64x8 like flame(): white-yellow core -> orange ->
+    red tip."""
+    w = 64
+    stops = [(0.00, (255, 252, 214)), (0.20, (255, 222, 110)), (0.50, (255, 150, 40)),
+             (0.80, (220, 70, 20)), (1.00, (120, 24, 8))]
+    xs = np.linspace(0.0, 1.0, w)
+    ramp = np.zeros((w, 3))
+    for c in range(3):
+        ramp[:, c] = np.interp(xs, [p for p, _ in stops], [col[c] for _, col in stops])
+    streak = np.array([1.00, 0.92, 1.05, 0.95, 1.00, 0.90, 1.04, 0.96])[:, None, None]
+    fade = np.clip((xs - 0.15) / 0.3, 0.0, 1.0)[None, :, None]
+    img = ramp[None, :, :] * (1.0 + (streak - 1.0) * fade)
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+# Keyed by the path under textures/. The generators share their seeded
+# random streams in this order, so keep it: a reordered entry changes
+# every texture after it.
+TEXTURES = {
+    "grass_top.png": cm_grass_top,
+    "grass_side.png": cm_grass_side,
+    "dirt.png": cm_dirt,
+    "stone.png": cm_stone,
+    "cobble.png": cm_cobble,
+    "sand.png": cm_sand,
+    "water.png": cm_water,
+    "log_side.png": cm_log_side,
+    "log_top.png": cm_log_top,
+    "planks.png": cm_planks,
+    "leaves.png": cm_leaves,
+    "coal_ore.png": cm_coal_ore,
+    "miner_face.png": cm_face,
+    "torch_flame.png": cm_torch_flame,
+    "flower_red.png": cm_flower_red,
+    "flower_yellow.png": cm_flower_yellow,
+    "tall_grass.png": cm_tall_grass,
+    "glass.png": cm_glass,
+    "torch.png": cm_torch,
+    "leaves_fast.png": cm_leaves_fast,
+}
+
+
+def main():
+    tiles = []
+    for name, fn in TEXTURES.items():
+        img = fn()
+        (OUT / name).parent.mkdir(parents=True, exist_ok=True)
+        Image.fromarray(img, "RGBA" if img.shape[2] == 4 else "RGB").save(OUT / name, optimize=True)
+        # The contact sheet shows holes in magenta, like the engine's key.
+        if img.shape[2] == 4:
+            img = np.where(img[:, :, 3:] < 128, np.array([255, 0, 255], np.uint8), img[:, :, :3])
+        tiles.append(img)
+        print(f"wrote {OUT / name}")
+    if "--preview" in sys.argv:
+        # Each texture repeated 2x2 (so seams and wrap-around are visible)
+        # and scaled 4x, side by side.
+        # Each texture 2x2, padded to the tallest so they sit side by side.
+        tall = max(t.shape[0] for t in tiles) * 2
+        blocks = [np.tile(t, (2, 2, 1)) for t in tiles]
+        blocks = [np.pad(b, ((0, tall - b.shape[0]), (0, 4), (0, 0))) for b in blocks]
+        row = np.concatenate(blocks, axis=1)
+        prev = Image.fromarray(row, "RGB").resize((row.shape[1] * 4, row.shape[0] * 4), Image.NEAREST)
+        path = Path(sys.argv[sys.argv.index("--preview") + 1]) if len(sys.argv) > sys.argv.index("--preview") + 1 \
+            else OUT.parent / "build" / "textures_preview.png"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        prev.save(path)
+        print(f"wrote {path}")
+
+
+if __name__ == "__main__":
+    main()

@@ -26,6 +26,10 @@ export IDF_GITHUB_ASSETS
 
 BUILD ?= build
 
+# The block textures. Generated (tools/make_textures.py) and committed, so a
+# clone builds without numpy; `make textures` regenerates them byte-identically.
+TEXTURES := $(patsubst textures/%,%,$(wildcard textures/*.png))
+
 MAKEFLAGS += --silent
 
 ####
@@ -34,11 +38,57 @@ MAKEFLAGS += --silent
 all: build
 
 .PHONY: build
-build:
+build: check
 	@echo "=== Building app.so ==="
 	mkdir -p $(BUILD)
 	cd $(BUILD) && cmake .. && make
 	@echo "=== Build complete: $(BUILD)/app.so ==="
+
+# ---------------------------------------------------------------------
+# Host checks: no badge, seconds to run, and `build` depends on them so
+# a broken invariant stops the build that broke it
+# (claudeplans/craftminer.md, Part H).
+#
+# The engine's compile-time settings are read straight out of
+# CMakeLists.txt rather than written down twice -- a host check that
+# tested against different caps than the app builds with would be worse
+# than no check at all.
+# ---------------------------------------------------------------------
+HOSTCC      ?= cc
+ENGINE_DEFS := $(shell sed -n 's/^add_compile_definitions(\(SE_[A-Z_]*=[0-9]*\))/-D\1/p' CMakeLists.txt)
+HOSTCFLAGS  := -O1 -Wall -Wextra -Werror=implicit-function-declaration \
+               -DCM_HOST -Imain -Itools -Isynthengine3D/include $(ENGINE_DEFS)
+
+PURE_SRCS       := main/math/xform.c main/math/mesh.c main/voxel/voxel_mesh.c \
+                   main/world/blocks.c main/world/chunk.c main/common/rng.c main/common/tags.c \
+                   main/world/worldgen.c main/world/chunk_codec.c main/world/region.c \
+                   main/world/vfs_compat.c main/world/worldstore.c main/world/chunkmesh.c main/world/chunk_worker.c \
+                   synthengine3D/src/nbt.c
+MESHCHECK_SRCS  := tools/meshcheck.c $(PURE_SRCS)
+WORLDCHECK_SRCS := tools/worldcheck.c $(PURE_SRCS)
+
+.PHONY: check
+check: hostpurity meshcheck worldcheck
+
+# The pure set really is pure: no engine, no RTOS, no ESP-IDF.
+.PHONY: hostpurity
+hostpurity:
+	./tools/hostpurity.sh
+
+# The greedy mesher: closed, consistently wound, outward parts; volume
+# equals the solid cells and surface area equals the exposed faces.
+.PHONY: meshcheck
+meshcheck:
+	mkdir -p $(BUILD)/host
+	$(HOSTCC) $(HOSTCFLAGS) $(MESHCHECK_SRCS) -lm -o $(BUILD)/host/meshcheck
+	$(BUILD)/host/meshcheck
+
+# The world, generation, physics, picking and crafting.
+.PHONY: worldcheck
+worldcheck:
+	mkdir -p $(BUILD)/host
+	$(HOSTCC) $(HOSTCFLAGS) $(WORLDCHECK_SRCS) -lm -o $(BUILD)/host/worldcheck
+	$(BUILD)/host/worldcheck
 
 # SynthEngine3D, the 3D engine: not part of the template, added per app as a
 # git submodule (CMakeLists.txt builds it when synthengine3D/ is there, and is
@@ -91,6 +141,30 @@ recover:
 	source "$(IDF_SOURCE)" >/dev/null && python3 tools/recover.py --port "$(PORT)"
 
 # Badgelink
+# --- Talking to the badge ---------------------------------------------
+# Thin wrappers over tools/testrun.py's own connection code, which knows
+# how this console wants to be opened and retries what the proxy refuses.
+#
+#   make ping      does the app answer, and which build is it running?
+#   make mode      put the badge in BadgeLink mode (probes first)
+#   make exitapp   ask a running app to return to the launcher
+#
+# `ping` is the one to reach for when a cycle has failed and it is not
+# clear whether the app is alive, wedged, or never started.
+BADGECTL = python3 tools/badgectl.py --port "$(PORT)" --badgelink "$(BADGELINKPORT)"
+
+.PHONY: ping
+ping:
+	$(BADGECTL) ping
+
+.PHONY: mode
+mode:
+	$(BADGECTL) mode
+
+.PHONY: exitapp
+exitapp:
+	$(BADGECTL) exitapp
+
 .PHONY: badgelink
 badgelink:
 	rm -rf badgelink
@@ -102,7 +176,7 @@ badgelink:
 BADGELINK_CONN := $(if $(findstring :,$(BADGELINKPORT)),--tcp $(BADGELINKPORT),--port $(BADGELINKPORT))
 
 .PHONY: install
-install: build
+install: build mode
 	@echo "=== Installing to device ==="
 	@echo "Creating directory $(APP_INSTALL_PATH)..."
 	cd badgelink/tools; ./badgelink.sh $(BADGELINK_CONN) fs mkdir $(APP_INSTALL_PATH) || true
@@ -116,7 +190,19 @@ install: build
 	cd badgelink/tools; ./badgelink.sh $(BADGELINK_CONN) fs upload $(APP_INSTALL_PATH)/icon64.png ../../metadata/icon64.png
 	@echo "Uploading app.so..."
 	cd badgelink/tools; ./badgelink.sh $(BADGELINK_CONN) fs upload $(APP_INSTALL_PATH)/app.so ../../$(BUILD)/app.so
+	@echo "Uploading $(words $(TEXTURES)) textures..."
+	cd badgelink/tools; ./badgelink.sh $(BADGELINK_CONN) fs mkdir $(APP_INSTALL_PATH)/textures >/dev/null 2>&1 || true
+	for t in $(TEXTURES); do \
+	  cd badgelink/tools && ./badgelink.sh $(BADGELINK_CONN) fs upload $(APP_INSTALL_PATH)/textures/$$t ../../textures/$$t || exit 1; \
+	  cd ../..; \
+	done
 	@echo "=== Installation complete ==="
+
+# Regenerate the block textures (needs numpy + Pillow). They are committed,
+# so this is only needed when a generator changes or a block is added.
+.PHONY: textures
+textures:
+	python3 tools/make_textures.py
 
 GRACELOADER_SLUG ?= at.cavac.graceloader
 

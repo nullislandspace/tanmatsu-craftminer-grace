@@ -11,26 +11,71 @@ project(app C)
 set(APP_SOURCES
     main/main.c
     main/crt0.c
+
+    # Maths and meshes, lifted from the showreel (see each file's header).
+    main/math/xform.c
+    main/math/mesh.c
+    main/math/mesh_render.c
+    main/math/camera.c
+
+    # The voxel layer. The greedy mesher is pure data and is also built
+    # by the host checks (`make check`); world/blocks.c is the registry
+    # it and everything else read instead of switching on block ids.
+    main/voxel/voxel_mesh.c
+    main/world/blocks.c
+    main/world/chunk.c
+    main/world/worldgen.c
+    main/world/chunk_codec.c
+    main/world/region.c
+    main/world/vfs_compat.c
+    main/world/worldstore.c
+    main/world/chunkmesh.c
+    main/world/chunk_worker.c
+    main/world/chunk_render.c
+    main/common/rng.c
+    main/common/tags.c
+
+    # Textures by name, cached.
+    main/common/texcache.c
 )
 
 # Automated device tests (main/testkit/, README "Automated device tests").
 # Opt-in: uncomment to build them in, and set where shots go. An app
 # without SynthEngine3D adds TESTKIT_NO_ENGINE to the definitions.
-# list(APPEND APP_SOURCES
-#     main/testkit/debugcon.c
-#     main/testkit/devtest.c
-#     main/testkit/profile.c
-#     main/testkit/report.c
-#     main/testkit/screenshot.c
-#     main/testkit/showtime.c
-# )
-# add_compile_definitions(SCREENSHOT_DIR="/sd/myapp")
+list(APPEND APP_SOURCES
+    main/testkit/debugcon.c
+    main/testkit/devtest.c
+    main/testkit/profile.c
+    main/testkit/report.c
+    main/testkit/screenshot.c
+    main/testkit/showtime.c
+)
+add_compile_definitions(SCREENSHOT_DIR="/sd/apps/at.cavac.craftminer/test")
+
+# Build identity for the debug console's READY records: the git commit
+# (marked -dirty when there are uncommitted changes) and the build time.
+# `make build` re-runs cmake, so this is fresh on every build. Without it
+# the app reports "unknown" and tools/testrun.py refuses to believe any
+# result, on the grounds that it cannot tell which build produced it.
+execute_process(
+    COMMAND git describe --always --dirty --abbrev=10
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    OUTPUT_VARIABLE APP_GIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(NOT APP_GIT_HASH)
+    set(APP_GIT_HASH "unknown")
+endif()
+string(TIMESTAMP APP_BUILD_TIME "%Y-%m-%dT%H:%M:%SZ" UTC)
+configure_file(main/app_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/app_version.h @ONLY)
 
 # Include directories — add paths to your headers here
 set(APP_INCLUDES
     main
     include
     include/esp_additions/include
+    ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
 # Compile app sources as a relocatable object library
@@ -68,6 +113,23 @@ target_compile_options(app_obj PRIVATE
 # app.so by the link script below, since the custom command, not CMake, links.
 set(ENGINE_OBJS "")
 set(ENGINE_DEPS "")
+# Engine settings. These are compile definitions that must reach the
+# `synthengine3d` target, so they go BEFORE add_subdirectory() -- a cap the
+# app and the engine disagree on is a silent bug. `make check` reads them
+# back out of this file with sed, so the host budget check can never test
+# against different values than the app builds with.
+#
+#   SE_SCENE_TEXTURED_TRI_CAP  the showreel's block world peaked at 1785
+#       textured triangles from a showreel camera (its F-36); a player
+#       facing a forest will pass the 1024 default, and an overflow drops
+#       geometry SILENTLY. 2048 costs about 70 KB of PSRAM and nothing
+#       per frame. Flat triangles stay on the 4096 default. (D-09)
+#   SE_BINDINGS_MAX  the default 16 is below the ~20 actions CraftMiner
+#       declares, and se_bindings_init() CLAMPS rather than complaining,
+#       so the last actions would simply never fire. (F-11)
+add_compile_definitions(SE_SCENE_TEXTURED_TRI_CAP=2048)
+add_compile_definitions(SE_BINDINGS_MAX=24)
+
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/synthengine3D/CMakeLists.txt)
     message(STATUS "SynthEngine3D: building synthengine3D/")
     add_subdirectory(synthengine3D)

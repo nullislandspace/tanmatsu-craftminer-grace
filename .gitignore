@@ -10,3 +10,5 @@ CLAUDE.md
 badgelink
 esp-idf-tools
 esp-idf
+results/
+__pycache__/

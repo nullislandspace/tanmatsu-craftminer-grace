@@ -51,6 +51,51 @@ Engine settings (list caps and the like) are compile definitions that must reach
 `synthengine3d` target, so set them with `add_compile_definitions()` **before**
 `add_subdirectory(synthengine3D)` — see the engine's `docs/configuration.md`.
 
+## The world, and how to work on it
+
+`claudeplans/craftminer.md` is the living plan: the design, a step-by-step
+status table, and the findings and decisions logs. Read it first — every number
+quoted below comes from a measurement recorded there.
+
+```
+main/common/    the host/badge seam, seeded noise, tagged fields
+main/math/      vectors, meshes, the camera          (lifted from the showreel)
+main/voxel/     the greedy mesher, sky, effects      (lifted from the showreel)
+main/world/     blocks, chunks, generation, saving, streaming, rendering
+tools/          host checks and the badge helpers
+textures/       20 generated 16x16 block textures
+```
+
+### Host checks — seconds, no badge
+
+```sh
+make check          # hostpurity + meshcheck + worldcheck; `make build` needs it
+```
+
+Most of this game is portable C, on purpose: the world, generation, the mesher,
+the codec, regions, the world store and the streaming loop all build with a
+plain `cc` and are tested that way. The one seam is allocation
+(`main/common/psram.h`), and `make hostpurity` fails the build if an engine or
+RTOS header creeps into the pure set.
+
+Worth knowing: **`make verify` cannot catch a missing symbol in code nothing
+calls** — `--gc-sections` removes it from `app.so` first, so the check passes and
+the app then fails to *load* on the badge. Anything working around a missing
+graceloader export has to be exercised on the device, not merely compiled.
+
+### Talking to the badge
+
+```sh
+make ping           # does the app answer, and which build is it running?
+make mode           # put the badge in BadgeLink mode (probes first)
+make exitapp        # ask a running app to return to the launcher
+```
+
+These are thin wrappers over `tools/testrun.py`'s own connection code. Reach for
+`make ping` when a cycle fails and it is not clear whether the app is alive,
+wedged, or never started — a stale app holding the USB link and a bridge that is
+down look identical to every other tool.
+
 ## Automated device tests
 
 `main/testkit/` is a ready-made test loop for an app on real hardware. The host
