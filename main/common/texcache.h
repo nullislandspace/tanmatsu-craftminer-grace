@@ -20,3 +20,8 @@ void texcache_shutdown(void);
 // The texture loaded from `file`, or NULL if it failed to load (logged
 // once; the caller draws flat instead).
 se_texture_t const* texcache_get(char const* file);
+
+// Log how the loaded textures split between internal SRAM and PSRAM.
+// Call once after the last texcache_get(): a texture that fell back to
+// PSRAM still works, so this is the only way to notice.
+void texcache_report(void);

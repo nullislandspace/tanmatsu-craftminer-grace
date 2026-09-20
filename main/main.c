@@ -23,6 +23,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "game/flycam.h"
+#include "game/membench.h"
 #include "gl_input.h"
 #include "graceloader.h"
 #include "math/mesh_render.h"
@@ -138,6 +139,38 @@ static void log_memory(char const* when) {
              (unsigned)(in_big / 1024));
 }
 
+// Where the internal SRAM has gone, once, at boot.
+//
+// "Free" on its own does not answer that: it says how much is left, not
+// what took the rest or whether any of it is ours to give back. This
+// prints the heap totals AND the addresses of the three kinds of
+// storage the app has, because the decisive question -- does an app's
+// .bss cost internal SRAM? -- is answered by which region a static
+// lives in, and nothing else.
+static void log_memory_map(void) {
+    static int s_probe;  // a plain static: wherever .bss went, this went
+    void*      internal = heap_caps_malloc(64, MALLOC_CAP_INTERNAL);
+    void*      psram    = heap_caps_malloc(64, MALLOC_CAP_SPIRAM);
+
+    multi_heap_info_t in, ps;
+    heap_caps_get_info(&in, MALLOC_CAP_INTERNAL);
+    heap_caps_get_info(&ps, MALLOC_CAP_SPIRAM);
+
+    ESP_LOGI(TAG, "internal heap: %u KiB free of %u KiB (%u KiB used, %u blocks), low water %u KiB",
+             (unsigned)(in.total_free_bytes / 1024), (unsigned)((in.total_free_bytes + in.total_allocated_bytes) / 1024),
+             (unsigned)(in.total_allocated_bytes / 1024), (unsigned)in.allocated_blocks,
+             (unsigned)(in.minimum_free_bytes / 1024));
+    ESP_LOGI(TAG, "PSRAM heap:    %u KiB free of %u KiB (%u KiB used, %u blocks)",
+             (unsigned)(ps.total_free_bytes / 1024), (unsigned)((ps.total_free_bytes + ps.total_allocated_bytes) / 1024),
+             (unsigned)(ps.total_allocated_bytes / 1024), (unsigned)ps.allocated_blocks);
+    ESP_LOGI(TAG, "addresses: app static %p | internal alloc %p | PSRAM alloc %p", (void*)&s_probe, internal, psram);
+    ESP_LOGI(TAG, "the app's own statics are in %s",
+             ((uintptr_t)&s_probe ^ (uintptr_t)psram) < 0x08000000u ? "PSRAM (kbelf loads app.so there)"
+                                                                   : "INTERNAL SRAM");
+    heap_caps_free(internal);
+    heap_caps_free(psram);
+}
+
 // --- The test kit ---------------------------------------------------------
 //
 // The kit drives the app over the debug console: the host asks for a
@@ -245,6 +278,8 @@ static void on_init(void* user) {
 
     // --- The world ---------------------------------------------------
     log_memory("engine booted");
+    log_memory_map();
+    membench_run();
 
     if (!chunk_store_init()) {
         ESP_LOGE(TAG, "chunk_store_init failed (%u KiB)", (unsigned)(chunk_store_bytes() / 1024));
@@ -286,6 +321,7 @@ static void on_init(void* user) {
     chunk_render_set_view(&(cm_view_t){0});
     cm_view_t const v = cm_view_preset(0);
     chunk_render_set_view(&v);
+    texcache_report();
     log_memory("textures loaded");
 
     // A world to fly over. Step 5 gives this a menu; for now it is one

@@ -309,6 +309,8 @@ void devtest_period(float fps, float frame_ms) {
     int64_t tri_us = 0, line_us = 0, ttri_us = 0;
     scene_raster_stats(&tri_n, &line_n, &tri_us, &line_us);
     scene_textured_stats(&ttri_n, &ttri_us);
+    int64_t tri_px = 0, ttri_px = 0, tri_sp = 0, ttri_sp = 0;
+    scene_fill_stats(&tri_px, &ttri_px, &tri_sp, &ttri_sp);
 
     char ph[200];
     int  w = 0;
@@ -318,8 +320,10 @@ void devtest_period(float fps, float frame_ms) {
     }
     report_emitf("PERF",
                  "{\"t\":%.2f,\"shot\":\"%s\",\"fps\":%.2f,\"frame_ms\":%.3f,\"ph\":{%s},\"tris\":%d,\"tri_us\":%lld,"
-                 "\"ttris\":%d,\"ttri_us\":%lld,\"lines\":%d,\"line_us\":%lld,\"sram\":%u,\"sram_big\":%u}",
-                 elapsed(), shot_name(), (double)fps, (double)frame_ms, ph, tri_n, (long long)tri_us, ttri_n,
-                 (long long)ttri_us, line_n, (long long)line_us, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+                 "\"tri_px\":%lld,\"tri_sp\":%lld,\"ttris\":%d,\"ttri_us\":%lld,\"ttri_px\":%lld,\"ttri_sp\":%lld,\"lines\":%d,\"line_us\":%lld,"
+                 "\"sram\":%u,\"sram_big\":%u}",
+                 elapsed(), shot_name(), (double)fps, (double)frame_ms, ph, tri_n, (long long)tri_us,
+                 (long long)tri_px, (long long)tri_sp, ttri_n, (long long)ttri_us, (long long)ttri_px, (long long)ttri_sp, line_n, (long long)line_us,
+                 (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
                  (unsigned)heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL));
 }

@@ -37,6 +37,7 @@ set(APP_SOURCES
 
     # A camera to fly by hand while there is no player to walk with.
     main/game/flycam.c
+    main/game/membench.c
 
     # Textures by name, cached.
     main/common/texcache.c
@@ -86,7 +87,12 @@ add_library(app_obj OBJECT ${APP_SOURCES})
 target_include_directories(app_obj PRIVATE ${APP_INCLUDES})
 target_compile_options(app_obj PRIVATE
     -Wall -Wextra -Wno-unused-parameter
-    -Os -fPIC
+    # -O2, not the template's -Os. The app is loaded into PSRAM, where
+    # code size is the one resource that is not scarce, and the inner
+    # loops here are real: the greedy mesher, the per-triangle submit,
+    # the chunk streamer. Measured on the engine, the same switch was
+    # worth 12% of the rasterise (claudeplans/craftminer.md, F-39).
+    -O2 -fPIC
     -ffunction-sections -fdata-sections -fno-common
     -D__thread=
     -DESP_PLATFORM

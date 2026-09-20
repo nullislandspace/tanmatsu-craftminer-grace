@@ -13,10 +13,24 @@
 
 static char const TAG[] = "texcache";
 
-#define TEXCACHE_MAX   48
-// Textures stay in PSRAM for now (see devdocs/performance.md: internal
-// SRAM would save ~4% of the textured pass).
-#define TEXCACHE_FLAGS 0
+#define TEXCACHE_MAX 48
+
+// INTERNAL SRAM, not PSRAM (the showreel's default, and the reason its
+// note said "would save ~4%" rather than "saves").
+//
+// The rasteriser reads one texel per pixel it draws, and those reads
+// land wherever the triangle happens to map -- not in the neat runs the
+// framebuffer gets -- so they are exactly the access pattern a cache
+// handles worst. CraftMiner's textures are 16x16 RGB565: **512 bytes
+// each, about 9 KiB for all eighteen**, against 160 KiB of internal
+// SRAM free after boot. It is the cheapest thing in the program to put
+// somewhere fast.
+//
+// The engine falls back to PSRAM per texture if internal will not hold
+// it, and reports which it used in `se_texture_t.internal`, so this can
+// never fail a load -- it can only quietly stop helping. texcache_init
+// logs the split for that reason.
+#define TEXCACHE_FLAGS SE_TEXTURE_INTERNAL
 
 typedef struct {
     char          file[32];
@@ -36,6 +50,26 @@ void texcache_shutdown(void) {
     for (int i = 0; i < s_n; i++) se_texture_unload(s_entries[i].tex);
     memset(s_entries, 0, sizeof(s_entries));
     s_n = 0;
+}
+
+// Where the texels actually ended up, and how much they took. A texture
+// that silently fell back to PSRAM is the failure mode worth seeing.
+void texcache_report(void) {
+    int    internal = 0, psram = 0;
+    size_t internal_bytes = 0;
+    for (int i = 0; i < s_n; i++) {
+        se_texture_t const* t = s_entries[i].tex;
+        if (t == NULL) continue;
+        size_t const bytes = (size_t)t->w * (size_t)t->h * sizeof(uint16_t);
+        if (t->internal) {
+            internal++;
+            internal_bytes += bytes;
+        } else {
+            psram++;
+        }
+    }
+    ESP_LOGI(TAG, "%d textures: %d in internal SRAM (%u B), %d in PSRAM", s_n, internal, (unsigned)internal_bytes,
+             psram);
 }
 
 se_texture_t const* texcache_get(char const* file) {

@@ -767,6 +767,7 @@ frame time than the fell.
 | 2.2 | `chunk_render.c`: streamed LOD cache, `outside_view` with `top`/`bottom`, the view table | done | 2026-09-20: ring-at-a-time nearest-first loading, eviction with hysteresis and save-before-drop, three LOD bands, fog-tinted flat palette cached per fog step. |
 | 2.3 | G1: `mesh_tri_t.dir`, direction-grouped triangles, `mesh_submit_world()` | done | 2026-09-20: the free pad byte holds the face direction (F-01), so an axis-aligned back-face test is one compare. `meshcheck` proves every greedy face's direction matches its real normal and that plants carry none. Grouping was **skipped** — the per-triangle test is already cheap and submit time turned out to be elsewhere (F-32). |
 | 2.4 | A free-flying debug camera over a streamed world | done | 2026-09-20: a circular flight, a pure function of the show clock. 16.0 fps measured (F-31, F-32, F-33) — **that figure is wrong, see F-36**: the camera was pointing at the sky and flying sideways. Corrected, the same build is **12.3 fps**. |
+| 2.6 | Where the frame time really goes; the engine at -O2 | done | 2026-09-21: the user asked for SIMD and for internal-SRAM textures. **Neither is the answer, and both were measured rather than assumed** (F-37, F-38, F-40). What was: `-O2` and inline rounding, worth **13.4 -> 15.3 fps** (F-39). Spans average **6 pixels**, so the cost is per-span setup, not per-pixel work. |
 | 2.5 | Vertical render sections (D-34) and a hand-flown camera | done | 2026-09-21: `vox_grid_t.y0`; 4 sections a chunk, each culled and meshed on its own; meshes moved out of the static `chunk_t` into the PSRAM slab (**−35 KiB bss**). **12.6 → 13.6 fps** (F-35, two runs each). The mesh check proves the seam is exact by meshing a lump whole and in slices and comparing surface area and volume — and fails when the offset or the border is broken. Free flight (WASD / arrows / Space / Shift, T and V toggles) whenever no test is running (D-38). |
 | | **Accept host:** `make scenecheck` no cap overflow at any view distance; `make meshcheck` `dir` matches every normal. **Accept device:** `make cycle TEST="perf scene=flyover secs=20"`; **submit must be under 6 ms** | | |
 | **3** | **The player** | | |
@@ -1101,13 +1102,94 @@ frame time than the fell.
   recorded before this one is optimistic by roughly that much. The convention
   is now written down at both places that use it.
 
-- **F-34** 2026-09-20, step 2.4: the engine's rasteriser is **scalar C**. No
+- **F-34** 2026-09-20, step 2.4 (**its speculation is corrected by F-40**; the
+  fill rate is set by span setup, not by scalar arithmetic): the engine's
+  rasteriser is **scalar C**. No
   PIE/SIMD appears anywhere in `synthengine3D/src/se_scene.c`; the engine's only
   SIMD mention is minimp3's x86/ARM paths, disabled by `MINIMP3_NO_SIMD`. The
   ESP32-P4 has a 128-bit SIMD unit whose 16-bit lane arithmetic and saturating
   ops match what a textured span loop does. So the measured ~5 Mpx/s is the
   speed of this implementation rather than of the hardware. **Unprofiled** --
   how much headroom that represents is not known and is not worth guessing.
+
+- **F-37** 2026-09-21, the user asked where the internal SRAM goes: **the app's
+  own statics are in PSRAM, not internal SRAM.** kbelf loads `app.so` there --
+  a static probe sits at `0x4801e6f0`, in the same region as a PSRAM
+  allocation, while an internal allocation is at `0x4ff37ee8`. So `app.so`'s
+  224 KiB of `.bss` costs no internal SRAM at all, and **the 35 KiB that D-34's
+  commit message claims to have taken "off the internal-SRAM bss" was PSRAM**.
+  The saving is real; the memory it came from was misnamed.
+
+  What is actually using internal SRAM: **462 KiB of 622 KiB, in 301 blocks,
+  all of it allocated before `on_init` runs** -- ESP-IDF, graceloader and the
+  engine's boot. Low-water equals free, so nothing has been released since. The
+  app itself takes about 18 KiB (the worker's stack and queues, the texture
+  cache). 160 KiB free, largest block 62 KiB.
+
+- **F-38** 2026-09-21: **the block textures fit in internal SRAM with room to
+  spare, and it makes no measurable difference.** All eighteen are 16x16 RGB565
+  -- 512 bytes each, **9216 bytes for the set** -- against 160 KiB free, so no
+  freeing was needed for the move the user asked about. Textured fill measured
+  36.0 ms a frame with them internal against 35.7 and 37.0 with them in PSRAM:
+  **a null result**, inside the run-to-run spread. The reason is in F-40: the
+  texel fetch is not what the loop is waiting for. Kept anyway, because 9 KiB
+  is nothing and the argument only gets better as textures are added.
+
+- **F-39** 2026-09-21: **the engine and the app were both built `-Os`**, and at
+  `-Os` the compiler would not inline `scene_index()` or the three span
+  functions despite their `static inline` -- so every one of 28000 spans a
+  frame paid a function call. `-O2` on the engine: flat fill 22.0 -> 19.4 ms,
+  textured 37.7 -> 34.7. `-O2` on the app as well: submit 11-13 -> 10.2 ms.
+  `.text` grew 71 -> 87 KiB, which is PSRAM and therefore free (F-37).
+
+  And **`ceilf`/`floorf` are library calls even at `-O2`**: they must set
+  `errno`, so GCC cannot fold them into the single RISC-V convert the value
+  needs. The column scans call them twice per span -- **57000 library calls a
+  frame** to round numbers already in float registers. Replaced with inline
+  `ceil_i`/`floor_i`: flat 19.4 -> 13.4 ms, textured 34.7 -> 31.7.
+
+  Altogether **rasterize 49.7 -> 43.6 ms and 13.4 -> 15.3 fps**, with no SIMD
+  written.
+
+- **F-40** 2026-09-21, the answer to "would SIMD help?", measured rather than
+  argued. The chain of measurements matters as much as the conclusion, because
+  the first two readings each pointed the wrong way:
+
+  | measured | result |
+  |---|---|
+  | flat vs textured, per pixel | 230 vs 214 ns -- textured is **not** dearer |
+  | span-loop memory pattern alone, PSRAM | 55 ns/px (internal SRAM: 39) |
+  | the same with a 16-bit depth plane | 56 ns/px -- **no change** |
+  | the loop's arithmetic alone | 45 ns/px (16 cycles at 360 MHz) |
+  | the real rasterizer | 172-199 ns/px (62-72 cycles) |
+  | **average span length** | **6.0 pixels flat, 12.5 textured** |
+
+  Read in order: textured costing the same as flat per pixel says the
+  arithmetic is not the wall. A 16-bit depth plane not helping says the bytes
+  are not either -- the memory cost is per-access latency, not bandwidth, so
+  halving the depth plane would have bought nothing and the engine change it
+  would have needed was avoided. Arithmetic (16 cyc) plus memory (20 cyc) is
+  **36 of the 62-72 cycles a pixel costs**, so the rest is neither: it is
+  per-span setup, over spans **six pixels long**.
+
+  **So SIMD is the wrong tool here.** The ESP32-P4's PIE vector unit is real,
+  128-bit with 16-bit lanes, and this toolchain already enables it -- the app
+  compiles with `xesploop_xespv2p1` today, and the assembler accepts
+  `esp.vld.128`, `esp.vadd.s16`, `esp.vcmp.gt.s16` and the rest. But a 6-pixel
+  span does not fill one 8-lane vector; the depth test needs a per-pixel
+  conditional store; and the textured loop's texel fetch is a **data-dependent
+  gather**, which PIE has no instruction for. Vectorising the inner loops would
+  attack the 16 cycles that are already the cheapest part.
+
+  **F-34 is therefore wrong where it speculates.** "~5 Mpx/s is the speed of
+  this implementation rather than of the hardware" is true, but its implied
+  cause -- scalar arithmetic in the span loops -- is not. The fill rate is set
+  by how many spans the geometry breaks into, and the fix is fewer and longer
+  spans (bigger on-screen triangles, more aggressive distance LOD), which is
+  game-side work.
+
+  The measurements live in `main/game/membench.c` and in the engine's
+  `scene_fill_stats()`, so any of this can be re-checked rather than believed.
 
 ### Decisions (D-n), each with date and who decided
 
@@ -1183,6 +1265,26 @@ frame time than the fell.
   floor, and 99% of its triangles are in one section). The rule now: any claim
   about "the terrain" or "a chunk" is measured over a sample spread across the
   world, and the sample size goes in the finding.
+
+- **D-39** 2026-09-21, the user: **engine work is authorised**, and the engine
+  stays at **version 2.1** while it is being worked on -- no bump per change.
+  The standing "an engine problem means stop and ask" rule (D-15's sibling)
+  still holds for anything beyond what has been asked for.
+
+- **D-40** 2026-09-21, Claude: **`-O2`, not `-Os`, for both the engine and the
+  app.** Both run from PSRAM, where code size is the resource that is not
+  scarce, and `-Os` was costing a function call per span. Measured in F-39.
+
+- **D-41** 2026-09-21, Claude: **measure the shape of the work before
+  optimising it.** Three plausible theories here -- scalar arithmetic, PSRAM
+  bandwidth, texel-fetch locality -- were each worth a day and each wrong, and
+  a fourth (per-span setup over 6-pixel spans) was not on the list until the
+  spans were counted. The engine now reports pixels *and spans* per pass
+  (`scene_fill_stats`) precisely so the next person does not have to guess.
+
+- **D-42** 2026-09-21, Claude: **no SIMD in the span loops.** Available,
+  enabled, and the wrong tool: see F-40. Revisit only if spans get much longer,
+  which is a geometry change, not an engine one.
 
 - **D-38** 2026-09-21, Claude: **free flight when no test is running, the
   scripted path when one is.** `devtest_running()` decides. A `shots` test needs

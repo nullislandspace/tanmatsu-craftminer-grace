@@ -72,6 +72,20 @@ on which keys are held.
 It hangs above sea level until the chunk beneath it arrives, then drops onto the
 ground.
 
+## Where the frame time goes
+
+The app logs a memory map and a memory benchmark at boot
+(`main/game/membench.c`), and the engine reports pixels **and spans** per
+rasterize pass (`scene_fill_stats`). Between them, `make cycle
+TEST="perf scene=block secs=20"` says whether a fill loop is bound on its
+arithmetic, on memory, or on its own setup — the three are indistinguishable
+from a frame rate alone, and two of the three were guessed wrong here before
+they were measured. See `claudeplans/craftminer.md`, F-40.
+
+Short version, on this hardware: spans average **six pixels**, so per-span
+setup dominates, and vectorising the inner loops (the ESP32-P4's PIE SIMD,
+which this toolchain already enables) would attack the cheapest part.
+
 ## The world, and how to work on it
 
 `claudeplans/craftminer.md` is the living plan: the design, a step-by-step
