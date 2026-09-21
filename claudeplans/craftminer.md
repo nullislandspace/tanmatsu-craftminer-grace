@@ -804,13 +804,13 @@ frame time than the fell.
 | 4.3 | `hud.c`: crosshair, hotbar, health, hunger | done | 2026-09-21: hotbar with counts and a wear bar, ten hearts, ten drumsticks, and a mining progress bar. **Tools are drawn as shapes, not colours** (D-54) — three stone tools as flat squares are three identical grey squares. Drawn through `se_direct565.h`, not PAX: that is the difference between **13.4 ms a frame and 0.8** (F-46). Health and hunger are displayed but nothing moves them yet; the systems are block 12. |
 | | **Accept:** the item registry, stacking, durability and drops are host-tested; breaking yields what the block table says and only to a tool that qualifies | **done** | 2026-09-21: in `make check`. Tool speed by class, harvest qualification, partial-stack filling, a full inventory refusing the overflow, two differently-worn tools staying two, a wooden pickaxe lasting exactly its durability, drops appearing and being collected only after `ITEM_PICKUP_DELAY`, despawn at exactly 12000 ticks, felling dropping every block it takes, and a full entity pool refusing rather than corrupting. |
 | **5** | **First playable — worlds on the SD card** | | |
-| 5.1 | `screens.c`: title -> world list -> new world (name + seed, or rolled) -> play | todo | |
-| 5.2 | Save policy: chunk unload, pause-menu Save, quit. Never per tick | todo | |
+| 5.1 | `screens.c`: title -> world list -> new world (name + seed, or rolled) -> play | **part done** | 2026-09-21: the **title** is done and is the showreel's idea rebuilt on a streamed world (D-58) — "CraftMiner" in real blocks, "Craft" in grass and "Miner" in cobblestone, over a chosen meadow, popping in column by column. Enter plays, Esc leaves. The **world list and the new-world screen are not written**: Enter opens one fixed world, as before. |
+| 5.2 | Save policy: chunk unload, pause-menu Save, quit. Never per tick | **part done** | 2026-09-21: `save_world()` writes the player and every edited resident chunk, and Esc saves before returning to the title. Eviction already saved. Nothing saves on a tick. The pause menu's explicit Save is 5.3. |
 | 5.7 | **Entities in the save**: write and read `SECTION_ENTITIES` | todo | Carried in from 4.1. The section is reserved in `chunk_codec.h` and nothing writes it, so every drop on the ground is lost on reload. `item_entity_t` is already the shape it will be written in, and the age field is elapsed ticks (D-51) precisely so that a world reopened weeks later behaves. |
-| 5.8 | **Replay record/play**, and synchronous chunks for the `shots` test | todo | Carried in from 3.3 and blocked on F-45. A `shots` run SETS the clock rather than running it, so the chunks never stream and every screenshot is empty sky — the fix is the synchronous mode D-15 put there for exactly this. Until both exist, block 3's device accept line cannot be met and shot hashes cover the overlay but not the world. |
+| 5.8 | **Replay record/play**, and synchronous chunks for the `shots` test | **part done** | 2026-09-21: the synchronous half is done (D-59) — a `shots` run switches the worker inline and settles the world, so a shot photographs the world instead of the sky, and three captures of one instant now hash identically. **Replay record/play is still not written.** Carried in from 3.3, was blocked on F-45. A `shots` run SETS the clock rather than running it, so the chunks never stream and every screenshot is empty sky — the fix is the synchronous mode D-15 put there for exactly this. Until both exist, block 3's device accept line cannot be met and shot hashes cover the overlay but not the world. |
 | 5.9 | Move `time_of_day` from the player record to the world (D-52) | todo | A world has one time of day however many players it has had, and the day/night cycle reads it. Cheap because both records are tagged and skippable (D-30). |
-| 5.5 | **Pre-generate and save the spawn area on world creation**, behind a "Creating world" progress bar (D-25) | todo | |
-| 5.6 | **The entering sequence** (D-26): physics frozen, 3x3 synchronous, play, then stream the rest | todo | |
+| 5.5 | **Pre-generate and save the spawn area on world creation**, behind a "Creating world" progress bar (D-25) | **part done** | 2026-09-21: `pregenerate()` exists and runs for both the title and the spawn (D-57). The progress bar does not — it happens behind a screen that is not yet showing anything, which is fine for 2.8 s and will not be for a new world's larger area. |
+| 5.6 | **The entering sequence** (D-26): physics frozen, 3x3 synchronous, play, then stream the rest | **part done** | 2026-09-21: the tick is frozen until the chunk under the player is resident, and the spawn area is pre-generated before play starts. The "carry on streaming the rest while walking" half already worked. |
 | 5.3 | Pause menu; `f1_exits = false`; quitting saves first | todo | |
 | 5.4 | `worldlist_ui.c` with index + FatFs rebuild; delete a world | todo | |
 | | **Accept:** a scripted device test creates a world, edits 200 blocks across 3 chunks, saves, reloads, and reports whether every edit survived. **-> hand to the user** | | |
@@ -1349,7 +1349,60 @@ frame time than the fell.
   Worth noting how it was found: not by testing, but by a question. The feature
   was "done", host-tested, and committed.
 
+- **F-48** 2026-09-21, step 5.1: **half the title screen was invisible, and
+  four wrong explanations were tested before the right one.** "CraftMiner" is
+  written in real blocks in the world; "Miner" drew and "Craft" did not.
+
+  Ruled out, each by measurement rather than argument: the blocks were not
+  placed (216 of 216 were, and a printed map of the world showed the whole
+  word); the chunks were not resident (`chunk_find` returned all four); the
+  meshes were not built (140/222/142/78 triangles in the right sections); the
+  geometry was culled (nothing was); the engine's lists overflowed (a new drop
+  counter said zero); it was a `shots` warm-up artefact (three captures of the
+  same instant hashed identically).
+
+  What fixed it: **raising the letters and the camera**. The sight line from
+  the old camera to the missing letters passed a few blocks over the treetops,
+  and something along it was writing depth without being visible -- distant
+  terrain flat-shaded towards a fog colour that IS the sky colour is the
+  obvious candidate. **Not confirmed.** The fix is empirical and the cause is
+  recorded as unproven rather than dressed up.
+
+  The lasting value is in the two things added while chasing it, both kept:
+  `scene_drop_stats()` and pre-generation.
+
+- **F-49** 2026-09-21: **the engine's geometry lists dropped silently.** A full
+  list returns without drawing, in submission order, so what vanishes is
+  whatever the game submitted last -- a corner of the world, a chunk, half a
+  title. That is a hole in the picture that looks like a bug in the game, and
+  it had already cost one debugging session (F-32) before it cost another here.
+  `scene_drop_stats()` now counts it and the app warns; **anything non-zero is
+  a hole**.
+
 ### Decisions (D-n), each with date and who decided
+
+- **D-57** 2026-09-21, **the user**: **generate every chunk before the intro
+  runs.** The streamer asks for four chunks a frame so that walking never
+  stalls, but "never stalls" and "is complete" are different promises and an
+  opening sequence needs the second. The title writes its letters with
+  `world_set()`, which no-ops on a chunk that is not resident, so a title that
+  starts before its world exists spells half a word -- and which half depends
+  on the SD card that morning. `pregenerate()` runs the streamer to completion
+  inline first: 2.8 s for the title's 81 chunks, all of it behind a screen that
+  is not yet showing anything.
+
+- **D-58** 2026-09-21, Claude: **the title runs on a scratch world.** Generated
+  from a fixed seed, never written, and absent from the world list. The letters
+  are real blocks placed through `world_set()`, so the greedy mesher, the
+  streamer and the fog treat them as what they are -- the title screen is a
+  view of the game rather than a picture of one. The seed was CHOSEN, not
+  picked: the first one put the camera over open ocean, so every seed under
+  4000 was scored on the ground it gives across the camera's field of view.
+
+- **D-59** 2026-09-21, Claude: **a `shots` test switches the chunk worker to
+  synchronous and settles the world before drawing.** That is what D-15 put
+  synchronous mode there for. Until now every shot was a photograph of empty
+  sky (F-45), so the hashes covered the overlay and nothing else.
 
 - **D-56** 2026-09-21, **the user**: **the engine's splash goes first, and the
   game's name waits for its title screen.** `se_splash()` -- the SynthEngine

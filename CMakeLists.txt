@@ -51,6 +51,9 @@ set(APP_SOURCES
     main/items/inventory.c
     main/items/item_entity.c
 
+    # Screens.
+    main/ui/title.c
+
     # Textures by name, cached.
     main/common/texcache.c
 )

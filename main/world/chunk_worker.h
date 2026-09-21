@@ -43,6 +43,10 @@
 bool chunk_worker_start(uint32_t seed);
 void chunk_worker_stop(void);
 
+// The seed the generator uses from now on. Changing worlds without
+// restarting the task: drain, clear the store, then set this.
+void chunk_worker_set_seed(uint32_t seed);
+
 // Run everything inline instead of on the task. Safe to change between
 // frames; a mode change waits for the queue to drain.
 void chunk_worker_set_synchronous(bool on);

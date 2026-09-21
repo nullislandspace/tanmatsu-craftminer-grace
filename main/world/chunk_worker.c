@@ -371,6 +371,10 @@ void chunk_worker_stop(void) {
     s_sync    = true;
 }
 
+void chunk_worker_set_seed(uint32_t seed) {
+    s_seed = seed;
+}
+
 void chunk_worker_set_synchronous(bool on) {
 #ifndef CM_HOST
     if (!on && !s_running) return;  // no task to be asynchronous with

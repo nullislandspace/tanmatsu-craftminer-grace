@@ -89,6 +89,16 @@ size_t chunk_store_mesh_bytes(int* meshes, int* chunks) {
     return bytes;
 }
 
+void chunk_store_clear(void) {
+    for (int i = 0; i < CH_SLOT_COUNT; i++) {
+        chunk_t* c = &s_slots[i];
+        free_slot_meshes(c);
+        c->cstate = CS_FREE;
+        c->flags  = 0;
+        c->edit_seq++;  // so any result still in flight is seen as stale
+    }
+}
+
 size_t chunk_store_bytes(void) {
     return s_slab_bytes + (s_slab_bytes != 0 ? (size_t)CH_SLOT_COUNT * CH_MESH_N * sizeof(mesh_t) : 0);
 }

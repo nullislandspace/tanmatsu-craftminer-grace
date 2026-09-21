@@ -239,6 +239,14 @@ static inline mesh_t* chunk_mesh(chunk_t* c, int lod, int sect) {
 bool chunk_store_init(void);
 void chunk_store_shutdown(void);
 
+// Drop every resident chunk WITHOUT saving. For changing worlds: the
+// title screen's scratch terrain must not still be in the ring when a
+// real world opens, or the player spawns inside somebody else's hill.
+//
+// The caller must have drained the worker first -- a load still in
+// flight would land in a slot this has just freed.
+void chunk_store_clear(void);
+
 // How much the slab took, for the boot log and step 1.1's measurement.
 // Fixed at boot: it does not depend on the view distance.
 size_t chunk_store_bytes(void);

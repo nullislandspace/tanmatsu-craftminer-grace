@@ -357,3 +357,16 @@ void hud_mine_progress(pax_buf_t* fb, float progress) {
     int const fill = (int)((float)w * (progress > 1.0f ? 1.0f : progress));
     box(fb, x, y, fill, h, 0xFFE8E8E8u);
 }
+
+void hud_title_hint(pax_buf_t* fb) {
+    if (fb == NULL) return;
+    hud_begin(fb);
+    char const* const msg = "Press Enter to play     Esc to leave";
+    pax_vec2f const   sz  = rendertext_size(NULL, 20.0f, msg);
+    float const       x   = ((float)DISPLAY_LOG_W - sz.x) * 0.5f;
+    float const       y   = (float)DISPLAY_LOG_H - 52.0f;
+    // A shadow, because the sky behind it is bright and the ground is
+    // not, and the line crosses both as the camera drifts.
+    rendertext_draw(fb, 0xFF000000u, NULL, 20.0f, x + 2.0f, y + 2.0f, msg);
+    rendertext_draw(fb, 0xFFFFFFFFu, NULL, 20.0f, x, y, msg);
+}

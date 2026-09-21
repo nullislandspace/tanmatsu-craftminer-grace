@@ -97,6 +97,16 @@ bool worldstore_create(char const* name, uint32_t seed, world_meta_t* meta, play
 // Open an existing world: reads level.cmw, builds the block remap.
 bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* player);
 
+// Open a world that HAS NO DIRECTORY: every chunk is generated on
+// demand and nothing is ever written. The title screen's landscape is
+// one -- it must not appear in the world list or grow a save -- and so
+// is any host test that only needs terrain.
+//
+// A chunk save SUCCEEDS without writing, deliberately: the streamer
+// will not evict a chunk whose save failed, so a refusal would pin
+// every edited chunk in the ring forever.
+bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* player);
+
 // Write level.cmw for the open world. Chunks are saved separately, as
 // they are evicted (see world_chunk_save).
 bool worldstore_save(world_meta_t const* meta, player_state_t const* player);

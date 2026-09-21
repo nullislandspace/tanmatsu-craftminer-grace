@@ -29,6 +29,7 @@
 #include "game/interact.h"
 #include "game/membench.h"
 #include "game/player.h"
+#include "items/item_entity.h"
 #include "game/tick.h"
 #include "gl_input.h"
 #include "graceloader.h"
@@ -37,6 +38,7 @@
 #include "testkit/devtest.h"
 #include "testkit/profile.h"
 #include "testkit/showtime.h"
+#include "ui/title.h"
 #include "world/chunk.h"
 #include "world/chunk_render.h"
 #include "world/chunk_worker.h"
@@ -136,6 +138,25 @@ static bool     s_free_ready;  // the free camera has been put somewhere sensibl
 //   otherwise           the player (player.h), at a fixed 20 Hz
 
 typedef enum { CAM_PLAYER = 0, CAM_FREE, CAM_SCRIPTED } cam_mode_t;
+
+// --- What the app is doing ------------------------------------------------
+//
+// The title runs on its own scratch world (ui/title.h), so entering the
+// game means closing that and opening a real one. That is the whole
+// reason this is a state machine rather than a flag: the WORLD changes
+// with the screen, and the chunk store has to be told.
+typedef enum {
+    APP_TITLE = 0,  // "CraftMiner" in blocks over a generated meadow
+    APP_PLAY,       // a real world, open and saving
+} app_state_t;
+
+static app_state_t s_app = APP_TITLE;
+static double      s_title_t0;
+
+static bool enter_title(void);
+static bool enter_world(char const* slug, uint32_t seed);
+static void save_world(char const* why);
+static void pregenerate(double wx, double wz, char const* why);
 
 static player_t     s_player;
 static tick_clock_t s_tick;
@@ -252,6 +273,7 @@ static struct {
     int         preset;  // -1: leave the view alone
 } const SCENES[] = {
     {"block", -1},
+    {"title", -1},
     {"near", 0},
     {"medium", 1},
     {"far", 2},
@@ -264,6 +286,9 @@ static bool content_select(char const* name) {
         s_content    = SCENES[i].name;
         s_content_t0 = showtime_now();
         s_time_off   = s_content_t0;  // the content's own t = 0
+        // The title is a pure function of ITS clock, so a test's t = 0
+        // has to be the title's t = 0 or a shot hash means nothing.
+        s_title_t0 = s_content_t0;
         s_flying     = true;
         if (SCENES[i].preset >= 0) {
             cm_view_t const v = cm_view_preset(SCENES[i].preset);
@@ -331,6 +356,15 @@ static void frame_stats(void) {
     chunk_render_stats(&drawn, &sections, &resident, &missing);
     ESP_LOGI(TAG, "world: %d chunks / %d sections drawn of %d resident (%d missing), %d tris tested -> %d submitted",
              drawn, sections, resident, missing, tested, passed);
+
+    // A full list drops in submission order, so anything here is a hole
+    // in the picture -- a corner of the world, a chunk, half a title.
+    int dropped_tri = 0, dropped_ttri = 0;
+    scene_drop_stats(&dropped_tri, &dropped_ttri);
+    if (dropped_tri > 0 || dropped_ttri > 0) {
+        ESP_LOGW(TAG, "GEOMETRY DROPPED: %d flat past the %d cap, %d textured past %d -- the view is incomplete",
+                 dropped_tri, SE_SCENE_TRI_CAP, dropped_ttri, SE_SCENE_TEXTURED_TRI_CAP);
+    }
 
     // The streaming's flow, as rates. A world that lags behind the
     // camera looks the same whatever the cause: this says which it is.
@@ -442,34 +476,191 @@ static void on_init(void* user) {
         ESP_LOGE(TAG, "worldstore_init failed");
         return;
     }
-    static world_meta_t   meta;
-    static player_state_t player;
-    if (!worldstore_open("flyover", &meta, &player)) {
-        if (!worldstore_create("flyover", 0xC0FFEEu, &meta, &player)) {
-            ESP_LOGE(TAG, "could not create the flyover world");
-            return;
-        }
-        ESP_LOGI(TAG, "world 'flyover' created, seed %u", (unsigned)meta.seed);
-    } else {
-        ESP_LOGI(TAG, "world 'flyover' opened, seed %u", (unsigned)meta.seed);
-    }
+    // Bindings first: everything below reads them.
+    input_init();
 
-    if (!chunk_worker_start(meta.seed)) {
+    if (!chunk_worker_start(0)) {
         ESP_LOGE(TAG, "chunk_worker_start failed");
         return;
     }
     ESP_LOGI(TAG, "chunk worker running, %s", chunk_worker_synchronous() ? "SYNCHRONOUS" : "on core 1");
 
-    // The player. Bindings first, because player_tick reads them.
-    input_init();
-    player_spawn(&s_player, player.x, player.z, player.yaw);
+    // The title, on its own scratch world. A real one is opened when
+    // the player picks it.
+    if (!enter_title()) {
+        ESP_LOGE(TAG, "could not open the title world");
+        return;
+    }
+
+    log_memory("title ready");
+}
+
+// --- Changing worlds ------------------------------------------------------
+//
+// The title runs on a scratch world and the game on a real one, so
+// moving between them swaps the world under the chunk store. Both
+// directions do the same three things in the same order, and the order
+// is the whole content of this: DRAIN the worker first, because a load
+// still in flight would land in a slot that is about to be freed; then
+// clear the store, because the title's terrain must not still be in
+// the ring when the player spawns; only then open the new world.
+
+static world_meta_t   s_meta;
+static player_state_t s_saved;
+
+static void drain_and_clear(void) {
+    // Synchronous mode drains the queues as part of switching, which is
+    // exactly the guarantee needed here.
+    bool const was_async = !chunk_worker_synchronous();
+    chunk_worker_set_synchronous(true);
+    chunk_store_clear();
+    if (was_async) chunk_worker_set_synchronous(false);
+}
+
+static bool enter_title(void) {
+    drain_and_clear();
+    worldstore_close();
+    if (!title_begin()) return false;
+    chunk_worker_set_seed(title_seed());
+    cm_view_t const tv = title_view();
+    chunk_render_set_view(&tv);
+
+    // Everything the drift will look at, before the first letter is
+    // written. The path is short and the view radius covers all of it
+    // from the middle, so one point is enough.
+    double px, pz;
+    title_stream_at(0.5 * 16.0, &px, &pz);  // the middle of the loop
+    pregenerate(px, pz, "the title");
+    s_title_t0 = showtime_now();
+    s_app      = APP_TITLE;
+    s_cam_mode = CAM_PLAYER;
+    ESP_LOGI(TAG, "title");
+    return true;
+}
+
+static bool enter_world(char const* slug, uint32_t seed) {
+    drain_and_clear();
+    title_end();
+
+    if (!worldstore_open(slug, &s_meta, &s_saved)) {
+        if (!worldstore_create(slug, seed, &s_meta, &s_saved)) {
+            ESP_LOGE(TAG, "could not open or create world '%s'", slug);
+            enter_title();
+            return false;
+        }
+        ESP_LOGI(TAG, "world '%s' created, seed %u", slug, (unsigned)s_meta.seed);
+    } else {
+        ESP_LOGI(TAG, "world '%s' opened, seed %u", slug, (unsigned)s_meta.seed);
+    }
+
+    chunk_worker_set_seed(s_meta.seed);
+    // The ground under the player before the player is on it (D-26).
+    // The rest streams in behind them while they are already walking,
+    // which is what the freeze below covers.
+    pregenerate(s_saved.x, s_saved.z, "the spawn");
+    // Back to the player's view distance: the title's is generous
+    // because it is looking at one static word, not walking.
+    cm_view_t const pv = cm_view_preset(0);
+    chunk_render_set_view(&pv);
+    item_entity_reset();
+    player_spawn(&s_player, s_saved.x, s_saved.z, s_saved.yaw);
+    s_player.pitch  = s_saved.pitch;
+    s_player.health = s_saved.health;
+    s_player.hunger = s_saved.hunger;
+    s_player_ready  = false;
     tick_reset(&s_tick, showtime_now());
     // Frozen until the chunk under them is resident: nobody falls
     // through terrain that has not arrived yet (D-26).
     tick_freeze(&s_tick, true);
-    ESP_LOGI(TAG, "player spawn %.1f, %.1f (F to fly, Esc to leave)", player.x, player.z);
+    s_app = APP_PLAY;
+    ESP_LOGI(TAG, "entering at %.1f, %.1f (F to fly, Esc to leave)", s_saved.x, s_saved.z);
+    return true;
+}
 
-    log_memory("world ready");
+// Write everything the open world owns: the player, and every resident
+// chunk that has been edited. NEVER on a tick (Part N) -- only here, on
+// an explicit save, on leaving, and on eviction.
+static void save_world(char const* why) {
+    if (s_app != APP_PLAY) return;
+
+    s_saved.x     = s_player.body.x;
+    s_saved.y     = s_player.body.y;
+    s_saved.z     = s_player.body.z;
+    s_saved.yaw   = s_player.yaw;
+    s_saved.pitch = s_player.pitch;
+    s_saved.health = s_player.health;
+    s_saved.hunger = s_player.hunger;
+
+    int chunks = 0;
+    for (int i = 0; i < CH_SLOT_COUNT; i++) {
+        chunk_t const* c = chunk_slot_at(i);
+        if (c->cstate != CS_READY || (c->flags & CF_EDITED) == 0) continue;
+        if (chunk_worker_request_save(c->cx, c->cz)) chunks++;
+    }
+    // The saves were queued; take delivery of them all before claiming
+    // the world is on the card.
+    while (!chunk_worker_idle()) chunk_worker_collect(64);
+
+    bool const ok = worldstore_save(&s_meta, &s_saved);
+    ESP_LOGI(TAG, "saved (%s): %d chunk(s), level.cmw %s", why, chunks, ok ? "written" : "FAILED");
+}
+
+// Generate every chunk the view will want, NOW, before anything is
+// drawn or animated.
+//
+// The streamer asks for four chunks a frame on purpose -- it is built
+// so that walking never stalls -- but "never stalls" and "is complete"
+// are different promises, and an opening sequence needs the second
+// one. The title writes its letters into the world with world_set(),
+// which NO-OPS on a chunk that is not resident yet; a title that starts
+// before its world exists spends its first seconds spelling half a
+// word, and which half depends on the SD card that morning.
+//
+// So: switch the worker inline, run the streamer until it says nothing
+// is missing, switch back. On the badge that is 56 ms a chunk (F-23)
+// and a few seconds for a full view -- which is why it happens while
+// the screen still says nothing, and never once the player is in
+// control.
+static void pregenerate(double wx, double wz, char const* why) {
+    int64_t const t0       = esp_timer_get_time();
+    bool const    to_async = !chunk_worker_synchronous();
+    chunk_worker_set_synchronous(true);
+
+    int missing = 0;
+    int rounds  = 0;
+    for (; rounds < 600; rounds++) {
+        chunk_render_stream(wx, wz);
+        chunk_render_stats(NULL, NULL, NULL, &missing);
+        if (missing == 0) break;
+    }
+    if (to_async) chunk_worker_set_synchronous(false);
+
+    int resident = 0;
+    chunk_render_stats(NULL, NULL, &resident, NULL);
+    ESP_LOGI(TAG, "pregenerated %s: %d chunks resident in %d rounds, %lld ms%s", why, resident, rounds,
+             (long long)((esp_timer_get_time() - t0) / 1000), missing == 0 ? "" : " (INCOMPLETE)");
+}
+
+// Fill the world in before drawing, for a test that must be exactly
+// reproducible.
+//
+// Synchronous loading alone is not enough: the streamer asks for four
+// chunks a frame on purpose, so a `shots` run -- which renders a
+// handful of frames at a clock it SET -- would photograph whichever
+// quarter of the world had arrived. That is not "the world at t", it
+// is "the world at t on this machine on this day", and hashing it
+// would be worse than not hashing it at all.
+//
+// So when determinism is asked for, the streamer is run to completion
+// first. Slow, and irrelevant: a shots run is not measuring time.
+static void settle_world(double wx, double wz) {
+    for (int guard = 0; guard < 600; guard++) {
+        chunk_render_stream(wx, wz);
+        int missing = 0;
+        chunk_render_stats(NULL, NULL, NULL, &missing);
+        if (missing == 0) return;
+    }
+    ESP_LOGW(TAG, "the world would not settle; a shot will be incomplete");
 }
 
 // Per frame. `dt` is seconds since the last frame, already clamped --
@@ -478,6 +669,43 @@ static void on_update(float dt, void* user) {
     (void)user;
     showtime_frame();
     devtest_update();
+
+    // A `shots` test SETS the clock instead of running it, so a frame
+    // has to be able to draw a world that arrived in no time at all.
+    // Synchronous chunk loading is what D-15 put there for exactly
+    // this: generation happens inline, the frame waits, and the picture
+    // is of the world rather than of the sky it had not loaded yet
+    // (F-45). Slow -- 56 ms a chunk -- and that is fine, because a
+    // shots run is not measuring time.
+    {
+        bool const want_sync = devtest_deterministic();
+        if (want_sync != chunk_worker_synchronous()) chunk_worker_set_synchronous(want_sync);
+    }
+
+    // The title has its own camera and its own world. It streams like
+    // any other, which is the point: it is a real view of the game.
+    if (s_app == APP_TITLE) {
+        double const       t = showtime_now() - s_title_t0;
+        title_view_t const v = title_camera(t);
+        // The chunks the letters stand in must exist before a letter
+        // can be written into one: world_set() no-ops on a chunk that
+        // is not resident. Live, the title retries every frame and they
+        // fill in within a second; for a shot there is only one frame,
+        // so the world is settled first.
+        if (devtest_deterministic()) settle_world(v.wx, v.wz);
+        title_update(t);
+
+        s_cam.wx        = v.wx;
+        s_cam.wy        = v.wy;
+        s_cam.wz        = v.wz;
+        s_cam.yaw       = v.yaw;
+        s_cam.pitch     = v.pitch;
+        s_cam_effective = CAM_SCRIPTED;  // nothing of the player's is drawn
+        s_ticks_last_frame = 0;
+        chunk_worker_collect(CHUNK_RESULTS_PER_FRAME);
+        chunk_render_stream(s_cam.wx, s_cam.wz);
+        return;
+    }
 
     cam_mode_t const mode = devtest_running() ? CAM_SCRIPTED : s_cam_mode;
     s_cam_effective       = mode;
@@ -534,6 +762,7 @@ static void on_update(float dt, void* user) {
     // cannot blow a frame, then ask for what is still missing.
     chunk_worker_collect(CHUNK_RESULTS_PER_FRAME);
     chunk_render_stream(s_cam.wx, s_cam.wz);
+    if (devtest_deterministic()) settle_world(s_cam.wx, s_cam.wz);
 
     // The ground under the player has to exist before they may fall
     // through it (D-26). Frozen until the chunk they are standing in is
@@ -583,9 +812,24 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
             ESP_LOGI(TAG, "camera: %s", s_cam_mode == CAM_PLAYER ? "player" : "free flight");
             break;
 
+        case BSP_INPUT_SCANCODE_ENTER:
+        case BSP_INPUT_SCANCODE_ESCAPED_KPENTER:
+            // On the title: play. The world list is step 5.4; until it
+            // exists this opens one fixed world, which is what the
+            // build did before there was a title at all.
+            if (s_app == APP_TITLE) enter_world("flyover", 0xC0FFEEu);
+            break;
+
         case BSP_INPUT_SCANCODE_ESC:
-            // Until the pause menu (5.3), Esc is the way out. It will
-            // become "open the pause menu", whose Quit saves first.
+            // In a world, Esc leaves it for the title, SAVING FIRST --
+            // which is the whole reason the key had to come back from
+            // the engine (D-46). On the title, it leaves for the
+            // launcher. The pause menu (5.3) goes between these.
+            if (s_app == APP_PLAY) {
+                save_world("leaving");
+                enter_title();
+                break;
+            }
             ESP_LOGI(TAG, "leaving for the launcher");
             audio_mixer_shutdown();  // a speaker left running across the restart squeals
             bsp_device_restart_to_launcher();
@@ -708,7 +952,11 @@ static void on_render(pax_buf_t* fb, void* user) {
     // Not while the debug camera is flying, where they belong to
     // nobody -- but yes during a test, so a reference shot covers the
     // overlay as well as the world.
-    if (s_cam_effective != CAM_FREE) {
+    if (s_app == APP_TITLE) {
+        prof_begin(PROF_HUD);
+        hud_title_hint(fb);
+        prof_end(PROF_HUD);
+    } else if (s_cam_effective != CAM_FREE) {
         prof_begin(PROF_HUD);
         hud_crosshair(fb);
         hud_mine_progress(fb, player_mine_progress(&s_player));

@@ -34,6 +34,10 @@ static char s_base[128];
 static char s_open_slug[CM_WORLD_SLUG_MAX];
 static char s_region_dir[192];
 static bool s_open;
+// A world with no directory: generated on demand, never written. The
+// title screen's backdrop is one (it must not appear in the world list
+// or grow a save), and so is any host test that only needs terrain.
+static bool s_scratch;
 
 // Saved block id -> this build's block id. Identity until a world is
 // opened with a palette that says otherwise.
@@ -354,7 +358,8 @@ bool worldstore_init(char const* base) {
 }
 
 void worldstore_close(void) {
-    s_open = false;
+    s_open         = false;
+    s_scratch      = false;
     s_open_slug[0] = '\0';
     remap_identity();
 }
@@ -439,6 +444,24 @@ bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* playe
     return true;
 }
 
+bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* player) {
+    worldstore_close();
+    if (meta == NULL) return false;
+    memset(meta, 0, sizeof(*meta));
+    snprintf(meta->slug, sizeof(meta->slug), "%s", "(scratch)");
+    snprintf(meta->name, sizeof(meta->name), "%s", "(scratch)");
+    meta->seed   = seed;
+    meta->format = CM_LEVEL_FORMAT;
+    if (player != NULL) player_state_defaults(player, meta);
+
+    // The identity palette: nothing was written by an older build, so
+    // no id can need remapping.
+    remap_identity();
+    s_open    = true;
+    s_scratch = true;
+    return true;
+}
+
 bool worldstore_save(world_meta_t const* meta, player_state_t const* player) {
     if (!s_open || meta == NULL || player == NULL) return false;
     return write_level(s_open_slug, meta, player);
@@ -484,6 +507,10 @@ bool worldstore_delete(char const* slug) {
 
 int world_chunk_load(chunk_t* c) {
     if (!s_open || c == NULL) return -1;
+    // Nothing is ever stored for a scratch world, so every chunk is
+    // "not on the card" and the generator makes it. That is the whole
+    // implementation.
+    if (s_scratch) return 0;
     int const r = region_read_chunk(s_region_dir, c, s_remap_needed ? s_remap : NULL);
     if (r == 1 && s_remap_needed) {
         // Count what was lost, so the caller can say so once rather than
@@ -495,11 +522,15 @@ int world_chunk_load(chunk_t* c) {
 
 bool world_chunk_save(chunk_t const* c) {
     if (!s_open || c == NULL) return false;
+    // Succeeds without writing. It has to SUCCEED rather than refuse:
+    // the streamer will not evict a chunk whose save failed, so a
+    // refusal here would pin every edited chunk in the ring forever.
+    if (s_scratch) return true;
     return region_write_chunk(s_region_dir, c);
 }
 
 bool world_region_maintain(int32_t cx, int32_t cz) {
-    if (!s_open) return false;
+    if (!s_open || s_scratch) return false;
     int32_t const rx = region_of(cx), rz = region_of(cz);
     if (!region_should_compact(s_region_dir, rx, rz)) return false;
     return region_compact(s_region_dir, rx, rz);

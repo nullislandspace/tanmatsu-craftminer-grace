@@ -95,6 +95,17 @@ void devtest_update(void);
 // this, and runs its scripted content while it is true.
 bool devtest_running(void);
 
+// Whether the running test needs the frame to be EXACTLY reproducible
+// -- the `shots` test, which sets the clock rather than running it and
+// hashes the result.
+//
+// An app with background work has to be told, because "reproducible"
+// is not something it can arrange after the fact: CraftMiner switches
+// its chunk worker to synchronous while this is true, so that the
+// chunks a frame needs exist by the time it draws instead of arriving
+// a second later. Without it every shot is a picture of empty sky.
+bool devtest_deterministic(void);
+
 // Per frame, in on_render after the frame is finished (for the engine,
 // after scene_rasterize()): captures shots, accumulates perf.
 // `rast_us` is this frame's rasterize time, or 0 if the app has no

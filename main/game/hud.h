@@ -41,6 +41,11 @@ void hud_crosshair(pax_buf_t* fb);
 // quarter resolution are unreadable.
 void hud_player(pax_buf_t* fb, player_t const* p);
 
+// The one line the title screen needs: what to press. The letters
+// themselves are real blocks in the world (ui/title.h), so there is
+// nothing else to draw over them.
+void hud_title_hint(pax_buf_t* fb);
+
 // The Tab screen, over everything. Nothing if it is not open.
 void hud_inventory(pax_buf_t* fb, player_t const* p);
 
