@@ -53,7 +53,11 @@ Engine settings (list caps and the like) are compile definitions that must reach
 
 ## Playing it
 
-You walk. The camera is the player unless you press **F**.
+It opens on the engine's splash, then the title: **CraftMiner** written in real
+blocks in a real world, over a meadow the generator made. Press **Enter** to
+play.
+
+In a world you walk. The camera is the player unless you press **F**.
 
 | key | |
 |---|---|
@@ -67,7 +71,7 @@ You walk. The camera is the player unless you press **F**.
 | `Tab` | inventory — cursor keys move, `F1`–`F6` put a stack on the hotbar |
 | `F1`–`F6` | hotbar slot |
 | `F` | switch to the debug camera and back |
-| `Esc` | leave (this becomes the pause menu, step 5.3) |
+| `Esc` | save and return to the title (this becomes the pause menu, step 5.3) |
 
 The crosshair marks where the pick ray goes — which is **not** the centre of the
 screen, because the engine's horizon row is 256 of 480. The block it finds gets
@@ -75,6 +79,9 @@ a wireframe box round it.
 
 Every one of those is remappable through `se_bindings` and persisted to NVS;
 the menu to do it with is step 6.1.
+
+There is one world so far, opened by Enter. Choosing and naming worlds is step
+5.1's other half; until then, leaving saves and returning re-opens the same one.
 
 **Breaking a tree fells it.** That is deliberate and it is the project's one
 declared departure from Minecraft: a log the world grew takes the whole tree

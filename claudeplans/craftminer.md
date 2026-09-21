@@ -121,7 +121,8 @@ main/
 *   item_entity.{c,h}     dropped items: pool, tick, despawn             (pure)
     recipes.{c,h}         RECIPE TABLE + resolver                        (pure)
   ui/
-    screens.{c,h}         title / worlds / new / play / pause / settings
+*   title.{c,h}           "CraftMiner" in blocks, on a scratch world (D-58)
+    screens.{c,h}         worlds / new / pause / settings (the title is above)
     keybind_ui.{c,h}      ADAPTED from synthracer
     worldlist_ui.{c,h}    world select / create / delete
     textentry.{c,h}       on-screen name and seed entry
