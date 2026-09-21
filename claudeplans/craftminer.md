@@ -369,6 +369,10 @@ still there.
 - **Dropped items despawn after 10 minutes** — 12000 ticks at 20 Hz. The age
   advances only while the chunk is loaded, so walking away and coming back does
   not cost the player their drops; it is idling next to them that does.
+- **Every persisted duration is a count of TICKS ELAPSED**, never seconds and
+  never a timestamp to compare against. See D-51: this is the rule for crop
+  growth, furnace burn, breeding cooldowns and hunger as much as for a dropped
+  item, and getting it wrong is only visible weeks later.
 - **Hostile mobs keep spawning** in unlit places, up to a **cap per loaded
   chunk**. Because entities are stored per chunk, that cap is a count of what is
   already there — and it is what bounds the population, given nothing despawns.
@@ -781,7 +785,7 @@ frame time than the fell.
 | | **Accept host:** collision fuzz, DDA against brute force, felling tests | **done** | 2026-09-21: all in `make check`. Collision over hand-built fixtures (rest, terminal-velocity tunnelling, wall slide, step, staircase, 2-block wall, 2-high and 1-high gaps, world edge) plus the jump arc asserted in blocks and seconds; DDA against a brute-force march over 576 directions; felling both ways with the neighbouring tree and the stump checked. |
 | | **Accept device:** `shots scene=replay_walk` gives **identical hashes across two runs** — the proof Part T works | **blocked** (F-45) | The replay scene needs the input stream stored (block 5's save format) and `shots` needs the synchronous chunk mode switched on, or every shot is empty sky. Both carried into block 5. |
 | **4** | **Items** | | |
-| 4.1 | `items.c`, `inventory.c`, merged-stack drops, `item_entity.c` | todo | |
+| 4.1 | `items.c`, `inventory.c`, merged-stack drops, `item_entity.c` | todo | The dropped item is the first thing in this world that is neither a block nor the player, so its pool, its tick and its place in `SECTION_ENTITIES` are the scaffolding pigs, cows and zombies all reuse. Its age is **elapsed ticks, uint32** (D-51). |
 | 4.2 | Tool durability; hotbar (F1-F6) and the inventory screen (Tab) | todo | The hotbar currently holds six fixed blocks (D-47), which is what made break-and-place testable before the inventory exists. |
 | 4.3 | `hud.c`: crosshair, hotbar, health, hunger | part done | 2026-09-21: `main/game/hud.c` exists with the **crosshair and the block highlight** (step 3.6). The hotbar strip, hearts and hunger row wait for 4.1 and 4.2 to have something to show. |
 | **5** | **First playable — worlds on the SD card** | | |
@@ -1294,6 +1298,41 @@ frame time than the fell.
   overlay but not the world.
 
 ### Decisions (D-n), each with date and who decided
+
+- **D-51** 2026-09-21, **the user**, before block 4 was written: **a persisted
+  duration is a count of ticks elapsed — never seconds, never a timestamp.**
+  Prompted by dropped items, but it is the rule for every timer the world
+  saves: crop growth, furnace burn, breeding cooldown, hunger, mob despawn.
+
+  Two failures it prevents, and the second is why the distinction is not
+  pedantry:
+
+  * **wall-clock seconds**: the player pauses, or the frame rate changes, and
+    the timer no longer matches the simulation. Part T rule 1 already bans
+    reading wall time inside a tick; this extends the ban to what a tick
+    *stores*.
+  * **an absolute "spawned at tick N", compared against a world clock**: a
+    world loaded a week later is fine — the world clock only advances while
+    someone is playing — but a chunk that was *unloaded* for an hour of play
+    is not. Its items would come back already expired, having aged while
+    nothing was simulating them. **The stored field is elapsed ticks,
+    incremented by the entity's own tick**, so an unsimulated chunk's clocks
+    simply stand still. That is also what Minecraft does, and it is what makes
+    "walking away does not cost you your drops" true rather than aspirational.
+
+  Width is **uint32**: 10 minutes is 12000 ticks, but a uint16 caps at 54
+  minutes, which a furnace timer or a crop over a long session would reach.
+
+  Wall-clock time survives in exactly one place — `world_meta.last_played`,
+  for the world-select screen. That is a thing to show a human, not a thing a
+  tick reads.
+
+- **D-52** 2026-09-21, Claude (raised by D-51): **the world's tick count is
+  world state and belongs in `level.cmw`.** `player_state_t.time_of_day` is on
+  the wrong record — a world has one time of day however many players it has
+  had, and a day/night cycle (step 29) reads it. Moving it is a block 5 job,
+  and cheap because both records are tagged and skippable (D-30): the old
+  field is simply ignored where it was and defaulted where it now lives.
 
 - **D-01** 2026-09-20, Claude: **a floating render origin.** The engine subtracts
   the camera after world floats reach it, so coordinates near 100000 lose ~0.008
