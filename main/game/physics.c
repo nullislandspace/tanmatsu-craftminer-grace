@@ -173,6 +173,13 @@ void phys_move(phys_body_t* b, double dx, double dy, double dz) {
     }
 }
 
+void phys_gravity(phys_body_t* b, float gravity, float drag, float terminal) {
+    if (b->on_ground && b->vy < 0.0f) b->vy = 0.0f;
+    if (b->hit_head && b->vy > 0.0f) b->vy = 0.0f;
+    b->vy = (b->vy - gravity) * drag;
+    if (b->vy < -terminal) b->vy = -terminal;
+}
+
 double phys_settle(phys_body_t const* b, double x, double y, double z, int max_drop) {
     for (int i = 0; i <= max_drop; i++) {
         double const yy = y - (double)i;

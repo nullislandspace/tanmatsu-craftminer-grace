@@ -194,6 +194,14 @@ typedef struct {
     // store's slab rather than in this struct: 12 mesh_t per slot times
     // 256 slots is PSRAM's business, and chunk_t is a static array.
     mesh_t*  lod;
+    // THREE BITMASKS, AND THE DISTINCTION MATTERS. "Stale" and "never
+    // built" are not the same state, and treating them as one is what
+    // made the world blink every time a block was broken: an edit
+    // marks every level of its section stale, and if stale meant
+    // undrawable the whole chunk vanished until the worker caught up.
+    // A mesh one block out of date is worth drawing. A mesh that does
+    // not exist is not.
+    uint16_t lod_built;     // CH_MESH_BIT: has real geometry, drawable
     uint16_t lod_stale;     // CH_MESH_BIT: needs (re)building
     uint16_t lod_inflight;  // CH_MESH_BIT: queued to the worker
     uint32_t last_seen_frame;

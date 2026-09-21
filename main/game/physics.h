@@ -71,6 +71,23 @@ void phys_body_init(phys_body_t* b, double x, double y, double z);
 // this moves, it does not integrate.
 void phys_move(phys_body_t* b, double dx, double dy, double dz);
 
+// One tick of falling, applied AFTER the body has moved.
+//
+// The order is the whole point of this being a function rather than
+// three lines in the caller: a body moves with the velocity it HAS,
+// and only then is the velocity updated for the next tick. Applying
+// gravity first instead spends the first tick of a jump decelerating,
+// which costs a third of the height -- the same three constants give
+// an apex of 0.83 blocks that way and 1.33 this way, and nothing in
+// the code says so. Stated once, here, where the host test and the
+// player both call it.
+//
+// Also clears a velocity the body cannot use: landing zeroes a
+// downward one, hitting a ceiling an upward one. Without that, a body
+// standing still accumulates fall speed and shoots off the moment the
+// floor is broken out from under it.
+void phys_gravity(phys_body_t* b, float gravity, float drag, float terminal);
+
 // Would the body fit here, with nothing solid overlapping it? Used to
 // place a player at spawn without dropping them inside a hill.
 bool phys_fits(phys_body_t const* b, double x, double y, double z);

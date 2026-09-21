@@ -126,6 +126,7 @@ static void apply(result_t* r) {
             if (r->ok) {
                 s_loaded_total++;
                 c->lod_stale = CH_MESH_ALL;
+                c->lod_built = 0;
             }
         }
         return;
@@ -145,6 +146,12 @@ static void apply(result_t* r) {
             // again while the job was in flight, which the edit_seq
             // check above has already ruled out.
             c->lod_stale &= (uint16_t)~CH_MESH_BIT(r->lod, r->sect);
+            // Empty is a legitimate answer -- solid rock, open sky --
+            // and an empty mesh is not "drawable", it is "nothing to
+            // draw". Only real geometry counts as built, or the
+            // fallback below would pick an empty mesh over a good one.
+            if (slot->tn > 0) c->lod_built |= CH_MESH_BIT(r->lod, r->sect);
+            else c->lod_built &= (uint16_t)~CH_MESH_BIT(r->lod, r->sect);
             memset(&r->mesh, 0, sizeof(r->mesh));
             s_meshed_total++;
         }

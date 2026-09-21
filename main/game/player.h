@@ -26,13 +26,28 @@
 
 // Blocks per tick. 0.215 is about 4.3 blocks a second, Minecraft's
 // walk. Sneaking is a little under a third of it.
-#define PL_WALK     0.215f
-#define PL_SNEAK    0.065f
-#define PL_ACCEL    0.35f   // share of the gap to target speed closed per tick
-#define PL_GRAVITY  0.08f   // blocks per tick per tick
-#define PL_DRAG     0.98f   // per tick, on the vertical
-#define PL_JUMP     0.42f   // enough to clear one block and land on it
-#define PL_TERMINAL 3.0f    // blocks a tick: nothing falls faster
+#define PL_WALK  0.215f
+#define PL_SNEAK 0.065f
+#define PL_ACCEL 0.35f  // share of the gap to target speed closed per tick
+
+// The jump arc. These three are chosen together, by simulating the arc
+// rather than by feel, because what matters is a number you can state:
+//
+//   apex 1.33 blocks, 0.40 s up, 0.85 s in the air.
+//
+// The apex has to clear a block WITH ROOM, or you cannot place one
+// underneath yourself -- and pillaring up is how you get out of a hole,
+// so it is not a trick, it is basic movement. 1.33 leaves a third of a
+// block of margin at the top for the placement to happen in.
+//
+// Slower than Minecraft (0.60 s in the air) on purpose: at 15 fps a
+// 0.60 s jump is nine frames from take-off to landing, and judging a
+// landing in nine frames is not fair on the player. Same apex, longer
+// arc -- which is the pair (v0 * k, g * k^2), here with k = 0.7.
+#define PL_GRAVITY  0.04f  // blocks per tick per tick
+#define PL_DRAG     0.98f  // per tick, on the vertical
+#define PL_JUMP     0.32f  // -> apex 1.33 blocks
+#define PL_TERMINAL 3.0f   // blocks a tick: nothing falls faster
 
 typedef struct {
     phys_body_t body;

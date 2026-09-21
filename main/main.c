@@ -46,6 +46,23 @@
 
 static char const TAG[] = "craftminer";
 
+// The near clip plane has to be closer than the nearest thing the eye
+// can legitimately be to, or that thing is clipped away and the player
+// sees through the world. Two cases, and the ceiling is the tight one:
+//
+//   a wall they are touching   half the body width          0.30
+//   a ceiling they stand under h - eye height = 1.8 - 1.62  0.18
+//
+// Set in CMakeLists.txt, where the reasoning is; checked here, where
+// both numbers are visible at once. It was 0.5 and you could put your
+// face through a tree.
+_Static_assert(RENDER_NEAR_CLIP_Z < (double)(PHYS_PLAYER_H - PHYS_PLAYER_EYE),
+               "the near clip plane is further than the player's head is from a ceiling: "
+               "they will see through it");
+_Static_assert(RENDER_NEAR_CLIP_Z < (double)(PHYS_PLAYER_W * 0.5f),
+               "the near clip plane is further than the player's eye is from a wall they touch: "
+               "they will see through it");
+
 // How many finished chunk jobs to take delivery of per frame.
 //
 // Taking delivery is a pointer swap and a free, so the budget only

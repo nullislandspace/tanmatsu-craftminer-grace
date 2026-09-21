@@ -142,6 +142,21 @@ set(ENGINE_DEPS "")
 #   SE_BINDINGS_MAX  the default 16 is below the ~20 actions CraftMiner
 #       declares, and se_bindings_init() CLAMPS rather than complaining,
 #       so the last actions would simply never fire. (F-11)
+# The near clip plane, down from the engine's default 0.5.
+#
+# THE PLAYER'S EYE IS 0.3 FROM A WALL THEY ARE TOUCHING (half of a
+# 0.6-wide body), and 0.18 below a ceiling they are standing under. At
+# 0.5 the engine clipped both away and you saw straight through the
+# world -- pressing your face to a tree made it vanish.
+#
+# The cost is depth precision and range, both proportional to the near
+# plane (se_config.h): the far limit drops from 32000 blocks to 6400,
+# which is still ninety times the furthest this game draws, and the
+# depth step at 40 blocks (the near view's draw distance) is a quarter
+# of a block. A voxel world has almost no coplanar surfaces to
+# z-fight, so that is a trade worth making to stop seeing through
+# walls.
+add_compile_definitions(RENDER_NEAR_CLIP_Z=0.1f)
 add_compile_definitions(SE_SCENE_TEXTURED_TRI_CAP=2048)
 add_compile_definitions(SE_BINDINGS_MAX=24)
 

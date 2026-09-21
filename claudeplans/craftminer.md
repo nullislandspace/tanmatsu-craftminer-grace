@@ -1233,6 +1233,35 @@ frame time than the fell.
   side. A physics assertion has to name the moment as well as the value. The
   test now walks onto a plateau wide enough to end standing on it.
 
+- **F-43** 2026-09-21, **the user, playing it**: four faults, and three of them
+  were invisible from reading the code.
+
+  1. **The jump could not clear a block.** Apex **0.83 blocks**, so pillaring up
+     -- how you get out of a hole -- was impossible. Cause: gravity was applied
+     BEFORE the move, so the first tick of the jump was spent decelerating
+     instead of rising. The same three constants give 1.25 the other way round.
+     Nothing in the code looks wrong; it took simulating the arc. The order now
+     lives in `phys_gravity()`, which the player and the host test both call,
+     and the test asserts the apex in blocks and the hang time in seconds.
+  2. **Too fast to aim.** At 15 fps a Minecraft jump is nine frames from
+     take-off to landing. Retuned to the same apex over a longer arc -- the
+     pair `(v0 * k, g * k^2)` with k = 0.7 -- giving **1.33 blocks, 0.85 s**.
+  3. **You could see through a wall you were touching.** The engine's near clip
+     plane is **0.5** and the player's eye is **0.3** from a wall they are
+     flush against and **0.18** below a ceiling they stand under. Both were
+     being clipped away. Now 0.1, with a `_Static_assert` tying it to
+     `PHYS_PLAYER_W` and `PHYS_PLAYER_EYE` so it cannot drift back --
+     verified by restoring 0.5 and watching the build fail. The cost is depth
+     range and precision, both proportional to the near plane: the far limit
+     falls from 32000 blocks to 6400, still ninety times what this draws.
+  4. **Breaking a block blanked the surrounding area for a frame.** An edit
+     marks every level of its section stale, and the renderer treated stale as
+     undrawable, so the chunk disappeared until the worker caught up.
+     **"Stale" and "never built" are not the same state** and conflating them
+     was the bug: `chunk_t` now carries `lod_built` alongside `lod_stale`, a
+     mesh one block out of date goes on being drawn while its replacement is
+     queued, and only a mesh that has never existed is skipped.
+
 ### Decisions (D-n), each with date and who decided
 
 - **D-01** 2026-09-20, Claude: **a floating render origin.** The engine subtracts
@@ -1307,6 +1336,16 @@ frame time than the fell.
   floor, and 99% of its triangles are in one section). The rule now: any claim
   about "the terrain" or "a chunk" is measured over a sample spread across the
   world, and the sample size goes in the finding.
+
+- **D-48** 2026-09-21, Claude: **movement constants are chosen by simulating
+  the arc, not by feel, and the result is asserted in blocks and seconds.** A
+  jump is three constants and an integration order, and the height that comes
+  out is not something you can read off the source -- the first version was a
+  third short and looked perfectly reasonable.
+
+- **D-49** 2026-09-21, Claude: **a mesh that is out of date is still worth
+  drawing.** Only one that has never been built is not. See F-43.4: treating
+  the two as one state made the world blink at every block break.
 
 - **D-45** 2026-09-21, Claude: **a step is a whole block, not Minecraft's
   0.6.** There, 0.6 exists so that stairs and slabs are walkable and full blocks

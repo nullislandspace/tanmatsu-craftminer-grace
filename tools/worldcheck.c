@@ -37,6 +37,7 @@
 #include "game/physics.h"
 #include "game/raycast.h"
 #include "game/interact.h"
+#include "game/player.h"
 
 static int s_fail = 0;
 
@@ -1562,6 +1563,59 @@ static void check_physics(void) {
     for (int i = 0; i < 60; i++) phys_move(&b, 0.2, -0.1, 0.0);
     printf("  at a 1-high gap: x %.2f (should be stopped near 30)\n", b.x);
     CHECK(b.x < 30.0, "a body 1.8 tall walked through a 1-block-high gap (x %g)", b.x);
+
+    // THE JUMP ARC, asserted rather than felt.
+    //
+    // It has to clear a whole block with room to spare, because placing
+    // a block under yourself is how you get out of a hole and it needs
+    // the apex to last long enough to press a key in. The first version
+    // of this peaked at 0.83 blocks -- it could not clear a one-block
+    // ledge -- and nothing in the code said so: it took simulating the
+    // arc to see it, which is exactly what this does.
+    CHECK(flat_world(8) != NULL, "the test world would not rebuild");
+    phys_body_init(&b, 8.5, 8.0, 8.5);
+    {
+        double const start = b.y;
+        double       peak  = b.y;
+        int          up = 0, total = 0;
+        b.vy = PL_JUMP;  // as player_tick does on the ground
+        for (int t = 0; t < 200; t++) {
+            // phys_move then phys_gravity: exactly what player_tick
+            // does, because it is the same two calls and not a copy of
+            // them.
+            phys_move(&b, 0.0, (double)b.vy, 0.0);
+            phys_gravity(&b, PL_GRAVITY, PL_DRAG, PL_TERMINAL);
+            total++;
+            if (b.y > peak) {
+                peak = b.y;
+                up   = total;
+            }
+            if (b.on_ground && total > 2) break;
+        }
+        printf("  jump: apex %.2f blocks, %.2f s up, %.2f s in the air\n", peak - start, (double)up / 20.0,
+               (double)total / 20.0);
+        CHECK(peak - start > 1.15, "a jump reaches %g blocks: it cannot clear one with room to place under itself",
+              peak - start);
+        CHECK(peak - start < 2.0, "a jump reaches %g blocks, which clears two: that is a bug, not a feature",
+              peak - start);
+        CHECK(up >= 6, "a jump reaches its apex in %d ticks (%.2f s); too quick to aim a placement at", up,
+              (double)up / 20.0);
+        CHECK(b.y > 7.99 && b.y < 8.01, "a jump landed at y %g instead of back on the floor", b.y);
+    }
+
+    // And it lands ON a one-block ledge rather than bouncing off it.
+    for (int32_t x = 11; x <= 14; x++) {
+        for (int32_t z = 6; z <= 10; z++) set_block(x, 8, z, BLK_STONE, 0);
+    }
+    phys_body_init(&b, 9.5, 8.0, 8.5);
+    b.vy = PL_JUMP;
+    for (int t = 0; t < 60; t++) {
+        phys_move(&b, 0.15, (double)b.vy, 0.0);
+        phys_gravity(&b, PL_GRAVITY, PL_DRAG, PL_TERMINAL);
+        if (b.on_ground && t > 2) break;
+    }
+    printf("  jumping onto a 1-block ledge landed at x %.2f, y %.2f\n", b.x, b.y);
+    CHECK(b.y > 8.99 && b.y < 9.01, "a jump onto a 1-block ledge ended at y %g, expected 9", b.y);
 
     // The edge of the world is a wall, not a hole (D-14). A clean
     // world for this one: the obstacles above are in the way.

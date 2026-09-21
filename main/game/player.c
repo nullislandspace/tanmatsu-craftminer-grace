@@ -81,10 +81,14 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     p->body.vz += (wish_z - p->body.vz) * accel;
 
     // --- Jumping and falling -----------------------------------------
+    //
+    // MOVE WITH THE VELOCITY, THEN UPDATE IT. Applying gravity before
+    // the move instead spends the first tick of a jump decelerating,
+    // which costs a third of the height: the same three constants gave
+    // an apex of 0.83 blocks that way and 1.25 this way. A jump that
+    // cannot clear one block is not a jump, and it is not obvious from
+    // reading the code -- only from simulating the arc.
     if (act_held(mask, CM_JUMP) && p->body.on_ground) p->body.vy = PL_JUMP;
-    p->body.vy -= PL_GRAVITY;
-    p->body.vy *= PL_DRAG;
-    if (p->body.vy < -PL_TERMINAL) p->body.vy = -PL_TERMINAL;
 
     p->in_air_last = !p->body.on_ground;
     phys_move(&p->body, (double)p->body.vx, (double)p->body.vy, (double)p->body.vz);
@@ -93,8 +97,11 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // shoots off the moment the obstruction goes away.
     if (p->body.hit_x) p->body.vx = 0.0f;
     if (p->body.hit_z) p->body.vz = 0.0f;
-    if (p->body.on_ground && p->body.vy < 0.0f) p->body.vy = 0.0f;
-    if (p->body.hit_head && p->body.vy > 0.0f) p->body.vy = 0.0f;
+
+    // The vertical for the NEXT tick, including the landing and
+    // head-bump cases. In physics.c so that the host test runs the
+    // same code rather than a copy of it.
+    phys_gravity(&p->body, PL_GRAVITY, PL_DRAG, PL_TERMINAL);
 
     // --- The hotbar ---------------------------------------------------
     for (int i = 0; i < 6; i++) {

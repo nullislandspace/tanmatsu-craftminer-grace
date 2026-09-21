@@ -170,6 +170,7 @@ void chunk_render_stream(double wx, double wz) {
             continue;
         }
         for (int m = 0; m < CH_MESH_N; m++) mesh_free(&c->lod[m]);
+        c->lod_built    = 0;
         c->lod_stale    = 0;
         c->lod_inflight = 0;
         c->cstate       = CS_FREE;
@@ -320,25 +321,36 @@ void chunk_render_submit(double eye_wx, double eye_wz) {
             // nothing until they arrive is what "it reloaded the whole
             // world" looks like from the outside. The wrong level for a
             // few frames is not noticeable; a hole in the ground is.
+            uint16_t const bit = CH_MESH_BIT(lod, sect);
+
+            // Out of date? Ask for a new one -- but go on drawing the
+            // old one meanwhile. Breaking a block marks every level of
+            // its section stale, and a chunk that stopped drawing until
+            // the worker caught up made the whole area blink.
+            if ((c->lod_stale & bit) != 0) chunk_worker_request_mesh(c->cx, c->cz, lod, sect);
+
             int use = -1;
-            if ((c->lod_stale & CH_MESH_BIT(lod, sect)) == 0) {
+            if ((c->lod_built & bit) != 0) {
                 use = lod;
+            } else if ((c->lod_stale & bit) == 0) {
+                // Built, not stale, and empty: solid rock or open sky.
+                // There is genuinely nothing here.
+                continue;
             } else {
-                chunk_worker_request_mesh(c->cx, c->cz, lod, sect);
-                // Nearest level that is ready, in detail order: a step
-                // too sharp reads better than a step too blurry.
+                // Never built at this level. Draw the nearest level
+                // that HAS been, in detail order -- a step too sharp
+                // reads better than a step too blurry. This is what
+                // stops flying upwards (every chunk into LOD_COARSE at
+                // once) from emptying the world.
                 for (int away = 1; away < LOD_COUNT && use < 0; away++) {
                     int const lower = lod - away, higher = lod + away;
-                    if (lower >= 0 && (c->lod_stale & CH_MESH_BIT(lower, sect)) == 0) use = lower;
-                    else if (higher < LOD_COUNT && (c->lod_stale & CH_MESH_BIT(higher, sect)) == 0) use = higher;
+                    if (lower >= 0 && (c->lod_built & CH_MESH_BIT(lower, sect)) != 0) use = lower;
+                    else if (higher < LOD_COUNT && (c->lod_built & CH_MESH_BIT(higher, sect)) != 0) use = higher;
                 }
             }
-            if (use < 0) continue;  // nothing built at all yet; the fog covers it
+            if (use < 0) continue;  // nothing built at any level yet; the fog covers it
 
             mesh_t const* m = chunk_mesh(c, use, sect);
-            // Not "not built yet": a section of solid rock or open sky
-            // meshes to nothing, and asking again every frame would
-            // never stop. The stale bit above is what says "not built".
             if (m->tn == 0) continue;
 
             if (s_textured && sdist < s_view.tex_dist) {

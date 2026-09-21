@@ -20,6 +20,7 @@ static mesh_t*  s_meshes;  // CH_SLOT_COUNT x CH_MESH_N, likewise
 static void free_slot_meshes(chunk_t* c) {
     if (c->lod == NULL) return;
     for (int i = 0; i < CH_MESH_N; i++) mesh_free(&c->lod[i]);
+    c->lod_built    = 0;
     c->lod_stale    = 0;
     c->lod_inflight = 0;
 }
