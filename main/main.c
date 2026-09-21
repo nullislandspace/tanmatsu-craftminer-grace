@@ -366,7 +366,15 @@ static void on_init(void* user) {
     ESP_LOGI(TAG, "CraftMiner on SynthEngine3D %s", se_version_string());
     devtest_start(&TEST);
 
-    se_splash_ex("CraftMiner", "a block world", 1.2f);
+    // THE ENGINE'S OWN SPLASH, with its version -- the first thing the
+    // program shows. `se_splash()` rather than `se_splash_ex()`,
+    // because the default subtitle is "Version <se_version_string()>"
+    // and tracks the engine instead of going stale in a string here.
+    //
+    // The "CraftMiner" card that used to be here was a placeholder and
+    // is gone: the game's own title belongs on the title screen (step
+    // 5.1), not on a second text splash the player has to sit through.
+    se_splash();
 
     // A sun over the left shoulder. `brightness` is the directional
     // share of the light; the rest is fill, so a face turned away goes

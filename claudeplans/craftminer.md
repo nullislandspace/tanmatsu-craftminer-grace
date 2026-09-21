@@ -1337,6 +1337,13 @@ frame time than the fell.
 
 ### Decisions (D-n), each with date and who decided
 
+- **D-56** 2026-09-21, **the user**: **the engine's splash goes first, and the
+  game's name waits for its title screen.** `se_splash()` -- the SynthEngine
+  wordmark over `se_version_string()`, so the version tracks the engine instead
+  of going stale in a string here. The "CraftMiner / a block world" card that
+  was there was a placeholder; the game's own title belongs on the title screen
+  (step 5.1), not on a second text splash the player sits through every boot.
+
 - **D-53** 2026-09-21, Claude: **item ids below `BLK_COUNT` are block ids.** A
   stack of cobblestone is item id `BLK_COBBLE`; `id < BLK_COUNT` is the whole
   test for "this is a block". Not a coincidence to be tidied away later — it is
