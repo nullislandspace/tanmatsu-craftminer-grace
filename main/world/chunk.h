@@ -232,7 +232,16 @@ bool chunk_store_init(void);
 void chunk_store_shutdown(void);
 
 // How much the slab took, for the boot log and step 1.1's measurement.
+// Fixed at boot: it does not depend on the view distance.
 size_t chunk_store_bytes(void);
+
+// The PSRAM the built meshes are holding right now, which is the part
+// that DOES grow with view distance -- the slab is the same 8 MiB
+// whether you can see three chunks or six. Capacity, not use: mesh.c
+// grows its arrays and never gives the space back, so this is what is
+// actually held. Also reports how many meshes are non-empty and how
+// many chunks are resident.
+size_t chunk_store_mesh_bytes(int* meshes, int* chunks);
 
 // The slot a chunk coordinate maps to, whatever is in it.
 static inline int chunk_slot(int32_t cx, int32_t cz) {

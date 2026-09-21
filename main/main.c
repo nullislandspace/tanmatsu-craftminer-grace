@@ -194,13 +194,38 @@ static void log_memory_map(void) {
 static char const* s_content = "block";
 static double      s_content_t0;
 
+// The scenes a test can ask for. "block" is the default flight; the
+// three view distances are that same flight with the graphics setting
+// the menu will offer (D-06), so `perf scene=far` measures what a
+// player choosing Far actually gets -- frame rate AND the PSRAM the
+// meshes hold, which is the half of the cost a frame rate never shows.
+static struct {
+    char const* name;
+    int         preset;  // -1: leave the view alone
+} const SCENES[] = {
+    {"block", -1},
+    {"near", 0},
+    {"medium", 1},
+    {"far", 2},
+};
+
 static bool content_select(char const* name) {
-    if (name == NULL || strcmp(name, "block") != 0) return false;
-    s_content    = "block";
-    s_content_t0 = showtime_now();
-    s_time_off   = s_content_t0;  // the content's own t = 0
-    s_flying     = true;
-    return true;
+    if (name == NULL) return false;
+    for (size_t i = 0; i < sizeof(SCENES) / sizeof(SCENES[0]); i++) {
+        if (strcmp(name, SCENES[i].name) != 0) continue;
+        s_content    = SCENES[i].name;
+        s_content_t0 = showtime_now();
+        s_time_off   = s_content_t0;  // the content's own t = 0
+        s_flying     = true;
+        if (SCENES[i].preset >= 0) {
+            cm_view_t const v = cm_view_preset(SCENES[i].preset);
+            chunk_render_set_view(&v);
+            ESP_LOGI(TAG, "scene '%s': draw %d blocks, load radius %d, evict %d", SCENES[i].name, (int)v.draw_dist,
+                     v.load_radius, v.evict_radius);
+        }
+        return true;
+    }
+    return false;
 }
 static float content_duration(void) {
     return -1.0f;
@@ -271,6 +296,15 @@ static void frame_stats(void) {
              f.meshed - prev.meshed, f.saved - prev.saved, evicted - prev_evicted, f.in_flight, f.capacity);
     prev         = f;
     prev_evicted = evicted;
+
+    // What the meshes are holding. The 8 MiB chunk slab is fixed at
+    // boot; this is the part that grows with the view distance.
+    int          mesh_n = 0, chunk_n = 0;
+    size_t const mesh_bytes = chunk_store_mesh_bytes(&mesh_n, &chunk_n);
+    ESP_LOGI(TAG, "psram: meshes %u KiB in %d of %d built (%d chunks resident) | slab %u KiB | %u KiB free",
+             (unsigned)(mesh_bytes / 1024), mesh_n, chunk_n * CH_MESH_N, chunk_n,
+             (unsigned)(chunk_store_bytes() / 1024),
+             (unsigned)(heap_caps_get_free_size(MALLOC_CAP_SPIRAM) / 1024));
 
     s_window_us = 0;
     s_frames    = 0;

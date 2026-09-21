@@ -65,6 +65,29 @@ void chunk_store_shutdown(void) {
     memset(s_slots, 0, sizeof(s_slots));
 }
 
+size_t chunk_store_mesh_bytes(int* meshes, int* chunks) {
+    size_t bytes = 0;
+    int    m_n = 0, c_n = 0;
+    for (int i = 0; i < CH_SLOT_COUNT; i++) {
+        chunk_t const* c = &s_slots[i];
+        if (c->cstate == CS_FREE || c->lod == NULL) continue;
+        c_n++;
+        for (int m = 0; m < CH_MESH_N; m++) {
+            mesh_t const* mesh = &c->lod[m];
+            if (mesh->vcap == 0 && mesh->tcap == 0) continue;
+            m_n++;
+            // Capacity, not count: this is what is HELD, which is the
+            // question. mesh.c grows these and never shrinks them.
+            bytes += (size_t)mesh->vcap * sizeof(vec3_t);
+            bytes += (size_t)mesh->tcap * sizeof(mesh_tri_t);
+            bytes += (size_t)mesh->pcap * sizeof(mesh_part_t);
+        }
+    }
+    if (meshes != NULL) *meshes = m_n;
+    if (chunks != NULL) *chunks = c_n;
+    return bytes;
+}
+
 size_t chunk_store_bytes(void) {
     return s_slab_bytes + (s_slab_bytes != 0 ? (size_t)CH_SLOT_COUNT * CH_MESH_N * sizeof(mesh_t) : 0);
 }
