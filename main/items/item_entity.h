@@ -32,8 +32,14 @@
 
 #define ITEM_ENTITY_MAX     96     // pool size; a burst of felled leaves is the peak
 #define ITEM_DESPAWN_TICKS  12000u // 10 minutes at 20 Hz
-#define ITEM_PICKUP_DELAY   10u    // ticks before it can be picked up, so a break
-                                   // does not instantly re-collect what you dropped
+#define ITEM_PICKUP_DELAY   10u    // ticks before a BLOCK's drop can be collected
+// ... and much longer for one the player threw. A drop lands inside
+// the pickup radius whatever direction you face -- the radius is 1.4
+// blocks and you cannot throw a thing further than your own arm in one
+// tick -- so a short delay means G appears to do nothing at all: the
+// item leaves and is collected again half a second later. Two seconds
+// is long enough to walk away from, and it is Minecraft's number.
+#define ITEM_THROW_DELAY    40u
 #define ITEM_PICKUP_RANGE   1.4f   // blocks, centre to centre
 #define ITEM_ENTITY_SIZE    0.25f  // the box it falls with
 
@@ -42,7 +48,8 @@ typedef struct {
     uint16_t    item;
     uint8_t     count;
     uint16_t    wear;
-    uint32_t    age;    // TICKS elapsed; see the header note
+    uint32_t    age;        // TICKS elapsed; see the header note
+    uint32_t    pickup_at;  // age at which it may be collected
     phys_body_t body;
 } item_entity_t;
 
@@ -52,6 +59,12 @@ void item_entity_reset(void);
 // small scatter so a felled tree does not stack every log on one point.
 // Returns how many were actually dropped (the pool can be full).
 int item_entity_spawn(int32_t x, int32_t y, int32_t z, uint16_t item, int count, uint16_t wear);
+
+// Throw one, from a point rather than a cell: what the player does
+// with G. `pickup_at` keeps it on the ground long enough to walk away
+// from, which an ordinary block drop does not need.
+int item_entity_throw(double x, double y, double z, uint16_t item, int count, uint16_t wear, float vx, float vy,
+                      float vz, uint32_t pickup_delay);
 
 // One tick: fall, age, despawn, and fly into `inv` when the player at
 // (px, py, pz) is close enough. Returns how many were picked up.

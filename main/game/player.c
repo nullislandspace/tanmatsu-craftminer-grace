@@ -213,14 +213,20 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     }
 
     // --- Dropping what is held ---------------------------------------
+    //
+    // THROWN, not placed. A dropped item lands inside the 1.4-block
+    // pickup radius whichever way you face -- you cannot throw a thing
+    // further than your own arm in one tick -- so it is the pickup
+    // DELAY that makes G work at all, not the distance. Two seconds is
+    // long enough to walk away from.
     if (act_held(pressed, CM_DROP)) {
         inv_slot_t* s = inv_held(&p->inv);
         if (s->item != 0) {
-            // In front of the player's feet, so it does not vanish back
-            // into the pickup radius the instant it lands.
-            int32_t const fx = (int32_t)floor(p->body.x + (double)(dx * 1.2f));
-            int32_t const fz = (int32_t)floor(p->body.z + (double)(dz * 1.2f));
-            if (item_entity_spawn(fx, (int32_t)floor(p->body.y) + 1, fz, s->item, 1, s->wear) > 0) {
+            double const ox = p->body.x + (double)(dx * 0.4f);
+            double const oy = p->body.y + (double)PHYS_PLAYER_EYE - 0.3;
+            double const oz = p->body.z + (double)(dz * 0.4f);
+            if (item_entity_throw(ox, oy, oz, s->item, 1, s->wear, dx * 0.22f, 0.12f, dz * 0.22f, ITEM_THROW_DELAY) >
+                0) {
                 inv_consume_held(&p->inv);
             }
         }

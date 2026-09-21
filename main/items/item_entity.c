@@ -65,16 +65,44 @@ int item_entity_spawn(int32_t x, int32_t y, int32_t z, uint16_t item, int count,
         e->body.vz = rz * 0.06f;
         e->body.vy = 0.08f;  // a small hop out of the broken cell
 
-        e->alive = true;
-        e->item  = item;
-        e->count = (uint8_t)take;
-        e->wear  = wear;
-        e->age   = 0;
+        e->alive     = true;
+        e->item      = item;
+        e->count     = (uint8_t)take;
+        e->wear      = wear;
+        e->age       = 0;
+        e->pickup_at = ITEM_PICKUP_DELAY;
         s_live++;
         made += take;
         count -= take;
     }
     return made;
+}
+
+int item_entity_throw(double x, double y, double z, uint16_t item, int count, uint16_t wear, float vx, float vy,
+                      float vz, uint32_t pickup_delay) {
+    if (item == 0 || count <= 0) return 0;
+    item_entity_t* e = claim();
+    if (e == NULL) return 0;
+
+    item_def_t const d   = item_def(item);
+    int const        cap = d.stack_max < 1 ? 1 : d.stack_max;
+    int const        take = count < cap ? count : cap;
+
+    phys_body_init(&e->body, x, y, z);
+    e->body.w  = ITEM_ENTITY_SIZE;
+    e->body.h  = ITEM_ENTITY_SIZE;
+    e->body.vx = vx;
+    e->body.vy = vy;
+    e->body.vz = vz;
+
+    e->alive     = true;
+    e->item      = item;
+    e->count     = (uint8_t)take;
+    e->wear      = wear;
+    e->age       = 0;
+    e->pickup_at = pickup_delay;
+    s_live++;
+    return take;
 }
 
 int item_entity_tick(inventory_t* inv, double px, double py, double pz) {
@@ -102,7 +130,7 @@ int item_entity_tick(inventory_t* inv, double px, double py, double pz) {
         if (e->body.hit_x) e->body.vx = 0.0f;
         if (e->body.hit_z) e->body.vz = 0.0f;
 
-        if (inv == NULL || e->age < ITEM_PICKUP_DELAY) continue;
+        if (inv == NULL || e->age < e->pickup_at) continue;
 
         // Close enough? Measured to the player's middle, not their
         // feet, so an item on a ledge at head height counts.

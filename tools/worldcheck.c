@@ -1897,6 +1897,43 @@ static void check_drops(void) {
     CHECK(picked == 1, "the drop was not collected: %d", picked);
     CHECK(inv_count(&inv, BLK_COBBLE) == 1, "the cobblestone is not in the inventory");
 
+    // WHAT THE PLAYER THROWS MUST STAY THROWN for a moment. An item
+    // lands inside the 1.4-block pickup radius whichever way you face,
+    // so without a longer delay pressing G looks like it does nothing:
+    // the item leaves the inventory and is collected again half a
+    // second later.
+    item_entity_reset();
+    inv_clear(&inv);
+    CHECK(item_entity_throw(8.5, 9.3, 8.5, BLK_DIRT, 1, 0, 0.2f, 0.12f, 0.0f, ITEM_THROW_DELAY) == 1,
+          "throwing an item failed");
+    picked = 0;
+    for (uint32_t t = 0; t < ITEM_THROW_DELAY - 1; t++) picked += item_entity_tick(&inv, 8.5, 8.0, 8.5);
+    printf("  a thrown item was still on the ground after %u ticks with the player standing on it\n",
+           ITEM_THROW_DELAY - 1);
+    CHECK(picked == 0, "a thrown item was collected again after %d ticks; G would look like it does nothing",
+          ITEM_THROW_DELAY - 1);
+    CHECK(item_entity_live() == 1, "the thrown item vanished");
+    // ... and then it can be picked up again, or you could never
+    // change your mind.
+    // It comes to rest CLEAR of where it was thrown from -- which is
+    // the other half of G working: an item you have to walk back to.
+    double rest_x = 0.0;
+    for (int i = 0; i < ITEM_ENTITY_MAX; i++) {
+        if (!item_entity_at(i)->alive) continue;
+        rest_x = item_entity_at(i)->body.x;
+        break;
+    }
+    printf("  it came to rest %.2f blocks from the thrower (pickup range %.2f)\n", rest_x - 8.5,
+           (double)ITEM_PICKUP_RANGE);
+    CHECK(rest_x - 8.5 > (double)ITEM_PICKUP_RANGE,
+          "a thrown item settled %.2f blocks away, inside the pickup radius: it would be scooped straight back up",
+          rest_x - 8.5);
+
+    // ... and walking to it picks it up, or you could never change
+    // your mind.
+    for (int t = 0; t < 10 && item_entity_live() > 0; t++) picked += item_entity_tick(&inv, rest_x, 8.0, 8.5);
+    CHECK(picked == 1, "a thrown item could not be picked back up by walking to it");
+
     // A drop nobody collects despawns at ITEM_DESPAWN_TICKS -- in
     // TICKS, so a pause or a week away does not age it (D-51).
     item_entity_reset();

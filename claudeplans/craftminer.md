@@ -1316,6 +1316,25 @@ frame time than the fell.
   in an 86.7 ms frame. `PROF_HUD` now exists so the next person does not have
   to notice a subtraction.
 
+- **F-47** 2026-09-21, **the user asking "how do I drop items?"**: G was bound
+  and wired, and it **appeared to do nothing**. The item left the inventory and
+  was collected again half a second later.
+
+  The arithmetic makes it unavoidable rather than unlucky: the pickup radius is
+  1.4 blocks and nothing can be thrown further than an arm's length in one
+  tick, so a dropped item ALWAYS lands inside it. Distance was never going to
+  be what made G work -- **the pickup delay is**. A block's drop needs 10 ticks
+  (so breaking the floor under you does not snatch it back); a thrown one needs
+  40, which is two seconds and Minecraft's number.
+
+  Now thrown with velocity from eye height rather than placed in a cell, so it
+  arcs, slides and comes to rest **1.7 blocks clear** -- an item you have to
+  walk back to. The host test asserts both halves: that standing on it for 39
+  ticks does not collect it, and that walking to it does.
+
+  Worth noting how it was found: not by testing, but by a question. The feature
+  was "done", host-tested, and committed.
+
 ### Decisions (D-n), each with date and who decided
 
 - **D-53** 2026-09-21, Claude: **item ids below `BLK_COUNT` are block ids.** A
