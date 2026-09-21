@@ -785,9 +785,9 @@ frame time than the fell.
 | | **Accept host:** collision fuzz, DDA against brute force, felling tests | **done** | 2026-09-21: all in `make check`. Collision over hand-built fixtures (rest, terminal-velocity tunnelling, wall slide, step, staircase, 2-block wall, 2-high and 1-high gaps, world edge) plus the jump arc asserted in blocks and seconds; DDA against a brute-force march over 576 directions; felling both ways with the neighbouring tree and the stump checked. |
 | | **Accept device:** `shots scene=replay_walk` gives **identical hashes across two runs** — the proof Part T works | **blocked** (F-45) | The replay scene needs the input stream stored (block 5's save format) and `shots` needs the synchronous chunk mode switched on, or every shot is empty sky. Both carried into block 5. |
 | **4** | **Items** | | |
-| 4.1 | `items.c`, `inventory.c`, merged-stack drops, `item_entity.c` | todo | The dropped item is the first thing in this world that is neither a block nor the player, so its pool, its tick and its place in `SECTION_ENTITIES` are the scaffolding pigs, cows and zombies all reuse. Its age is **elapsed ticks, uint32** (D-51). |
-| 4.2 | Tool durability; hotbar (F1-F6) and the inventory screen (Tab) | todo | The hotbar currently holds six fixed blocks (D-47), which is what made break-and-place testable before the inventory exists. |
-| 4.3 | `hud.c`: crosshair, hotbar, health, hunger | part done | 2026-09-21: `main/game/hud.c` exists with the **crosshair and the block highlight** (step 3.6). The hotbar strip, hearts and hunger row wait for 4.1 and 4.2 to have something to show. |
+| 4.1 | `items.c`, `inventory.c`, merged-stack drops, `item_entity.c` | done (not persisted) | 2026-09-21: **item ids below `BLK_COUNT` ARE block ids** (D-53), so a stack of cobblestone needs no second table and the inventory can draw a block the block registry already describes. Stacking fills partial stacks before empty slots — host-tested, because the other order silently gives you five slots of three cobblestone. Drops spawn from the block table's new drop column, scatter deterministically, fall, and fly to the player. **Age is elapsed ticks** (D-51), despawn asserted at exactly 12000. **Not saved yet**: `SECTION_ENTITIES` is reserved and nothing writes it, so drops are lost on reload — block 5. |
+| 4.2 | Tool durability; hotbar (F1-F6) and the inventory screen (Tab) | done | 2026-09-21: breaking is **held, not tapped** — `item_break_ticks()` of them, so hardness and the tool in hand finally mean something, and progress belongs to a cell so looking away abandons it. The right tool class only: a pickaxe does not dig dirt faster. Too soft a tool still breaks the block and drops nothing. One use of durability per **break**, so felling a tree is one swing of the axe, not forty. Tab opens the grid; F1-F6 swaps a stack onto the hotbar, which is the one operation without which everything past the sixth slot is unreachable. |
+| 4.3 | `hud.c`: crosshair, hotbar, health, hunger | done | 2026-09-21: hotbar with counts and a wear bar, ten hearts, ten drumsticks, and a mining progress bar. **Tools are drawn as shapes, not colours** (D-54) — three stone tools as flat squares are three identical grey squares. Drawn through `se_direct565.h`, not PAX: that is the difference between **13.4 ms a frame and 0.8** (F-46). Health and hunger are displayed but nothing moves them yet; the systems are block 12. |
 | **5** | **First playable — worlds on the SD card** | | |
 | 5.1 | `screens.c`: title -> world list -> new world (name + seed, or rolled) -> play | todo | |
 | 5.2 | Save policy: chunk unload, pause-menu Save, quit. Never per tick | todo | |
@@ -1297,7 +1297,40 @@ frame time than the fell.
   replay work deferred out of step 3.3, and until then shot hashes cover the
   overlay but not the world.
 
+- **F-46** 2026-09-21, step 4.3: **the overlay cost 13.4 ms a frame through
+  PAX** — fifteen per cent of the frame, for about 120 rectangles covering some
+  14000 pixels. At the memory speeds this hardware actually has (F-40) those
+  pixels are worth about 1.5 ms, so the rest was per-call overhead: a matrix, a
+  clip, a shader dispatch and a function-pointer setter, per rectangle.
+
+  Redrawn through `se_direct565.h` — which is public for exactly this reason —
+  it is **0.8 ms**, a 16x cut, and the screenshot is pixel-identical. A
+  rectangle becomes one contiguous halfword run per column, because the display
+  is rotated and a vertical run is what is contiguous in memory.
+
+  It was found only because the phase split did not add up: 71.7 ms of phases
+  in an 86.7 ms frame. `PROF_HUD` now exists so the next person does not have
+  to notice a subtraction.
+
 ### Decisions (D-n), each with date and who decided
+
+- **D-53** 2026-09-21, Claude: **item ids below `BLK_COUNT` are block ids.** A
+  stack of cobblestone is item id `BLK_COBBLE`; `id < BLK_COUNT` is the whole
+  test for "this is a block". Not a coincidence to be tidied away later — it is
+  what stops two registries drifting, and it is why the inventory can draw a
+  block without a sprite: `block_def()` already describes it. Real items — coal,
+  a pickaxe — start at `BLK_COUNT` and carry their own row.
+
+- **D-54** 2026-09-21, Claude: **a tool's icon is a shape, not a colour.** Three
+  stone tools drawn as flat squares are three near-identical grey squares, and
+  picking the wrong one is then something you discover by swinging it. A handle
+  plus a head in the class's outline is tellable apart at a glance and needs no
+  texture. Real sprites (D-03) replace it without a caller changing.
+
+- **D-55** 2026-09-21, Claude: **the player starts with a stone pickaxe, axe and
+  shovel and some blocks.** Crafting is step 8, and without a kit neither
+  durability nor break speed nor placing can be tried at all. It is six lines in
+  `player_spawn` and it goes the day a crafting table can make them.
 
 - **D-51** 2026-09-21, **the user**, before block 4 was written: **a persisted
   duration is a count of ticks elapsed — never seconds, never a timestamp.**

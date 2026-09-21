@@ -23,6 +23,7 @@
 #include "game/input.h"
 #include "game/physics.h"
 #include "game/raycast.h"
+#include "items/inventory.h"
 
 // Blocks per tick. 0.215 is about 4.3 blocks a second, Minecraft's
 // walk. Sneaking is a little under a third of it.
@@ -49,20 +50,40 @@
 #define PL_JUMP     0.32f  // -> apex 1.33 blocks
 #define PL_TERMINAL 3.0f   // blocks a tick: nothing falls faster
 
+// Survival, in Minecraft's units: 20 is full, and the HUD draws them
+// as ten hearts and ten drumsticks. The SYSTEMS that move them --
+// starvation, regeneration, fall damage, eating -- are block 12; this
+// carries and shows them.
+#define PL_HEALTH_MAX 20
+#define PL_HUNGER_MAX 20
+
 typedef struct {
     phys_body_t body;
     float       yaw, pitch;
+    inventory_t inv;
+    int         health, hunger;
+
+    // Breaking is HELD, not tapped: a block takes item_break_ticks() of
+    // them, which is what makes hardness and tool choice mean anything
+    // and what the crack overlay will animate. Tracked against the cell
+    // being mined, so looking away abandons the progress.
+    int32_t mine_x, mine_y, mine_z;
+    int     mine_ticks;   // ticks spent on that cell
+    int     mine_needed;  // ticks it takes, for the progress bar
+    bool    mining;
 
     // The previous tick's pose, so a frame drawn between two ticks can
     // interpolate instead of stepping.
     double prev_x, prev_y, prev_z;
     float  prev_yaw, prev_pitch;
 
-    bool   in_air_last;   // for a landing sound, later
-    int    selected;      // hotbar slot 0..5; block 4 gives it an inventory
-    ray_hit_t aim;        // what the crosshair found this tick
+    bool      in_air_last;  // for a landing sound, later
+    ray_hit_t aim;          // what the crosshair found this tick
     bool      aim_valid;
 } player_t;
+
+// How far through breaking the aimed block, 0..1. Zero when not mining.
+float player_mine_progress(player_t const* p);
 
 // Put the player at (x, z), standing on whatever is there.
 void player_spawn(player_t* p, double x, double z, float yaw);

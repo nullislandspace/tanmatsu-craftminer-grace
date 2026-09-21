@@ -33,6 +33,7 @@
 
 #include "game/physics.h"
 #include "game/raycast.h"
+#include "items/inventory.h"
 
 #define FELL_RADIUS 8   // blocks from the break, horizontally
 #define FELL_HEIGHT 24  // ... and upwards
@@ -42,14 +43,19 @@
 // right drops and show the right particles.
 typedef struct {
     bool    ok;
-    uint8_t block;    // what was there
-    int     felled;   // blocks removed IN TOTAL (1 for an ordinary break)
-    bool    was_tree; // the felling rule applied
+    uint8_t block;     // what was there
+    int     felled;    // blocks removed IN TOTAL (1 for an ordinary break)
+    bool    was_tree;  // the felling rule applied
+    int     dropped;   // items spawned on the ground
 } break_result_t;
 
-// Break the block at (x, y, z). Refuses bedrock, air and anything
-// outside the resident world. Applies the logging rule.
-break_result_t interact_break(int32_t x, int32_t y, int32_t z);
+// Break the block at (x, y, z) with `tool_item` in hand. Refuses
+// bedrock, air and anything outside the resident world. Applies the
+// logging rule, and drops what the block table says -- but only if the
+// tool qualifies (items.h, item_can_harvest): a block mined with too
+// soft a tool still breaks and simply yields nothing, which is what
+// makes a stone pickaxe progress rather than a permission slip.
+break_result_t interact_break(int32_t x, int32_t y, int32_t z, uint16_t tool_item);
 
 // Put `block` in the empty cell the ray reported (hit->p*), if it is
 // free and the player's own box is not in the way. `avoid` is the

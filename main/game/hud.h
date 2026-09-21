@@ -23,6 +23,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "game/player.h"
 #include "pax_gfx.h"
 
 // The wireframe box round the block being aimed at, RELATIVE TO THE
@@ -34,3 +35,21 @@ void hud_block_outline(int32_t bx, int32_t by, int32_t bz);
 // resolution layer has been upscaled onto it -- so it is crisp at full
 // resolution rather than doubled up with everything else.
 void hud_crosshair(pax_buf_t* fb);
+
+// The hotbar, the hearts and the hunger row. Same place in the frame
+// as the crosshair, and for the same reason: text and thin borders at
+// quarter resolution are unreadable.
+void hud_player(pax_buf_t* fb, player_t const* p);
+
+// The Tab screen, over everything. Nothing if it is not open.
+void hud_inventory(pax_buf_t* fb, player_t const* p);
+
+// The cracks over the block being mined: a progress bar is not what
+// Minecraft does, but a bar is legible where cracks need a texture set
+// that does not exist yet (the crack overlay is `voxel_fx`, waiting on
+// this). Drawn with the world, so it sits on the block.
+void hud_mine_progress(pax_buf_t* fb, float progress);
+
+// The dropped items lying about, as small cubes. Submitted with the
+// world, between scene_begin() and scene_prepare().
+void hud_dropped_items(void);

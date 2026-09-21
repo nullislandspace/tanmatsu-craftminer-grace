@@ -46,6 +46,11 @@ set(APP_SOURCES
     main/game/tick.c
     main/game/hud.c
 
+    # Items, and the inventory that holds them.
+    main/items/items.c
+    main/items/inventory.c
+    main/items/item_entity.c
+
     # Textures by name, cached.
     main/common/texcache.c
 )

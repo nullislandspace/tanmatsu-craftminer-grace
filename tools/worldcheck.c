@@ -38,6 +38,8 @@
 #include "game/raycast.h"
 #include "game/interact.h"
 #include "game/player.h"
+#include "items/inventory.h"
+#include "items/item_entity.h"
 
 static int s_fail = 0;
 
@@ -1713,6 +1715,7 @@ static void check_raycast(void) {
 static void check_felling(void) {
     printf("the logging rule\n");
     CHECK(flat_world(8) != NULL, "the test world would not become resident");
+    item_entity_reset();
 
     // A tree: a trunk with a canopy, all GROWN (no ST_PLACED).
     int32_t const tx = 8, tz = 8, base = 8;
@@ -1734,7 +1737,7 @@ static void check_felling(void) {
     set_block(tx, base + 2, tz, BLK_LOG, ST_PLACED);
 
     // Breaking the PLACED one takes exactly that block.
-    break_result_t r = interact_break(tx, base + 2, tz);
+    break_result_t r = interact_break(tx, base + 2, tz, ITEM_AXE_STONE);
     printf("  breaking a placed log took %d block(s), tree=%d\n", r.felled, (int)r.was_tree);
     CHECK(r.ok, "breaking a placed log failed");
     CHECK(!r.was_tree, "breaking a PLACED log felled the tree");
@@ -1742,7 +1745,7 @@ static void check_felling(void) {
     CHECK(world_block(tx, base + 3, tz) == BLK_LOG, "the trunk above a placed log was taken");
 
     // Breaking a GROWN one fells everything from there up.
-    r = interact_break(tx, base + 3, tz);
+    r = interact_break(tx, base + 3, tz, ITEM_AXE_STONE);
     printf("  breaking a grown log took %d block(s), tree=%d\n", r.felled, (int)r.was_tree);
     CHECK(r.ok && r.was_tree, "breaking a grown log did not fell the tree");
     CHECK(r.felled > 20, "felling took only %d blocks; the canopy should have gone too", r.felled);
@@ -1772,8 +1775,156 @@ static void check_felling(void) {
     CHECK(interact_place(&h, BLK_LOG, NULL), "placing a log failed");
     CHECK(world_block(20, base, 20) == BLK_LOG, "the placed log is not there");
     CHECK((world_state(20, base, 20) & ST_PLACED) != 0, "a placed block does not have ST_PLACED set");
-    r = interact_break(20, base, 20);
+    r = interact_break(20, base, 20, ITEM_AXE_STONE);
     CHECK(!r.was_tree && r.felled == 1, "a just-placed log felled as a tree");
+}
+
+static void check_items(void) {
+    printf("items and the inventory\n");
+
+    // The two id spaces meet without a gap, which is what lets a block
+    // be an item without a second table to keep in step.
+    CHECK(item_is_block(BLK_COBBLE), "a block id is not an item");
+    CHECK(!item_is_block(ITEM_COAL), "coal is being treated as a block");
+    CHECK(item_block(BLK_COBBLE) == BLK_COBBLE, "a block item does not place its own block");
+    CHECK(item_block(ITEM_COAL) == BLK_AIR, "coal claims to place a block");
+    CHECK(item_def(BLK_COBBLE).name != NULL && item_def(BLK_COBBLE).name[0] != 0,
+          "a block item has no name; the block table should have supplied it");
+
+    // Tools speed up their own class and nothing else. A pickaxe that
+    // digs dirt faster makes carrying a shovel pointless.
+    int const stone_hand  = item_break_ticks(BLK_STONE, 0);
+    int const stone_pick  = item_break_ticks(BLK_STONE, ITEM_PICK_STONE);
+    int const stone_shov  = item_break_ticks(BLK_STONE, ITEM_SHOVEL_STONE);
+    int const dirt_hand   = item_break_ticks(BLK_DIRT, 0);
+    int const dirt_shovel = item_break_ticks(BLK_DIRT, ITEM_SHOVEL_STONE);
+    printf("  stone: %d ticks by hand, %d with a stone pickaxe, %d with a shovel\n", stone_hand, stone_pick,
+           stone_shov);
+    printf("  dirt:  %d ticks by hand, %d with a stone shovel\n", dirt_hand, dirt_shovel);
+    CHECK(stone_pick < stone_hand, "a pickaxe does not speed up stone");
+    CHECK(stone_shov == stone_hand, "a shovel speeds up stone; only the right class should");
+    CHECK(dirt_shovel < dirt_hand, "a shovel does not speed up dirt");
+    CHECK(item_break_ticks(BLK_BARRIER, ITEM_PICK_STONE) < 0, "the edge of the world is breakable");
+
+    // Too soft a tool still breaks the block; it just yields nothing.
+    CHECK(!item_can_harvest(BLK_STONE, 0), "bare hands harvest stone");
+    CHECK(item_can_harvest(BLK_STONE, ITEM_PICK_WOOD), "a wooden pickaxe cannot harvest stone");
+    CHECK(item_can_harvest(BLK_DIRT, 0), "bare hands cannot harvest dirt");
+
+    // --- Stacking ----------------------------------------------------
+    inventory_t inv;
+    inv_clear(&inv);
+    CHECK(inv_add(&inv, BLK_COBBLE, 10, 0) == 0, "10 cobblestone would not fit in an empty inventory");
+    CHECK(inv_add(&inv, BLK_COBBLE, 10, 0) == 0, "a second 10 would not fit");
+    CHECK(inv_count(&inv, BLK_COBBLE) == 20, "20 cobblestone are not all there: %d", inv_count(&inv, BLK_COBBLE));
+
+    // THE POINT: they must be in ONE slot, not two of ten. A partial
+    // stack has to be filled before an empty slot is taken.
+    int used = 0;
+    for (int i = 0; i < INV_SLOTS; i++) used += inv.slot[i].item != 0;
+    printf("  20 cobblestone in %d slot(s)\n", used);
+    CHECK(used == 1, "20 cobblestone are spread over %d slots; partial stacks are not being filled first", used);
+
+    // Overflow goes to a second slot, and the whole inventory fills.
+    inv_clear(&inv);
+    int const cap  = INV_SLOTS * ITEM_STACK_MAX;
+    int const left = inv_add(&inv, BLK_DIRT, cap + 7, 0);
+    printf("  an inventory holds %d dirt; %d of %d were refused\n", cap, left, cap + 7);
+    CHECK(left == 7, "a full inventory refused %d, expected 7", left);
+    CHECK(inv_count(&inv, BLK_DIRT) == cap, "a full inventory holds %d, expected %d", inv_count(&inv, BLK_DIRT), cap);
+
+    // Tools never stack, and two differently-worn ones stay two.
+    inv_clear(&inv);
+    inv_add(&inv, ITEM_PICK_STONE, 1, 0);
+    inv_add(&inv, ITEM_PICK_STONE, 1, 40);
+    used = 0;
+    for (int i = 0; i < INV_SLOTS; i++) used += inv.slot[i].item != 0;
+    CHECK(used == 2, "two pickaxes merged into %d slot(s): one of them silently repaired", used);
+
+    // --- Durability ---------------------------------------------------
+    inv_clear(&inv);
+    inv_add(&inv, ITEM_PICK_WOOD, 1, 0);
+    uint16_t const life = item_def(ITEM_PICK_WOOD).durability;
+    int            uses = 0;
+    while (uses < 1000) {
+        uses++;
+        if (inv_wear_held(&inv, 1)) break;
+    }
+    printf("  a wooden pickaxe lasted %d uses (durability %u)\n", uses, life);
+    CHECK(uses == (int)life, "a pickaxe lasted %d uses, expected %u", uses, life);
+    CHECK(inv_held(&inv)->item == 0, "a broken tool left something in the slot");
+    CHECK(!inv_wear_held(&inv, 1), "wearing an empty slot reported a break");
+
+    // A block never wears, however hard it is swung.
+    inv_clear(&inv);
+    inv_add(&inv, BLK_COBBLE, 5, 0);
+    CHECK(!inv_wear_held(&inv, 100), "a stack of cobblestone broke like a tool");
+    CHECK(inv_held(&inv)->count == 5, "wearing a block stack changed its count");
+
+    // Placing consumes exactly one.
+    CHECK(inv_consume_held(&inv), "placing from a stack of 5 failed");
+    CHECK(inv_held(&inv)->count == 4, "placing took %d, expected 1", 5 - inv_held(&inv)->count);
+}
+
+static void check_drops(void) {
+    printf("drops and despawn\n");
+    CHECK(flat_world(8) != NULL, "the test world would not become resident");
+    item_entity_reset();
+    inventory_t inv;
+    inv_clear(&inv);
+
+    // Stone drops cobblestone -- but only to a tool that qualifies.
+    set_block(8, 8, 8, BLK_STONE, 0);
+    break_result_t r = interact_break(8, 8, 8, 0);  // bare hands
+    CHECK(r.ok, "stone would not break by hand");
+    printf("  stone broken by hand dropped %d\n", r.dropped);
+    CHECK(r.dropped == 0, "bare hands harvested stone");
+
+    set_block(8, 8, 8, BLK_STONE, 0);
+    r = interact_break(8, 8, 8, ITEM_PICK_STONE);
+    printf("  stone broken with a pickaxe dropped %d\n", r.dropped);
+    CHECK(r.dropped == 1, "a pickaxe on stone dropped %d, expected 1", r.dropped);
+    CHECK(item_entity_live() == 1, "the drop is not on the ground");
+
+    // It falls, then is collected when the player comes near -- and
+    // NOT before ITEM_PICKUP_DELAY, or breaking a block under your feet
+    // snatches it back before it is visible.
+    int picked = 0;
+    for (uint32_t t = 0; t < ITEM_PICKUP_DELAY - 1; t++) picked += item_entity_tick(&inv, 8.5, 8.0, 8.5);
+    CHECK(picked == 0, "a drop was collected before ITEM_PICKUP_DELAY");
+    for (int t = 0; t < 20 && item_entity_live() > 0; t++) picked += item_entity_tick(&inv, 8.5, 8.0, 8.5);
+    printf("  picked up %d after the delay; %d still on the ground\n", picked, item_entity_live());
+    CHECK(picked == 1, "the drop was not collected: %d", picked);
+    CHECK(inv_count(&inv, BLK_COBBLE) == 1, "the cobblestone is not in the inventory");
+
+    // A drop nobody collects despawns at ITEM_DESPAWN_TICKS -- in
+    // TICKS, so a pause or a week away does not age it (D-51).
+    item_entity_reset();
+    CHECK(item_entity_spawn(20, 9, 20, BLK_DIRT, 1, 0) == 1, "spawning a drop failed");
+    uint32_t t = 0;
+    while (item_entity_live() > 0 && t < ITEM_DESPAWN_TICKS * 2) {
+        item_entity_tick(NULL, 0.0, 0.0, 0.0);  // no player: nothing collects it
+        t++;
+    }
+    printf("  an uncollected drop despawned after %u ticks (%.1f minutes at 20 Hz)\n", t,
+           (double)t / 20.0 / 60.0);
+    CHECK(t == ITEM_DESPAWN_TICKS, "a drop despawned after %u ticks, expected %u", t, ITEM_DESPAWN_TICKS);
+
+    // Felling drops every block it takes, which is the point of felling.
+    item_entity_reset();
+    for (int y = 0; y < 5; y++) set_block(30, 8 + y, 30, BLK_LOG, 0);
+    r = interact_break(30, 8, 30, ITEM_AXE_STONE);
+    printf("  felling a 5-log trunk took %d blocks and dropped %d\n", r.felled, r.dropped);
+    CHECK(r.was_tree, "the trunk did not fell");
+    CHECK(r.dropped == r.felled, "felling took %d blocks but dropped %d", r.felled, r.dropped);
+
+    // The pool is finite and a full one must refuse, not corrupt.
+    item_entity_reset();
+    int made = 0;
+    for (int i = 0; i < ITEM_ENTITY_MAX + 20; i++) made += item_entity_spawn(40, 9, 40, ITEM_PICK_WOOD, 1, 0);
+    printf("  the pool took %d of %d single-item drops\n", made, ITEM_ENTITY_MAX + 20);
+    CHECK(made == ITEM_ENTITY_MAX, "the pool took %d, expected its size %d", made, ITEM_ENTITY_MAX);
+    CHECK(item_entity_live() == ITEM_ENTITY_MAX, "the live count disagrees with what was made");
 }
 
 int main(void) {
@@ -1805,6 +1956,8 @@ int main(void) {
     check_physics();
     check_raycast();
     check_felling();
+    check_items();
+    check_drops();
     chunk_store_shutdown();
     if (s_fail) {
         printf("\nworldcheck: %d FAILURE(S)\n", s_fail);

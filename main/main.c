@@ -666,6 +666,7 @@ static void on_render(pax_buf_t* fb, void* user) {
     if (s_cam_effective == CAM_PLAYER && s_player.aim_valid) {
         hud_block_outline(s_player.aim.x, s_player.aim.y, s_player.aim.z);
     }
+    hud_dropped_items();
     prof_end(PROF_SUBMIT);
 
     prof_begin(PROF_PREPARE);
@@ -696,7 +697,17 @@ static void on_render(pax_buf_t* fb, void* user) {
     // Not while the debug camera is flying, where it would mean
     // nothing -- but yes during a test, so a reference screenshot
     // covers the overlay as well as the world.
-    if (s_cam_effective != CAM_FREE) hud_crosshair(fb);
+    // Not while the debug camera is flying, where they belong to
+    // nobody -- but yes during a test, so a reference shot covers the
+    // overlay as well as the world.
+    if (s_cam_effective != CAM_FREE) {
+        prof_begin(PROF_HUD);
+        hud_crosshair(fb);
+        hud_mine_progress(fb, player_mine_progress(&s_player));
+        hud_player(fb, &s_player);
+        hud_inventory(fb, &s_player);
+        prof_end(PROF_HUD);
+    }
 
     devtest_after_render(fb, rast_us);
     frame_stats();

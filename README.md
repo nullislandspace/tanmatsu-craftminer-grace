@@ -61,9 +61,11 @@ You walk. The camera is the player unless you press **F**.
 | cursor keys | look |
 | `Space` | jump |
 | `L-Shift` | sneak |
-| `Q` | break the block under the crosshair |
+| `Q` | **hold** to break the block under the crosshair |
 | `E` | place the selected one |
-| `F1`–`F6` | hotbar: cobble, planks, dirt, glass, torch, sand |
+| `G` | drop what you are holding |
+| `Tab` | inventory — cursor keys move, `F1`–`F6` put a stack on the hotbar |
+| `F1`–`F6` | hotbar slot |
 | `F` | switch to the debug camera and back |
 | `Esc` | leave (this becomes the pause menu, step 5.3) |
 

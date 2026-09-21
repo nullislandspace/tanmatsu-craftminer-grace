@@ -5,12 +5,17 @@
 //  (a flower), 20 = one second (dirt), 150 = seven seconds (stone by
 //  hand). A tool of the right class divides it; step 4 owns that maths.
 //
-//  `drop_item` is 0 (ITEM_NONE) everywhere until the item registry
-//  lands in step 4. Mining still works before then -- it just drops
-//  nothing -- which is exactly what step 3 needs.
+//  `drop_item` is an ITEM id (items/items.h), and for anything that
+//  drops itself that is simply its own block id -- the two id spaces
+//  are deliberately the same below BLK_COUNT. The interesting rows are
+//  the ones where they differ: stone drops cobblestone, grass drops
+//  dirt, coal ore drops coal. A block with no drop row drops nothing,
+//  which is right for water, leaves, glass and tall grass.
 // =====================================================================
 
 #include "world/blocks.h"
+
+#include "items/items.h"  // the ITEM_* ids the drop column names
 
 #define M3(t, s, b) \
     { (t), (s), (b) }
@@ -20,21 +25,21 @@
 block_def_t const BLOCKS[BLK_COUNT] = {
     [BLK_AIR] = {.name = "air", .kind = K_AIR, .mat = M1(0), .hardness = HARDNESS_UNBREAKABLE, .flags = BF_REPLACEABLE},
 
-    [BLK_GRASS] = {.name     = "grass",
+    [BLK_GRASS] = {.name     = "grass", .drop_item = BLK_DIRT, .drop_min = 1, .drop_max = 1,
                    .kind     = K_CUBE,
                    .mat      = M3(VM_GRASS_TOP, VM_GRASS_SIDE, VM_DIRT),
                    .hardness = 20,
                    .tool     = TOOL_SHOVEL,
                    .flags    = BF_SOLID | BF_OPAQUE},
 
-    [BLK_DIRT] = {.name     = "dirt",
+    [BLK_DIRT] = {.name     = "dirt", .drop_item = BLK_DIRT, .drop_min = 1, .drop_max = 1,
                   .kind     = K_CUBE,
                   .mat      = M1(VM_DIRT),
                   .hardness = 20,
                   .tool     = TOOL_SHOVEL,
                   .flags    = BF_SOLID | BF_OPAQUE},
 
-    [BLK_STONE] = {.name       = "stone",
+    [BLK_STONE] = {.name       = "stone", .drop_item = BLK_COBBLE, .drop_min = 1, .drop_max = 1,
                    .kind       = K_CUBE,
                    .mat        = M1(VM_STONE),
                    .hardness   = 150,
@@ -42,7 +47,7 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                    .tool_level = 1,
                    .flags      = BF_SOLID | BF_OPAQUE},
 
-    [BLK_COBBLE] = {.name       = "cobblestone",
+    [BLK_COBBLE] = {.name       = "cobblestone", .drop_item = BLK_COBBLE, .drop_min = 1, .drop_max = 1,
                     .kind       = K_CUBE,
                     .mat        = M1(VM_COBBLE),
                     .hardness   = 160,
@@ -50,7 +55,7 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                     .tool_level = 1,
                     .flags      = BF_SOLID | BF_OPAQUE},
 
-    [BLK_SAND] = {.name     = "sand",
+    [BLK_SAND] = {.name     = "sand", .drop_item = BLK_SAND, .drop_min = 1, .drop_max = 1,
                   .kind     = K_CUBE,
                   .mat      = M1(VM_SAND),
                   .hardness = 15,
@@ -65,14 +70,14 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                    .hardness = HARDNESS_UNBREAKABLE,
                    .flags    = BF_OPAQUE | BF_REPLACEABLE | BF_LIQUID},
 
-    [BLK_LOG] = {.name     = "log",
+    [BLK_LOG] = {.name     = "log", .drop_item = BLK_LOG, .drop_min = 1, .drop_max = 1,
                  .kind     = K_CUBE,
                  .mat      = M3(VM_LOG_TOP, VM_LOG_SIDE, VM_LOG_TOP),
                  .hardness = 40,
                  .tool     = TOOL_AXE,
                  .flags    = BF_SOLID | BF_OPAQUE | BF_FELLABLE},
 
-    [BLK_PLANKS] = {.name     = "planks",
+    [BLK_PLANKS] = {.name     = "planks", .drop_item = BLK_PLANKS, .drop_min = 1, .drop_max = 1,
                     .kind     = K_CUBE,
                     .mat      = M1(VM_PLANKS),
                     .hardness = 40,
@@ -86,7 +91,7 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                     .tool     = TOOL_SHEARS,
                     .flags    = BF_SOLID | BF_FELLABLE | BF_SEE_SELF},
 
-    [BLK_COAL_ORE] = {.name       = "coal_ore",
+    [BLK_COAL_ORE] = {.name       = "coal_ore", .drop_item = ITEM_COAL, .drop_min = 1, .drop_max = 1,
                       .kind       = K_CUBE,
                       .mat        = M1(VM_COAL),
                       .hardness   = 200,
@@ -96,13 +101,13 @@ block_def_t const BLOCKS[BLK_COUNT] = {
 
     [BLK_GLASS] = {.name = "glass", .kind = K_SEE, .mat = M1(VM_GLASS), .hardness = 12, .flags = BF_SOLID},
 
-    [BLK_TORCH] = {.name = "torch", .kind = K_TORCH, .mat = M1(VM_TORCH), .hardness = 1, .light = 14},
+    [BLK_TORCH] = {.name = "torch", .drop_item = BLK_TORCH, .drop_min = 1, .drop_max = 1, .kind = K_TORCH, .mat = M1(VM_TORCH), .hardness = 1, .light = 14},
 
     [BLK_FLOWER_RED] =
-        {.name = "flower_red", .kind = K_PLANT, .mat = M1(VM_FLOWER_RED), .hardness = 1, .flags = BF_REPLACEABLE},
+        {.name = "flower_red", .drop_item = BLK_FLOWER_RED, .drop_min = 1, .drop_max = 1, .kind = K_PLANT, .mat = M1(VM_FLOWER_RED), .hardness = 1, .flags = BF_REPLACEABLE},
 
     [BLK_FLOWER_YELLOW] =
-        {.name = "flower_yellow", .kind = K_PLANT, .mat = M1(VM_FLOWER_YELLOW), .hardness = 1, .flags = BF_REPLACEABLE},
+        {.name = "flower_yellow", .drop_item = BLK_FLOWER_YELLOW, .drop_min = 1, .drop_max = 1, .kind = K_PLANT, .mat = M1(VM_FLOWER_YELLOW), .hardness = 1, .flags = BF_REPLACEABLE},
 
     [BLK_TALL_GRASS] =
         {.name = "tall_grass", .kind = K_PLANT, .mat = M1(VM_TALL_GRASS), .hardness = 1, .flags = BF_REPLACEABLE},

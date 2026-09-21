@@ -4,7 +4,14 @@
 
 #include "game/interact.h"
 
+#include "common/rng.h"
+#include "items/item_entity.h"
 #include "world/chunk.h"
+
+// Which tool the current fell is being done with. A parameter would
+// have to thread through the flood fill's whole frontier; the fell is
+// one call on one task, so this is simply set around it.
+static uint16_t s_fell_tool;
 
 static inline int32_t fl(double v) {
     int32_t const i = (int32_t)v;
@@ -15,6 +22,23 @@ static inline int32_t fl(double v) {
 static bool grown_tree(int32_t x, int32_t y, int32_t z) {
     if (!block_fellable(world_block(x, y, z))) return false;
     return (world_state(x, y, z) & ST_PLACED) == 0;
+}
+
+// Drop what a block yields, on the ground where it stood.
+static int drop_for(uint8_t block, int32_t x, int32_t y, int32_t z, uint16_t tool_item) {
+    block_def_t const* d = block_def(block);
+    if (d->drop_item == ITEM_NONE || d->drop_max == 0) return 0;
+    if (!item_can_harvest(block, tool_item)) return 0;
+
+    int n = d->drop_min;
+    if (d->drop_max > d->drop_min) {
+        // Deterministic from the cell, so a replay drops the same
+        // number and two players breaking the same block agree.
+        float const r = cm_rand3(x, y, z, 0x0D40Fu);
+        n += (int)(r * (float)(d->drop_max - d->drop_min + 1));
+        if (n > d->drop_max) n = d->drop_max;
+    }
+    return item_entity_spawn(x, y, z, d->drop_item, n, 0);
 }
 
 int interact_fell(int32_t x0, int32_t y0, int32_t z0) {
@@ -30,7 +54,9 @@ int interact_fell(int32_t x0, int32_t y0, int32_t z0) {
     stack[n].z = z0;
     n++;
     // Take the first one immediately, so it cannot be pushed again.
+    uint8_t const first = world_block(x0, y0, z0);
     world_set(x0, y0, z0, BLK_AIR, 0);
+    drop_for(first, x0, y0, z0, s_fell_tool);
     taken++;
 
     while (n > 0) {
@@ -60,7 +86,9 @@ int interact_fell(int32_t x0, int32_t y0, int32_t z0) {
                     // Clear it as it is pushed, not as it is popped:
                     // that is what stops it being reached twice, and it
                     // is why no "visited" set is needed.
+                    uint8_t const was = world_block(nx, ny, nz);
                     world_set(nx, ny, nz, BLK_AIR, 0);
+                    drop_for(was, nx, ny, nz, s_fell_tool);
                     taken++;
                     stack[n].x = nx;
                     stack[n].y = ny;
@@ -73,7 +101,7 @@ int interact_fell(int32_t x0, int32_t y0, int32_t z0) {
     return taken;
 }
 
-break_result_t interact_break(int32_t x, int32_t y, int32_t z) {
+break_result_t interact_break(int32_t x, int32_t y, int32_t z, uint16_t tool_item) {
     break_result_t r = {0};
     uint8_t const  b = world_block(x, y, z);
     r.block          = b;
@@ -82,17 +110,22 @@ break_result_t interact_break(int32_t x, int32_t y, int32_t z) {
     if (block_def(b)->hardness == HARDNESS_UNBREAKABLE) return r;  // bedrock, and the world's edge
     if (chunk_find(chunk_of(x), chunk_of(z)) == NULL) return r;
 
+    int const before = item_entity_live();
     bool const placed = (world_state(x, y, z) & ST_PLACED) != 0;
     if (block_fellable(b) && !placed) {
-        r.felled   = interact_fell(x, y, z);
-        r.was_tree = true;
-        r.ok       = true;
+        s_fell_tool = tool_item;
+        r.felled    = interact_fell(x, y, z);
+        r.was_tree  = true;
+        r.ok        = true;
+        r.dropped   = item_entity_live() - before;
         return r;
     }
 
     world_set(x, y, z, BLK_AIR, 0);
-    r.felled = 1;
-    r.ok     = true;
+    drop_for(b, x, y, z, tool_item);
+    r.felled  = 1;
+    r.ok      = true;
+    r.dropped = item_entity_live() - before;
     return r;
 }
 

@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "game/interact.h"
+#include "items/item_entity.h"
 #include "world/chunk.h"
 
 // Just short of straight up or down. Exactly +-pi/2 makes the forward
@@ -25,18 +26,71 @@ void player_spawn(player_t* p, double x, double z, float yaw) {
     p->prev_yaw   = yaw;
     p->prev_pitch = 0.0f;
     p->in_air_last = false;
-    p->selected    = 0;
     p->aim_valid   = false;
+    p->mining      = false;
+    p->mine_ticks  = 0;
+    p->health      = PL_HEALTH_MAX;
+    p->hunger      = PL_HUNGER_MAX;
+
+    inv_clear(&p->inv);
+    // A starting kit, until crafting exists (step 8). Tools so that
+    // durability and break speed can be felt, blocks so that placing
+    // can be. Remove this the day a crafting table can make them.
+    inv_add(&p->inv, ITEM_PICK_STONE, 1, 0);
+    inv_add(&p->inv, ITEM_AXE_STONE, 1, 0);
+    inv_add(&p->inv, ITEM_SHOVEL_STONE, 1, 0);
+    inv_add(&p->inv, BLK_COBBLE, 64, 0);
+    inv_add(&p->inv, BLK_PLANKS, 64, 0);
+    inv_add(&p->inv, BLK_TORCH, 32, 0);
 }
 
-// What the hotbar holds until block 4 gives it an inventory. Six slots
-// of blocks a player can actually place, so break-and-place is testable
-// now rather than after the inventory lands.
-static uint8_t const HOTBAR[6] = {
-    BLK_COBBLE, BLK_PLANKS, BLK_DIRT, BLK_GLASS, BLK_TORCH, BLK_SAND,
-};
+float player_mine_progress(player_t const* p) {
+    if (!p->mining || p->mine_needed <= 0) return 0.0f;
+    float const f = (float)p->mine_ticks / (float)p->mine_needed;
+    return f < 0.0f ? 0.0f : f > 1.0f ? 1.0f : f;
+}
 
 void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
+    // --- The inventory screen ----------------------------------------
+    //
+    // Open, it takes the movement and look keys for navigation and the
+    // player stands still. Reading a grid while still walking is how
+    // you end up in the lava you were standing next to.
+    if (act_held(pressed, CM_INVENTORY)) {
+        p->inv.open = !p->inv.open;
+        p->mining   = false;
+    }
+    if (p->inv.open) {
+        p->prev_x     = p->body.x;
+        p->prev_y     = p->body.y;
+        p->prev_z     = p->body.z;
+        p->prev_yaw   = p->yaw;
+        p->prev_pitch = p->pitch;
+
+        int const dx = (act_held(pressed, CM_RIGHT) || act_held(pressed, CM_LOOK_RIGHT) ? 1 : 0) -
+                       (act_held(pressed, CM_LEFT) || act_held(pressed, CM_LOOK_LEFT) ? 1 : 0);
+        int const dy = (act_held(pressed, CM_BACK) || act_held(pressed, CM_LOOK_DOWN) ? 1 : 0) -
+                       (act_held(pressed, CM_FORWARD) || act_held(pressed, CM_LOOK_UP) ? 1 : 0);
+        if (dx || dy) inv_move_cursor(&p->inv, dx, dy);
+
+        // A hotbar key SWAPS the cursor's stack into that slot -- the
+        // one operation the screen has to support, since without it
+        // everything past the sixth slot is unreachable.
+        for (int i = 0; i < INV_HOTBAR; i++) {
+            if (act_held(pressed, (cm_action_t)(CM_SLOT1 + i))) inv_swap(&p->inv, p->inv.cursor, i);
+        }
+
+        // Still fall while reading: standing over a hole and opening
+        // the inventory must not make you hover.
+        p->body.vx = 0.0f;
+        p->body.vz = 0.0f;
+        phys_move(&p->body, 0.0, (double)p->body.vy, 0.0);
+        phys_gravity(&p->body, PL_GRAVITY, PL_DRAG, PL_TERMINAL);
+        item_entity_tick(&p->inv, p->body.x, p->body.y, p->body.z);
+        p->aim_valid = false;
+        return;
+    }
+
     p->prev_x     = p->body.x;
     p->prev_y     = p->body.y;
     p->prev_z     = p->body.z;
@@ -104,8 +158,11 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     phys_gravity(&p->body, PL_GRAVITY, PL_DRAG, PL_TERMINAL);
 
     // --- The hotbar ---------------------------------------------------
-    for (int i = 0; i < 6; i++) {
-        if (act_held(pressed, (cm_action_t)(CM_SLOT1 + i))) p->selected = i;
+    for (int i = 0; i < INV_HOTBAR; i++) {
+        if (act_held(pressed, (cm_action_t)(CM_SLOT1 + i))) {
+            p->inv.selected = i;
+            p->mining       = false;  // switching tools abandons the dig
+        }
     }
 
     // --- What the crosshair is on ------------------------------------
@@ -114,16 +171,63 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     ray_forward(p->yaw, p->pitch, &dx, &dy, &dz);
     p->aim_valid = ray_pick(ex, ey, ez, dx, dy, dz, RAY_REACH, true, &p->aim);
 
-    // --- Breaking and placing ----------------------------------------
+    uint16_t const held = inv_held(&p->inv)->item;
+
+    // --- Breaking, which is HELD ------------------------------------
     //
-    // On the EDGE, not while held: block 4 gives breaking a progress
-    // bar driven by hardness, and until then one press is one block.
-    if (p->aim_valid && act_held(pressed, CM_ATTACK)) {
-        interact_break(p->aim.x, p->aim.y, p->aim.z);
-        p->aim_valid = false;  // whatever was aimed at is gone
-    } else if (p->aim_valid && act_held(pressed, CM_USE)) {
-        interact_place(&p->aim, HOTBAR[p->selected], &p->body);
+    // A block takes item_break_ticks() of them. That is what makes
+    // hardness and the tool in hand mean anything, and it is what the
+    // crack overlay animates once it is retargeted. Progress belongs to
+    // a CELL: look away and it is abandoned, which is the behaviour
+    // everyone expects and nobody states.
+    if (p->aim_valid && act_held(mask, CM_ATTACK)) {
+        bool const same = p->mining && p->mine_x == p->aim.x && p->mine_y == p->aim.y && p->mine_z == p->aim.z;
+        if (!same) {
+            p->mining      = true;
+            p->mine_x      = p->aim.x;
+            p->mine_y      = p->aim.y;
+            p->mine_z      = p->aim.z;
+            p->mine_ticks  = 0;
+            p->mine_needed = item_break_ticks(p->aim.block, held);
+        }
+        if (p->mine_needed < 0) {
+            p->mining = false;  // unbreakable: bedrock, or the edge of the world
+        } else if (++p->mine_ticks >= p->mine_needed) {
+            break_result_t const r = interact_break(p->aim.x, p->aim.y, p->aim.z, held);
+            if (r.ok) {
+                // One use per BREAK, not per felled block: a tree is
+                // one swing of the axe, not forty.
+                inv_wear_held(&p->inv, 1);
+            }
+            p->mining    = false;
+            p->aim_valid = false;  // whatever was aimed at is gone
+        }
+    } else {
+        p->mining = false;
     }
+
+    // --- Placing, which is a tap -------------------------------------
+    if (p->aim_valid && act_held(pressed, CM_USE)) {
+        uint8_t const block = item_block(held);
+        if (block != BLK_AIR && interact_place(&p->aim, block, &p->body)) inv_consume_held(&p->inv);
+    }
+
+    // --- Dropping what is held ---------------------------------------
+    if (act_held(pressed, CM_DROP)) {
+        inv_slot_t* s = inv_held(&p->inv);
+        if (s->item != 0) {
+            // In front of the player's feet, so it does not vanish back
+            // into the pickup radius the instant it lands.
+            int32_t const fx = (int32_t)floor(p->body.x + (double)(dx * 1.2f));
+            int32_t const fz = (int32_t)floor(p->body.z + (double)(dz * 1.2f));
+            if (item_entity_spawn(fx, (int32_t)floor(p->body.y) + 1, fz, s->item, 1, s->wear) > 0) {
+                inv_consume_held(&p->inv);
+            }
+        }
+    }
+
+    // --- What is lying about -----------------------------------------
+    item_entity_tick(&p->inv, p->body.x, p->body.y, p->body.z);
 }
 
 void player_eye(player_t const* p, float alpha, double* x, double* y, double* z, float* yaw, float* pitch) {

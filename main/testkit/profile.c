@@ -8,7 +8,7 @@
 
 static char const* const NAMES[PROF_COUNT] = {
     [PROF_FILL] = "fill",   [PROF_SUBMIT] = "submit", [PROF_PREPARE] = "prep", [PROF_WAIT] = "wait",
-    [PROF_RASTER] = "rast", [PROF_BLIT] = "blit",     [PROF_VSYNC] = "vsync",
+    [PROF_RASTER] = "rast", [PROF_HUD] = "hud",       [PROF_BLIT] = "blit",     [PROF_VSYNC] = "vsync",
 };
 
 static int64_t s_open[PROF_COUNT];  // when the current begin() happened

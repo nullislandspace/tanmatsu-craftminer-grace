@@ -34,6 +34,7 @@ typedef enum {
     PROF_WAIT,      // backdrop_finish: fills still running when the CPU was done, plus the CPU's share (horizon wedge,
                     // fallback)
     PROF_RASTER,    // scene_rasterize: flat triangles, textured ones, then edges
+    PROF_HUD,       // the overlay drawn onto the framebuffer after the upscale
     PROF_BLIT,      // engine present: frame handed to the LCD (se_present_stats)
     PROF_VSYNC,     // engine present: idle until the tearing-effect signal
     PROF_COUNT,

@@ -31,6 +31,9 @@ PURE=(
     main/game/physics.c     main/game/physics.h
     main/game/raycast.c     main/game/raycast.h
     main/game/interact.c    main/game/interact.h
+    main/items/items.c      main/items/items.h
+    main/items/inventory.c  main/items/inventory.h
+    main/items/item_entity.c main/items/item_entity.h
 )
 
 # Headers a pure module must not reach for. psram.h is the sanctioned
