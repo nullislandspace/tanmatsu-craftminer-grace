@@ -67,67 +67,81 @@ Three principles, in order:
    a mob is a table row plus a PNG — never a code edit in five files.
 3. **One directory per concern.**
 
+**`*` marks what exists today; everything else is still the plan.** Kept
+honest deliberately -- a layout document that quietly disagrees with the tree
+is worse than none, because it is the thing a newcomer trusts.
+
 ```
 main/
-  main.c                  app_main, se_app_config_t, the five callbacks
+* main.c                  app_main, se_app_config_t, the five callbacks
   app.h                   cm_app_t -- the context threaded through se_run's `user`
   common/
-    psram.h               cm_alloc/cm_calloc/cm_free -- the ONLY host/badge seam
-    rng.{c,h}             xorshift64*, hash2/hash3, value noise          (pure)
-    texcache.{c,h}        LIFTED
+*   psram.h               cm_alloc/cm_calloc/cm_free -- the ONLY host/badge seam
+*   rng.{c,h}             xorshift64*, hash2/hash3, value noise          (pure)
+*   tags.{c,h}            the NBT-like tagged-field codec (D-30)         (pure)
+*   texcache.{c,h}        LIFTED
   math/
-    xform.{c,h}           LIFTED (vec3_t, mat3_t, smoothstep)            (pure)
-    mesh.{c,h}            LIFTED + mesh_tri_t.dir + per-direction ranges (pure)
-    mesh_render.{c,h}     LIFTED + mesh_submit_world()
-    camera.{c,h}          LIFTED
+*   xform.{c,h}           LIFTED (vec3_t, mat3_t, smoothstep)            (pure)
+*   mesh.{c,h}            LIFTED + mesh_tri_t.dir                        (pure)
+*   mesh_render.{c,h}     LIFTED + mesh_submit_world()
+*   camera.{c,h}          LIFTED
   voxel/
-    voxel_mesh.{c,h}      LIFTED; vox_grid_t UNCHANGED, tables not switches (pure)
-    voxel_sky.{c,h}       LIFTED
-    voxel_fx.{c,h}        LIFTED, retargeted from the edit list to the live world
-    backdrop.{c,h}        LIFTED
-    horizon.{c,h}         LIFTED
+*   voxel_mesh.{c,h}      LIFTED + vox_grid_t.y0 for sections (D-34)     (pure)
+    voxel_sky.{c,h}       LIFTED, not yet built
+    voxel_fx.{c,h}        LIFTED, not yet built: waits on the crack overlay
+    backdrop.{c,h}        LIFTED, not yet built
+    horizon.{c,h}         LIFTED, not yet built
   world/
-    blocks.{c,h}          BLOCK REGISTRY                                 (pure)
-    worldgen.{c,h}        pure (seed, cx, cz) -> id/state planes         (pure)
+*   blocks.{c,h}          BLOCK REGISTRY                                 (pure)
+*   worldgen.{c,h}        pure (seed, cx, cz) -> id/state planes         (pure)
     farlands.{c,h}        the far-lands density field and its ramp       (pure)
-    chunk.{c,h}           chunk_t, the ring store, world_block/set/state
-    chunk_codec.{c,h}     RLE over a chunk's two planes                  (pure)
-    region.{c,h}          region file: header, dual directory, append, compaction
-    worldstore.{c,h}      world dir, level.cmw, worlds.idx, FatFs enumeration
-    chunk_worker.{c,h}    the core-1 task, queues, the ownership contract
-    chunk_render.{c,h}    per-chunk LOD cache, frustum cull, submission
+*   chunk.{c,h}           chunk_t, the ring store, world_block/set/state
+*   chunk_codec.{c,h}     RLE over a chunk's two planes                  (pure)
+*   chunkmesh.{c,h}       one vertical section into a mesh               (pure)
+*   region.{c,h}          region file: header, dual directory, compaction
+*   vfs_compat.{c,h}      the FatFs calls graceloader does not export (D-27)
+*   worldstore.{c,h}      world dir, level.cmw, FatFs enumeration
+*   chunk_worker.{c,h}    the core-1 task, queues, the ownership contract
+*   chunk_render.{c,h}    per-section LOD cache, frustum cull, submission
   game/
-    tick.{c,h}            fixed step, tick_input_t, replay record/play
-    physics.{c,h}         swept AABB against voxels                      (pure)
-    raycast.{c,h}         DDA block pick                                 (pure)
-    player.{c,h}          movement, health, hunger, spawn/respawn
-    interact.{c,h}        mine/place/use, durability, drops, TREE FELLING
-    entity.{c,h}          entity pool + entity_def_t type table
+*   tick.{c,h}            fixed step; replay record/play is step 5.8
+*   physics.{c,h}         swept AABB against voxels                      (pure)
+*   raycast.{c,h}         DDA block pick                                 (pure)
+*   player.{c,h}          movement, mining, spawn; health/hunger are shown only
+*   interact.{c,h}        break/place, drops, TREE FELLING               (pure)
+*   input.{c,h}           se_bindings + the look abstraction
+*   hud.{c,h}             crosshair, block outline, hotbar, bars
+*   flycam.{c,h}          the debug camera, on F
+*   membench.{c,h}        what the memory costs, at boot (F-40)
+    entity.{c,h}          the general pool; item_entity is its first case
     mob_*.c animal_*.c    one file per creature
   items/
-    items.{c,h}           ITEM REGISTRY                                  (pure)
-    inventory.{c,h}       slots, hotbar, stacking, transfer              (pure)
+*   items.{c,h}           ITEM REGISTRY; ids below BLK_COUNT are blocks  (pure)
+*   inventory.{c,h}       slots, hotbar, stacking, the Tab grid          (pure)
+*   item_entity.{c,h}     dropped items: pool, tick, despawn             (pure)
     recipes.{c,h}         RECIPE TABLE + resolver                        (pure)
   ui/
     screens.{c,h}         title / worlds / new / play / pause / settings
-    hud.{c,h}             crosshair, hotbar, bars
     keybind_ui.{c,h}      ADAPTED from synthracer
     worldlist_ui.{c,h}    world select / create / delete
     textentry.{c,h}       on-screen name and seed entry
-  input/
-    controls.{c,h}        se_bindings declaration + NVS (the synthracer pattern)
-    input.{c,h}           action/axis abstraction -- the only thing call sites see
-    look_source.{c,h}     pluggable look provider (keys now, mouse later)
   settings/
     gfx_settings.{c,h}    textures, render scale, view distance (NVS)
-  testkit/                as shipped, wired into CMakeLists
+* testkit/                wired into CMakeLists; PROF_HUD added (F-46)
 tools/
-  worldcheck.c            host test of every pure module
+* worldcheck.c            host test of every pure module
   scenecheck.c            host budget test via synthengine3D/host/se_host_stub.c
-  meshcheck.c             LIFTED
-  make_textures.py        LIFTED, extended
-textures/craftminer/      the block PNGs
+* meshcheck.c             LIFTED + the sectioning check (D-34)
+* hostpurity.sh           the pure set really is pure
+* badgectl.py             ping / mode / exitapp
+* make_textures.py        LIFTED
+* textures/               the block PNGs
 ```
+
+Two departures from the plan above, both deliberate: `hud.{c,h}` and
+`input.{c,h}` live in `game/` rather than `ui/` and `input/`, because each is
+one file that only the player uses and a directory holding one file is a
+directory you forget to look in. They move the day a second file joins them.
 
 ### The three registries (the extendability contract)
 
@@ -1640,15 +1654,28 @@ frame time than the fell.
   (every undefined symbol exists in fakelib), `make format`.
 - **By hand:** the user plays step 5 and gives feedback before step 8 starts.
 
-### Where it stands after block 1 (2026-09-20)
+### Where it stands after block 4 (2026-09-21)
 
-`make check` runs eleven sections on the host in about a second: blocks,
-hashing and noise, tagged fields, chunk coordinates, the state byte, the store,
-worldgen, the codec, regions (damage, torn writes, compaction), sections, the
-world store, the palette, and streaming. `make cycle` builds, installs, runs and
-measures on the badge without anyone touching it, and the app returns to the
-launcher by itself. `make ping` / `mode` / `exitapp` answer "is it alive" when a
-cycle goes wrong.
+`make check` runs on the host in about a second and now covers, beyond block
+1's world sections: **the mesher's vertical sectioning** (a lump meshed whole
+and in slices must have the same surface area and enclosed volume);
+**collision** (resting, terminal-velocity tunnelling, wall slide, a step, a
+staircase, a 2-block wall, a 2-high gap and a 1-high one, the edge of the
+world); **the jump arc**, asserted in blocks and seconds; **picking**, against a
+brute-force march over 576 directions; **the logging rule**, both ways, with the
+stump and the neighbouring tree checked; and **items** -- tool speed by class,
+harvest qualification, partial-stack filling, a full inventory refusing the
+overflow, durability to the exact use, drops, the throw delay, despawn at
+exactly 12000 ticks, and a full entity pool refusing rather than corrupting.
+
+`scenecheck` is still not written; the budget it would guard is instead watched
+by the device `perf` run's primitive counts.
+
+**A screenshot can be looked at, not just hashed.** `badgelink fs download` on
+a `shots` PNG pulls the framebuffer off the badge, which is how the crosshair's
+position and the HUD were checked rather than assumed. What it cannot yet show
+is the world: a `shots` run SETS the clock instead of running it, so the chunks
+never stream and every shot is empty sky (F-45, step 5.8).
 
 ## Critical files
 
@@ -1662,5 +1689,16 @@ cycle goes wrong.
 - **Copied verbatim:** `dir_open()` from `synthengine3D/src/se_mp3.c:198-245`,
   the FatFs path probing for world enumeration and deletion.
 - **Changed:** `CMakeLists.txt`, `Makefile`, `metadata/metadata.json`,
-  `main/main.c`, `README.md`.
-- **Engine:** no changes planned. Anything that turns up there -> stop and ask.
+  `main/main.c`, `README.md`, and `main/testkit/profile.{c,h}` (`PROF_HUD`,
+  F-46).
+- **Engine: CHANGED, with permission (D-39).** No longer "no changes planned",
+  which it was until the user asked for the rasteriser to be looked at.
+  SynthEngine3D is a submodule and its commits are its own; the version stays
+  **2.1** while it is work in progress, as asked.
+  * `CMakeLists.txt`: built `-O2`, not `-Os` (F-39).
+  * `src/se_scene.c`: `ceil_i` / `floor_i` instead of the libm calls in the
+    column scans, and per-pass pixel and span counters.
+  * `include/se_scene.h`: `scene_fill_stats()` -- the one public addition.
+  * `CHANGELOG.md`: all of the above, with the measurements.
+  The standing rule still holds for everything NOT asked for: an engine problem
+  that turns up in passing is still stop-and-ask.
