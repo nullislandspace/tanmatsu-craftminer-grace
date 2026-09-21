@@ -772,11 +772,11 @@ frame time than the fell.
 | 2.5 | Vertical render sections (D-34) and a hand-flown camera | done | 2026-09-21: `vox_grid_t.y0`; 4 sections a chunk, each culled and meshed on its own; meshes moved out of the static `chunk_t` into the PSRAM slab (**−35 KiB bss**). **12.6 → 13.6 fps** (F-35, two runs each). The mesh check proves the seam is exact by meshing a lump whole and in slices and comparing surface area and volume — and fails when the offset or the border is broken. Free flight (WASD / arrows / Space / Shift, T and V toggles) whenever no test is running (D-38). |
 | | **Accept host:** `make scenecheck` no cap overflow at any view distance; `make meshcheck` `dir` matches every normal. **Accept device:** `make cycle TEST="perf scene=flyover secs=20"`; **submit must be under 6 ms** | | |
 | **3** | **The player** | | |
-| 3.1 | `physics.c`: swept AABB (0.6 x 1.8), gravity, jump, step-up | todo | |
-| 3.2 | `raycast.c`: DDA pick, block + face normal, reach 4.5 | todo | |
-| 3.3 | `tick.c`: fixed step, interpolation, replay record/play | todo | |
-| 3.4 | `input.c` + `look_source.c` + `controls.c` (se_bindings, the user's defaults) | todo | |
-| 3.5 | `interact.c`: break/place with `ST_PLACED`; `voxel_fx` retargeted; **tree felling** | todo | |
+| 3.1 | `physics.c`: swept AABB (0.6 x 1.8), gravity, jump, step-up | done | 2026-09-21: axis-at-a-time sweep in sub-steps of 0.25 so nothing tunnels at terminal velocity (3 blocks a tick, against a body 1.8 tall). Step height is **a whole block, not Minecraft's 0.6** (D-45). Host-tested: rests exactly on the floor, slides along walls, climbs a step and a staircase, refuses a 2-block wall, fits a 2-high gap and not a 1-high one, stops at the edge of the resident world. |
+| 3.2 | `raycast.c`: DDA pick, block + face normal, reach 4.5 | done | 2026-09-21: Amanatides-Woo, reporting the face entered through and the cell in front of it. Host-tested against a **brute-force march over 576 directions**, every one agreeing on hit/miss and on which block. |
+| 3.3 | `tick.c`: fixed step, interpolation, replay record/play | done (replay deferred) | 2026-09-21: fixed 20 Hz off the show clock, capped at 5 ticks a frame with the remainder forgiven rather than carried (a stutter must not spiral), position AND view angles interpolated. `tick_freeze` for D-26. **Replay record/play is not written**: it needs the input stream stored somewhere, which is step 5's save format, and the `shots` determinism it serves also needs synchronous chunk loading turned on for the test. Listed in block 5. |
+| 3.4 | `input.c` + `look_source.c` + `controls.c` (se_bindings, the user's defaults) | done (menu in 6.1) | 2026-09-21: 21 actions through `se_bindings`, every one remappable and persisted; the defaults the user specified. Looking goes through `input_look()`, so a mouse replaces the cursor keys without touching a call site. The menu itself is step 6.1. |
+| 3.5 | `interact.c`: break/place with `ST_PLACED`; `voxel_fx` retargeted; **tree felling** | done (`voxel_fx` deferred) | 2026-09-21: break and place on the key edge, `ST_PLACED` set on every placement, and **the logging rule** -- a placed log drops itself, a grown one fells the tree. Host-tested both ways, including that a tree 12 blocks away keeps all its logs and that the stump below the break survives. `voxel_fx` (crack overlay, particles) waits for block 4's break-progress timer, which is what it would animate. |
 | | **Accept host:** collision fuzz, DDA against brute force, felling tests. **Accept device:** `shots scene=replay_walk` gives **identical hashes across two runs** — the proof Part T works | | |
 | **4** | **Items** | | |
 | 4.1 | `items.c`, `inventory.c`, merged-stack drops, `item_entity.c` | todo | |
@@ -1227,6 +1227,12 @@ frame time than the fell.
   to look for: sectioning multiplied the number of mesh jobs by four and I left
   every budget around it alone.
 
+- **F-42** 2026-09-21, step 3.1: the first step-up test **passed while the code
+  was wrong and then failed while it was right**, because it checked the body's
+  height after a walk that had already crossed the step and dropped off the far
+  side. A physics assertion has to name the moment as well as the value. The
+  test now walks onto a plateau wide enough to end standing on it.
+
 ### Decisions (D-n), each with date and who decided
 
 - **D-01** 2026-09-20, Claude: **a floating render origin.** The engine subtracts
@@ -1301,6 +1307,26 @@ frame time than the fell.
   floor, and 99% of its triangles are in one section). The rule now: any claim
   about "the terrain" or "a chunk" is measured over a sample spread across the
   world, and the sample size goes in the finding.
+
+- **D-45** 2026-09-21, Claude: **a step is a whole block, not Minecraft's
+  0.6.** There, 0.6 exists so that stairs and slabs are walkable and full blocks
+  are not; you jump for those. This is a handheld with a keyboard and no mouse,
+  there are no stairs yet, and tapping jump at every clod of terrain is tiring
+  in a way it is not with a hand already on a mouse. Walls are still walls: a
+  step is kept only if the body can settle onto something afterwards, so two
+  blocks stops you, and the host test asserts exactly that. Easy to reverse --
+  it is one constant, `PHYS_STEP`.
+
+- **D-46** 2026-09-21, Claude: **Esc leaves, until the pause menu exists.**
+  `f1_exits` is now false because F1-F6 are the hotbar (D-05), so the engine's
+  own way out is gone. Esc becomes "open the pause menu" in step 5.3, and that
+  menu saves before it quits -- which is the reason the key had to come back
+  from the engine in the first place.
+
+- **D-47** 2026-09-21, Claude: **the hotbar holds six placeable blocks until
+  block 4 gives it an inventory.** Cobble, planks, dirt, glass, torch, sand on
+  F1-F6. Breaking and placing are the thing worth testing by hand now, and
+  waiting for the inventory to test them would be waiting for the wrong reason.
 
 - **D-43** 2026-09-21, Claude: **a limit the ring imposes is checked by the
   compiler, not by a comment.** `CH_RING`'s comment had said "a residency

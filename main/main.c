@@ -18,12 +18,17 @@
 
 #include <math.h>
 #include <string.h>
+#include "bsp/device.h"
 #include "common/texcache.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "game/flycam.h"
+#include "game/input.h"
+#include "game/interact.h"
 #include "game/membench.h"
+#include "game/player.h"
+#include "game/tick.h"
 #include "gl_input.h"
 #include "graceloader.h"
 #include "math/mesh_render.h"
@@ -99,6 +104,26 @@ static double   s_paused_at;
 static bool     s_flying = true;
 static flycam_t s_free;
 static bool     s_free_ready;  // the free camera has been put somewhere sensible
+
+// --- Walking, rather than flying ----------------------------------------
+//
+// Block 3. The player is the default now; the free camera is still
+// there on a key, because looking at the world from above is how half
+// the render bugs so far were found.
+//
+// WHO DRIVES THE CAMERA:
+//   a test is running   the scripted circle, a pure function of the
+//                       show clock, so `shots` hashes mean something
+//   F key               the free camera (flycam.h)
+//   otherwise           the player (player.h), at a fixed 20 Hz
+
+typedef enum { CAM_PLAYER = 0, CAM_FREE, CAM_SCRIPTED } cam_mode_t;
+
+static player_t     s_player;
+static tick_clock_t s_tick;
+static bool         s_player_ready;
+static cam_mode_t   s_cam_mode = CAM_PLAYER;
+static int          s_ticks_last_frame;
 
 static double fly_time(void) {
     return (s_flying ? showtime_now() : s_paused_at) - s_time_off;
@@ -403,6 +428,16 @@ static void on_init(void* user) {
         return;
     }
     ESP_LOGI(TAG, "chunk worker running, %s", chunk_worker_synchronous() ? "SYNCHRONOUS" : "on core 1");
+
+    // The player. Bindings first, because player_tick reads them.
+    input_init();
+    player_spawn(&s_player, player.x, player.z, player.yaw);
+    tick_reset(&s_tick, showtime_now());
+    // Frozen until the chunk under them is resident: nobody falls
+    // through terrain that has not arrived yet (D-26).
+    tick_freeze(&s_tick, true);
+    ESP_LOGI(TAG, "player spawn %.1f, %.1f (F to fly, Esc to leave)", player.x, player.z);
+
     log_memory("world ready");
 }
 
@@ -413,8 +448,10 @@ static void on_update(float dt, void* user) {
     showtime_frame();
     devtest_update();
 
+    cam_mode_t const mode = devtest_running() ? CAM_SCRIPTED : s_cam_mode;
+
     // Where the camera will be this frame decides what has to exist.
-    if (devtest_running()) {
+    if (mode == CAM_SCRIPTED) {
         float yaw;
         fly_pose(fly_time(), &s_cam.wx, &s_cam.wz, &yaw);
         s_cam.yaw        = yaw;
@@ -423,15 +460,15 @@ static void on_update(float dt, void* user) {
         // rather than through it.
         int const ground = world_ground((int32_t)floor(s_cam.wx), (int32_t)floor(s_cam.wz));
         s_cam.wy         = (float)(ground > 0 ? ground : CH_SEA_LEVEL) + FLY_EYE_H;
-    } else {
+        s_ticks_last_frame = 0;
+    } else if (mode == CAM_FREE) {
         if (!s_free_ready) {
-            // Start where the scripted path starts, so the first thing
-            // seen by hand is the same view the tests measure.
-            double wx, wz;
-            float  yaw;
-            fly_pose(0.0, &wx, &wz, &yaw);
-            flycam_reset(&s_free, wx, wz, (float)CH_SEA_LEVEL + 8.0f, yaw);
-            s_free_ready = true;
+            // Start where the player is, so switching to the free
+            // camera looks at what the player was looking at.
+            flycam_reset(&s_free, s_player.body.x, s_player.body.z, (float)s_player.body.y + PHYS_PLAYER_EYE,
+                         s_player.yaw);
+            s_free.placed = true;
+            s_free_ready  = true;
         }
         flycam_update(&s_free, dt);
         s_cam.wx    = s_free.wx;
@@ -439,12 +476,49 @@ static void on_update(float dt, void* user) {
         s_cam.wy    = s_free.wy;
         s_cam.yaw   = s_free.yaw;
         s_cam.pitch = s_free.pitch;
+        s_ticks_last_frame = 0;
+    } else {
+        // THE SIMULATION. A fixed number of whole 20 Hz ticks, from the
+        // show clock so the testkit can drive it; the frame then draws
+        // between the last two (D-02).
+        int const n = tick_due(&s_tick, showtime_now());
+        for (int i = 0; i < n; i++) {
+            cm_actions_t const mask = input_sample();
+            player_tick(&s_player, mask, input_pressed());
+        }
+        s_ticks_last_frame = n;
+
+        double x, y, z;
+        float  yaw, pitch;
+        player_eye(&s_player, tick_alpha(&s_tick), &x, &y, &z, &yaw, &pitch);
+        s_cam.wx    = x;
+        s_cam.wy    = (float)y;
+        s_cam.wz    = z;
+        s_cam.yaw   = yaw;
+        s_cam.pitch = pitch;
     }
 
     // Take delivery of what core 1 finished, with a budget so a burst
     // cannot blow a frame, then ask for what is still missing.
     chunk_worker_collect(CHUNK_RESULTS_PER_FRAME);
     chunk_render_stream(s_cam.wx, s_cam.wz);
+
+    // The ground under the player has to exist before they may fall
+    // through it (D-26). Frozen until the chunk they are standing in is
+    // resident, which on entering a world is the first thing that
+    // arrives.
+    if (mode == CAM_PLAYER) {
+        bool const standing = chunk_find(chunk_of((int32_t)floor(s_player.body.x)),
+                                         chunk_of((int32_t)floor(s_player.body.z))) != NULL;
+        tick_freeze(&s_tick, !standing);
+        if (standing && !s_player_ready) {
+            // First solid ground: stand the player on it rather than
+            // wherever the spawn guess put them.
+            player_spawn(&s_player, s_player.body.x, s_player.body.z, s_player.yaw);
+            s_player_ready = true;
+            ESP_LOGI(TAG, "player standing at %.1f, %.1f, %.1f", s_player.body.x, s_player.body.y, s_player.body.z);
+        }
+    }
 }
 
 // Whatever the engine did not consume itself (it takes volume, the
@@ -456,13 +530,35 @@ static void on_update(float dt, void* user) {
 // held down is a state and not an event. What is here is the handful of
 // things that toggle, which is exactly what an event is for.
 //
-//   P  pause the scripted flight (free flight has nothing to pause)
+//   F  walk <-> fly (the debug camera; the player is the default)
+//   P  pause the scripted flight (nothing else has anything to pause)
 //   T  textures <-> flat mean colours
 //   V  view distance: near / medium / far
+//
+// The PLAYER's own keys are not here: they are bindings, polled once a
+// tick (input.h), because a key being held is a state and not an event.
 static void on_input(bsp_input_event_t const* ev, void* user) {
     (void)user;
     if (ev->type != INPUT_EVENT_TYPE_SCANCODE) return;
     switch (ev->args_scancode.scancode) {
+        case BSP_INPUT_SCANCODE_F:
+            s_cam_mode   = (s_cam_mode == CAM_PLAYER) ? CAM_FREE : CAM_PLAYER;
+            s_free_ready = false;  // re-place the free camera where the player is
+            // Whichever was not running has a stale clock; start it
+            // clean so the player does not get a tick's worth of
+            // movement owed from however long they were flying.
+            tick_reset(&s_tick, showtime_now());
+            ESP_LOGI(TAG, "camera: %s", s_cam_mode == CAM_PLAYER ? "player" : "free flight");
+            break;
+
+        case BSP_INPUT_SCANCODE_ESC:
+            // Until the pause menu (5.3), Esc is the way out. It will
+            // become "open the pause menu", whose Quit saves first.
+            ESP_LOGI(TAG, "leaving for the launcher");
+            audio_mixer_shutdown();  // a speaker left running across the restart squeals
+            bsp_device_restart_to_launcher();
+            break;
+
         case BSP_INPUT_SCANCODE_P:
             if (s_flying) {
                 s_paused_at = showtime_now();
@@ -570,7 +666,11 @@ static void on_render(pax_buf_t* fb, void* user) {
 
 void app_main(void) {
     static se_app_config_t const cfg = {
-        .f1_exits      = true,         // the engine returns to the launcher
+        // F1-F6 are the hotbar (D-05), so the engine does not get F1.
+        // Leaving is Esc, which becomes the pause menu in step 5.3 --
+        // and that menu saves before it quits, which is the reason the
+        // key had to come back from the engine in the first place.
+        .f1_exits      = false,
         .backdrop_argb = 0xFF6EA8D8u,  // a flat daylight sky, for now
     };
     static se_app_callbacks_t const cb = {

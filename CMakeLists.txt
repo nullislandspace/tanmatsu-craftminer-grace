@@ -35,9 +35,15 @@ set(APP_SOURCES
     main/common/rng.c
     main/common/tags.c
 
-    # A camera to fly by hand while there is no player to walk with.
+    # A camera to fly by hand, and the player who walks.
     main/game/flycam.c
     main/game/membench.c
+    main/game/physics.c
+    main/game/raycast.c
+    main/game/interact.c
+    main/game/input.c
+    main/game/player.c
+    main/game/tick.c
 
     # Textures by name, cached.
     main/common/texcache.c

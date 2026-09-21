@@ -28,6 +28,9 @@ PURE=(
     main/world/chunk_codec.c main/world/chunk_codec.h
     main/world/region.c     main/world/region.h
     main/common/tags.c      main/common/tags.h
+    main/game/physics.c     main/game/physics.h
+    main/game/raycast.c     main/game/raycast.h
+    main/game/interact.c    main/game/interact.h
 )
 
 # Headers a pure module must not reach for. psram.h is the sanctioned

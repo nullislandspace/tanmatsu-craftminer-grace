@@ -34,6 +34,9 @@
 #include "world/chunk_worker.h"
 #include "world/chunkmesh.h"
 #include "world/worldstore.h"
+#include "game/physics.h"
+#include "game/raycast.h"
+#include "game/interact.h"
 
 static int s_fail = 0;
 
@@ -1438,6 +1441,275 @@ static void check_streaming(void) {
     chunk_store_shutdown();
 }
 
+// --- The player ------------------------------------------------------
+//
+// Physics, picking and the felling rule are pure, so all three are
+// tested here in seconds rather than by walking into things on the
+// badge. A hand-built chunk is the test fixture: exact terrain, no
+// generation, no seed.
+
+// Claim chunk (0,0) and its ring, fill them with a flat floor at y, and
+// hand back the chunk so a test can carve shapes into it.
+static chunk_t* flat_world(int floor_y) {
+    for (int32_t cz = -1; cz <= 1; cz++) {
+        for (int32_t cx = -1; cx <= 1; cx++) {
+            chunk_t* c = chunk_claim(cx, cz);
+            if (c == NULL) continue;
+            memset(c->id, BLK_AIR, CH_CELLS);
+            memset(c->st, 0, CH_CELLS);
+            for (int z = 0; z < CH_D; z++) {
+                for (int x = 0; x < CH_W; x++) {
+                    for (int y = 0; y < floor_y; y++) c->id[CH_IDX(x, y, z)] = BLK_STONE;
+                }
+            }
+            c->cstate = CS_READY;
+            chunk_resummarise(c);
+        }
+    }
+    return chunk_find(0, 0);
+}
+
+static void set_block(int32_t x, int32_t y, int32_t z, uint8_t b, uint8_t st) {
+    chunk_t* c = chunk_find(chunk_of(x), chunk_of(z));
+    if (c == NULL) return;
+    c->id[CH_IDX(chunk_off(x), y, chunk_off(z))] = b;
+    c->st[CH_IDX(chunk_off(x), y, chunk_off(z))] = st;
+    chunk_resummarise(c);
+}
+
+static void check_physics(void) {
+    printf("physics\n");
+    CHECK(flat_world(8) != NULL, "the test world would not become resident");
+
+    phys_body_t b;
+
+    // Falls onto the floor and stops exactly on top of it.
+    phys_body_init(&b, 8.5, 20.0, 8.5);
+    for (int i = 0; i < 200; i++) phys_move(&b, 0.0, -0.4, 0.0);
+    printf("  fell to y = %.3f (floor top is 8)\n", b.y);
+    CHECK(b.on_ground, "a body that fell 12 blocks is not on the ground");
+    CHECK(b.y > 7.99 && b.y < 8.01, "a body came to rest at y %g, expected 8", b.y);
+
+    // A fast fall must not pass through the floor: 3 blocks a tick is
+    // terminal velocity and the floor is 8 thick, but one sub-step must
+    // never cross more than a block.
+    phys_body_init(&b, 8.5, 40.0, 8.5);
+    for (int i = 0; i < 60; i++) phys_move(&b, 0.0, -3.0, 0.0);
+    CHECK(b.y > 7.99 && b.y < 8.01, "at terminal velocity a body tunnelled to y %g", b.y);
+
+    // Walks into a wall and stops against it, without stopping dead in
+    // the other axis (it must slide).
+    set_block(11, 8, 8, BLK_STONE, 0);
+    set_block(11, 9, 8, BLK_STONE, 0);
+    phys_body_init(&b, 8.5, 8.0, 8.5);
+    for (int i = 0; i < 40; i++) phys_move(&b, 0.2, -0.1, 0.0);
+    printf("  stopped at x = %.3f against a wall whose face is at 11\n", b.x);
+    CHECK(b.x < 10.71 && b.x > 10.69, "a body stopped at x %g, expected 10.70 (11 - 0.3)", b.x);
+    CHECK(b.hit_x, "a body against a wall does not report hit_x");
+
+    // A one-block step is walked up without jumping: a plateau at y = 8,
+    // wide enough that the walk ends standing ON it rather than having
+    // crossed it and dropped off the far side.
+    CHECK(flat_world(8) != NULL, "the test world would not rebuild");
+    for (int32_t x = 11; x <= 24; x++) {
+        for (int32_t z = 6; z <= 10; z++) set_block(x, 8, z, BLK_STONE, 0);
+    }
+    phys_body_init(&b, 8.5, 8.0, 8.5);
+    for (int i = 0; i < 40; i++) phys_move(&b, 0.2, -0.1, 0.0);
+    printf("  after walking at a 1-block step: x %.2f, y %.2f\n", b.x, b.y);
+    CHECK(b.x > 12.0, "a body stopped at a 1-block rise instead of stepping up (x %g)", b.x);
+    CHECK(b.y > 8.99 && b.y < 9.01, "a body is at y %g on top of a 1-block rise, expected 9", b.y);
+    CHECK(b.on_ground, "a body that stepped up is not on the ground");
+
+    // Two of them in a row: a staircase is walkable, which is what the
+    // step is for.
+    for (int32_t x = 15; x <= 24; x++) {
+        for (int32_t z = 6; z <= 10; z++) set_block(x, 9, z, BLK_STONE, 0);
+    }
+    phys_body_init(&b, 8.5, 8.0, 8.5);
+    for (int i = 0; i < 60; i++) phys_move(&b, 0.2, -0.1, 0.0);
+    printf("  after a two-step staircase: x %.2f, y %.2f\n", b.x, b.y);
+    CHECK(b.y > 9.99 && b.y < 10.01, "a body is at y %g after two steps, expected 10", b.y);
+
+    // A two-block wall is NOT climbed. This is the bound that keeps
+    // the step from being a cheat: walls stay walls.
+    CHECK(flat_world(8) != NULL, "the test world would not rebuild");
+    for (int32_t z = 6; z <= 10; z++) {
+        set_block(14, 8, z, BLK_STONE, 0);
+        set_block(14, 9, z, BLK_STONE, 0);
+    }
+    phys_body_init(&b, 8.5, 8.0, 8.5);
+    for (int i = 0; i < 60; i++) phys_move(&b, 0.2, -0.1, 0.0);
+    printf("  against a 2-block wall: x %.2f, y %.2f\n", b.x, b.y);
+    CHECK(b.y < 8.6, "a body climbed a 2-block wall (y %g)", b.y);
+    CHECK(b.x < 13.8, "a body passed through a 2-block wall (x %g)", b.x);
+
+    // A 2-block gap is walkable; a 1-block one is not (the player is
+    // 1.8 tall).
+    CHECK(flat_world(8) != NULL, "the test world would not rebuild");
+    for (int32_t x = 20; x <= 26; x++) {
+        set_block(x, 10, 8, BLK_STONE, 0);  // a ceiling 2 blocks above the floor
+    }
+    phys_body_init(&b, 19.5, 8.0, 8.5);
+    for (int i = 0; i < 60; i++) phys_move(&b, 0.2, -0.1, 0.0);
+    printf("  through a 2-high gap: x %.2f\n", b.x);
+    CHECK(b.x > 26.0, "a body could not walk through a 2-block-high gap (x %g)", b.x);
+
+    for (int32_t x = 30; x <= 36; x++) {
+        set_block(x, 9, 8, BLK_STONE, 0);  // a ceiling 1 block above the floor
+    }
+    phys_body_init(&b, 29.5, 8.0, 8.5);
+    for (int i = 0; i < 60; i++) phys_move(&b, 0.2, -0.1, 0.0);
+    printf("  at a 1-high gap: x %.2f (should be stopped near 30)\n", b.x);
+    CHECK(b.x < 30.0, "a body 1.8 tall walked through a 1-block-high gap (x %g)", b.x);
+
+    // The edge of the world is a wall, not a hole (D-14). A clean
+    // world for this one: the obstacles above are in the way.
+    CHECK(flat_world(8) != NULL, "the test world would not rebuild");
+    phys_body_init(&b, 8.5, 8.0, 8.5);
+    for (int i = 0; i < 400; i++) phys_move(&b, 0.25, -0.1, 0.0);
+    printf("  walking off the resident set stopped at x = %.1f\n", b.x);
+    CHECK(b.x < 48.0, "a body walked out of the resident world to x %g", b.x);
+}
+
+// A brute-force march, fine enough that it cannot miss a block: the
+// reference the DDA has to agree with.
+static bool brute_pick(double ox, double oy, double oz, float dx, float dy, float dz, float max, int32_t* bx,
+                       int32_t* by, int32_t* bz) {
+    float const len = sqrtf(dx * dx + dy * dy + dz * dz);
+    if (len < 1e-6f) return false;
+    double const ux = dx / len, uy = dy / len, uz = dz / len;
+    for (double t = 0.0; t <= (double)max; t += 0.0005) {
+        int32_t const x = (int32_t)floor(ox + ux * t);
+        int32_t const y = (int32_t)floor(oy + uy * t);
+        int32_t const z = (int32_t)floor(oz + uz * t);
+        if (!block_solid(world_block(x, y, z))) continue;
+        *bx = x;
+        *by = y;
+        *bz = z;
+        return true;
+    }
+    return false;
+}
+
+static void check_raycast(void) {
+    printf("picking\n");
+    CHECK(flat_world(8) != NULL, "the test world would not become resident");
+    set_block(10, 9, 8, BLK_COBBLE, 0);
+    set_block(10, 10, 8, BLK_COBBLE, 0);
+    set_block(6, 9, 12, BLK_LOG, 0);
+
+    // The face reported must be the one the ray came in through, and
+    // the placement cell must be the empty one in front of it.
+    ray_hit_t h;
+    CHECK(ray_pick(8.5, 9.5, 8.5, 1.0f, 0.0f, 0.0f, RAY_REACH, true, &h), "a ray straight at a block missed it");
+    printf("  hit (%d,%d,%d) face %u, place at (%d,%d,%d), %.2f blocks away\n", h.x, h.y, h.z, h.face, h.px, h.py,
+           h.pz, h.dist);
+    CHECK(h.x == 10 && h.y == 9 && h.z == 8, "hit (%d,%d,%d), expected (10,9,8)", h.x, h.y, h.z);
+    CHECK(h.face == MESH_DIR_NX, "face %u, expected -x (%u)", h.face, MESH_DIR_NX);
+    CHECK(h.px == 9 && h.py == 9 && h.pz == 8, "placement cell (%d,%d,%d), expected (9,9,8)", h.px, h.py, h.pz);
+    CHECK(!block_solid(world_block(h.px, h.py, h.pz)), "the placement cell is not empty");
+
+    // Reach: the same ray from further away finds nothing.
+    CHECK(!ray_pick(0.5, 9.5, 8.5, 1.0f, 0.0f, 0.0f, RAY_REACH, true, &h), "a ray reached further than RAY_REACH");
+
+    // Straight down finds the floor.
+    CHECK(ray_pick(8.5, 12.0, 8.5, 0.0f, -1.0f, 0.0f, RAY_REACH, true, &h), "a ray straight down missed the floor");
+    CHECK(h.y == 7 && h.face == MESH_DIR_PY, "downward ray hit y %d face %u, expected y 7 face +y", h.y, h.face);
+
+    // And the real test: a fan of directions, every one of which must
+    // agree with a brute-force march. A DDA that skips a corner is the
+    // classic bug and it is invisible until someone mines through a
+    // wall diagonally.
+    int checked = 0, agreed = 0;
+    for (int a = 0; a < 64; a++) {
+        for (int e = -12; e <= 12; e += 3) {
+            float const yaw = (float)a * 0.0982f, pitch = (float)e * 0.09f;
+            float       dx, dy, dz;
+            ray_forward(yaw, pitch, &dx, &dy, &dz);
+            double const ox = 8.37, oy = 9.61, oz = 8.23;  // deliberately not on a boundary
+            int32_t      bx = 0, by = 0, bz = 0;
+            bool const   want = brute_pick(ox, oy, oz, dx, dy, dz, RAY_REACH, &bx, &by, &bz);
+            bool const   got  = ray_pick(ox, oy, oz, dx, dy, dz, RAY_REACH, true, &h);
+            checked++;
+            CHECK(want == got, "yaw %g pitch %g: brute force says %d, the DDA says %d", (double)yaw, (double)pitch,
+                  want, got);
+            if (!want || !got) continue;
+            CHECK(h.x == bx && h.y == by && h.z == bz, "yaw %g pitch %g: DDA hit (%d,%d,%d), brute force (%d,%d,%d)",
+                  (double)yaw, (double)pitch, h.x, h.y, h.z, bx, by, bz);
+            agreed++;
+            if (s_fail) return;
+        }
+    }
+    printf("  %d directions checked against a brute-force march, %d hits, all agreed\n", checked, agreed);
+}
+
+static void check_felling(void) {
+    printf("the logging rule\n");
+    CHECK(flat_world(8) != NULL, "the test world would not become resident");
+
+    // A tree: a trunk with a canopy, all GROWN (no ST_PLACED).
+    int32_t const tx = 8, tz = 8, base = 8;
+    for (int y = 0; y < 5; y++) set_block(tx, base + y, tz, BLK_LOG, 0);
+    int leaves = 0;
+    for (int dy = 3; dy <= 5; dy++) {
+        for (int dz = -2; dz <= 2; dz++) {
+            for (int dx = -2; dx <= 2; dx++) {
+                if (dx == 0 && dz == 0 && dy < 5) continue;
+                set_block(tx + dx, base + dy, tz + dz, BLK_LEAVES, 0);
+                leaves++;
+            }
+        }
+    }
+    // A SECOND tree far enough away that its canopy does not touch.
+    for (int y = 0; y < 4; y++) set_block(tx + 12, base + y, tz, BLK_LOG, 0);
+
+    // A player-placed log, in the first tree's trunk.
+    set_block(tx, base + 2, tz, BLK_LOG, ST_PLACED);
+
+    // Breaking the PLACED one takes exactly that block.
+    break_result_t r = interact_break(tx, base + 2, tz);
+    printf("  breaking a placed log took %d block(s), tree=%d\n", r.felled, (int)r.was_tree);
+    CHECK(r.ok, "breaking a placed log failed");
+    CHECK(!r.was_tree, "breaking a PLACED log felled the tree");
+    CHECK(r.felled == 1, "breaking a placed log took %d blocks, expected 1", r.felled);
+    CHECK(world_block(tx, base + 3, tz) == BLK_LOG, "the trunk above a placed log was taken");
+
+    // Breaking a GROWN one fells everything from there up.
+    r = interact_break(tx, base + 3, tz);
+    printf("  breaking a grown log took %d block(s), tree=%d\n", r.felled, (int)r.was_tree);
+    CHECK(r.ok && r.was_tree, "breaking a grown log did not fell the tree");
+    CHECK(r.felled > 20, "felling took only %d blocks; the canopy should have gone too", r.felled);
+
+    // The stump stays: y >= the broken block, never below.
+    CHECK(world_block(tx, base, tz) == BLK_LOG, "felling took the stump at the bottom of the trunk");
+    CHECK(world_block(tx, base + 1, tz) == BLK_LOG, "felling reached below the block that was broken");
+    // Everything at and above it is gone.
+    CHECK(world_block(tx, base + 4, tz) == BLK_AIR, "felling left a log above the break");
+    int left = 0;
+    for (int dy = 3; dy <= 5; dy++) {
+        for (int dz = -2; dz <= 2; dz++) {
+            for (int dx = -2; dx <= 2; dx++) left += world_block(tx + dx, base + dy, tz + dz) == BLK_LEAVES;
+        }
+    }
+    CHECK(left == 0, "%d leaves survived the fell", left);
+
+    // The NEIGHBOUR is untouched. This is the bound that matters: one
+    // tree must never take the forest.
+    int neighbour = 0;
+    for (int y = 0; y < 4; y++) neighbour += world_block(tx + 12, base + y, tz) == BLK_LOG;
+    printf("  the neighbouring tree still has %d of its 4 logs\n", neighbour);
+    CHECK(neighbour == 4, "felling one tree took %d logs off a tree 12 blocks away", 4 - neighbour);
+
+    // Placing sets ST_PLACED, which is what makes all of the above work.
+    ray_hit_t h = {.x = 20, .y = base, .z = 20, .px = 20, .py = base, .pz = 20, .face = MESH_DIR_PY};
+    CHECK(interact_place(&h, BLK_LOG, NULL), "placing a log failed");
+    CHECK(world_block(20, base, 20) == BLK_LOG, "the placed log is not there");
+    CHECK((world_state(20, base, 20) & ST_PLACED) != 0, "a placed block does not have ST_PLACED set");
+    r = interact_break(20, base, 20);
+    CHECK(!r.was_tree && r.felled == 1, "a just-placed log felled as a tree");
+}
+
 int main(void) {
     check_blocks();
     check_rng();
@@ -1460,6 +1732,14 @@ int main(void) {
     check_worldstore();
     check_palette();
     check_streaming();
+    if (!chunk_store_init()) {
+        printf("  FAIL: chunk_store_init() for the player checks\n");
+        return 1;
+    }
+    check_physics();
+    check_raycast();
+    check_felling();
+    chunk_store_shutdown();
     if (s_fail) {
         printf("\nworldcheck: %d FAILURE(S)\n", s_fail);
         return 1;

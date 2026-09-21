@@ -51,6 +51,30 @@ Engine settings (list caps and the like) are compile definitions that must reach
 `synthengine3d` target, so set them with `add_compile_definitions()` **before**
 `add_subdirectory(synthengine3D)` — see the engine's `docs/configuration.md`.
 
+## Playing it
+
+You walk. The camera is the player unless you press **F**.
+
+| key | |
+|---|---|
+| `W` `A` `S` `D` | walk |
+| cursor keys | look |
+| `Space` | jump |
+| `L-Shift` | sneak |
+| `Q` | break the block under the crosshair |
+| `E` | place the selected one |
+| `F1`–`F6` | hotbar: cobble, planks, dirt, glass, torch, sand |
+| `F` | switch to the debug camera and back |
+| `Esc` | leave (this becomes the pause menu, step 5.3) |
+
+Every one of those is remappable through `se_bindings` and persisted to NVS;
+the menu to do it with is step 6.1.
+
+**Breaking a tree fells it.** That is deliberate and it is the project's one
+declared departure from Minecraft: a log the world grew takes the whole tree
+with it, a log *you placed* drops just itself. The difference is one bit in the
+block's state byte. See `main/game/interact.h`.
+
 ## Flying it by hand
 
 There is no player yet, so the build hands you a camera instead. Free flight is
