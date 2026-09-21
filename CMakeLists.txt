@@ -44,6 +44,7 @@ set(APP_SOURCES
     main/game/input.c
     main/game/player.c
     main/game/tick.c
+    main/game/hud.c
 
     # Textures by name, cached.
     main/common/texcache.c

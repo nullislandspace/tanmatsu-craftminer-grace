@@ -67,6 +67,10 @@ You walk. The camera is the player unless you press **F**.
 | `F` | switch to the debug camera and back |
 | `Esc` | leave (this becomes the pause menu, step 5.3) |
 
+The crosshair marks where the pick ray goes — which is **not** the centre of the
+screen, because the engine's horizon row is 256 of 480. The block it finds gets
+a wireframe box round it.
+
 Every one of those is remappable through `se_bindings` and persisted to NVS;
 the menu to do it with is step 6.1.
 

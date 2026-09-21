@@ -1262,6 +1262,35 @@ frame time than the fell.
      mesh one block out of date goes on being drawn while its replacement is
      queued, and only a mesh that has never existed is skipped.
 
+- **F-44** 2026-09-21, the user: **aiming was guesswork** -- no crosshair, no
+  highlight. Two things came out of adding them.
+
+  **The crosshair does not go in the middle of the screen.** The engine
+  projects the camera's forward axis to `(RENDER_HALF_W, RENDER_HORIZON_Y)`,
+  and `RENDER_HORIZON_Y` is **256 on a 480-row display**, not 240 -- a game can
+  move its horizon (se_config.h). Drawn at the geometric centre it would sit
+  16 pixels below where the pick actually points, which is an aiming error
+  nobody would think to suspect. Derived from the projection constants instead.
+  Verified by pulling the framebuffer off the badge and looking at it
+  (`badgelink fs download` on a `shots` PNG).
+
+  **The picker reported `BLK_BARRIER`.** An unloaded chunk is deliberately
+  solid so the player stops at the edge of the world rather than falling out of
+  it (D-14) -- but it is not a block, and the picker was happy to report one,
+  which put a highlight box round a piece of fog and offered to mine it. Found
+  by accident: a throwaway raycast from the scripted camera drew a box at
+  point-blank range and it came out as a black line across the whole screen.
+  `ray_pick` now stops at a barrier without reporting a hit, and the host test
+  asserts both halves -- solid to the body, invisible to the picker.
+
+- **F-45** 2026-09-21: **the `shots` test cannot yet photograph the world.** It
+  SETS the clock rather than running it, so only a few frames render and the
+  chunks never stream in -- every shot is empty sky. That is the async chunk
+  worker, and the fix is the synchronous mode D-15 put there for exactly this,
+  switched on for the duration of a shots run. Not done: it belongs with the
+  replay work deferred out of step 3.3, and until then shot hashes cover the
+  overlay but not the world.
+
 ### Decisions (D-n), each with date and who decided
 
 - **D-01** 2026-09-20, Claude: **a floating render origin.** The engine subtracts
@@ -1336,6 +1365,11 @@ frame time than the fell.
   floor, and 99% of its triangles are in one section). The rule now: any claim
   about "the terrain" or "a chunk" is measured over a sample spread across the
   world, and the sample size goes in the finding.
+
+- **D-50** 2026-09-21, Claude: **the crosshair is inverted, not painted.** A
+  white one vanishes against sand and a black one against a cave mouth; the
+  inverse of whatever is behind it is legible against everything. Minecraft's
+  does the same, for the same reason.
 
 - **D-48** 2026-09-21, Claude: **movement constants are chosen by simulating
   the arc, not by feel, and the result is asserted in blocks and seconds.** A

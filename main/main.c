@@ -24,6 +24,7 @@
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "game/flycam.h"
+#include "game/hud.h"
 #include "game/input.h"
 #include "game/interact.h"
 #include "game/membench.h"
@@ -140,6 +141,11 @@ static player_t     s_player;
 static tick_clock_t s_tick;
 static bool         s_player_ready;
 static cam_mode_t   s_cam_mode = CAM_PLAYER;
+// What actually drove the camera this frame. Not the same as
+// s_cam_mode: a running test overrides it, and on_render has to agree
+// with on_update about which it was or the overlay describes a camera
+// that is not the one being drawn.
+static cam_mode_t   s_cam_effective = CAM_PLAYER;
 static int          s_ticks_last_frame;
 
 static double fly_time(void) {
@@ -466,6 +472,7 @@ static void on_update(float dt, void* user) {
     devtest_update();
 
     cam_mode_t const mode = devtest_running() ? CAM_SCRIPTED : s_cam_mode;
+    s_cam_effective       = mode;
 
     // Where the camera will be this frame decides what has to exist.
     if (mode == CAM_SCRIPTED) {
@@ -653,6 +660,12 @@ static void on_render(pax_buf_t* fb, void* user) {
     prof_begin(PROF_SUBMIT);
     mesh_submit_counters_reset();
     chunk_render_submit(s_cam.wx, s_cam.wz);
+    // The box round the block the crosshair found, while the player is
+    // the one aiming. It is an edge, so the engine draws it after every
+    // triangle and depth-tests it without writing depth.
+    if (s_cam_effective == CAM_PLAYER && s_player.aim_valid) {
+        hud_block_outline(s_player.aim.x, s_player.aim.y, s_player.aim.z);
+    }
     prof_end(PROF_SUBMIT);
 
     prof_begin(PROF_PREPARE);
@@ -676,6 +689,14 @@ static void on_render(pax_buf_t* fb, void* user) {
         }
         prof_end(PROF_WAIT);
     }
+
+    // After the upscale, so it is drawn at full resolution rather than
+    // doubled up with the world. Before the shot is taken, so a
+    // screenshot shows what the player saw.
+    // Not while the debug camera is flying, where it would mean
+    // nothing -- but yes during a test, so a reference screenshot
+    // covers the overlay as well as the world.
+    if (s_cam_effective != CAM_FREE) hud_crosshair(fb);
 
     devtest_after_render(fb, rast_us);
     frame_stats();

@@ -50,10 +50,19 @@ bool ray_pick(double ox, double oy, double oz, float dx, float dy, float dz, flo
         }
     }
 
+    // BLK_BARRIER IS NOT A BLOCK. It is what an unloaded chunk reads as
+    // (D-14) -- solid, so the player stops at the edge of the world
+    // instead of falling out of it, but there is nothing there to aim
+    // at. Reporting it would draw a highlight box round a piece of fog
+    // and offer to mine it. A ray that reaches one has run out of
+    // world, so it stops without a hit.
+#define RAY_HITS(b) ((b) != BLK_BARRIER && (want_solid ? block_solid(b) : (b) != BLK_AIR))
+
     // The starting cell counts: standing inside a block, the crosshair
     // is pointing at it.
     uint8_t b = world_block(cell[0], cell[1], cell[2]);
-    if (want_solid ? block_solid(b) : b != BLK_AIR) {
+    if (b == BLK_BARRIER) return false;
+    if (RAY_HITS(b)) {
         out->x = cell[0];
         out->y = cell[1];
         out->z = cell[2];
@@ -79,7 +88,8 @@ bool ray_pick(double ox, double oy, double oz, float dx, float dy, float dz, flo
         tmax[axis] += tdelta[axis];
 
         b = world_block(cell[0], cell[1], cell[2]);
-        if (!(want_solid ? block_solid(b) : b != BLK_AIR)) continue;
+        if (b == BLK_BARRIER) return false;  // out of the loaded world
+        if (!RAY_HITS(b)) continue;
 
         out->x     = cell[0];
         out->y     = cell[1];
@@ -95,4 +105,5 @@ bool ray_pick(double ox, double oy, double oz, float dx, float dy, float dz, flo
         return true;
     }
     return false;
+#undef RAY_HITS
 }

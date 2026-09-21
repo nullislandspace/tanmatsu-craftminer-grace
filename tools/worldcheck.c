@@ -1671,6 +1671,18 @@ static void check_raycast(void) {
     CHECK(ray_pick(8.5, 12.0, 8.5, 0.0f, -1.0f, 0.0f, RAY_REACH, true, &h), "a ray straight down missed the floor");
     CHECK(h.y == 7 && h.face == MESH_DIR_PY, "downward ray hit y %d face %u, expected y 7 face +y", h.y, h.face);
 
+    // An unloaded chunk is solid to the BODY (D-14) and invisible to
+    // the PICKER. Reporting it would put a highlight box round a piece
+    // of fog and offer to mine it.
+    {
+        ray_hit_t hb;
+        CHECK(!ray_pick(8.5, 9.5, 8.5, 0.0f, 0.0f, -1.0f, 200.0f, true, &hb),
+              "a ray picked BLK_BARRIER: the edge of the loaded world is not a block");
+        phys_body_t edge;
+        phys_body_init(&edge, 8.5, 9.0, 8.5);
+        CHECK(!phys_fits(&edge, 8.5, 9.0, -100.0), "an unloaded chunk is not solid to the body (D-14)");
+    }
+
     // And the real test: a fan of directions, every one of which must
     // agree with a brute-force march. A DDA that skips a corner is the
     // classic bug and it is invisible until someone mines through a
