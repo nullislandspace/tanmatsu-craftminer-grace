@@ -95,7 +95,8 @@ main/
   world/
 *   blocks.{c,h}          BLOCK REGISTRY                                 (pure)
 *   worldgen.{c,h}        pure (seed, cx, cz) -> id/state planes         (pure)
-    farlands.{c,h}        Beta 1.7.3's density generator, overflowed     (pure)
+*   farlands.{c,h}        Beta 1.7.3's density generator, overflowed     (pure)
+*   datadir.{c,h}         /sd/craftminer, and moving old data into it (D-80) (pure)
 *   chunk.{c,h}           chunk_t, the ring store, world_block/set/state
 *   light.{c,h}           sky + block light: floods on arrival and on change (pure)
 *   chunk_codec.{c,h}     RLE over a chunk's two planes                  (pure)
@@ -970,6 +971,8 @@ frame time than the fell.
 | 23 | **Permanent block ids; slots that say why they cannot be opened** | done | 2026-09-22, the user's call after F-52 was explained (D-74, D-75). Every block numbered explicitly; `tools/ids.txt` lists every block id and name and every item name ever shipped, and `make check` fails on a renumbered, renamed, removed or unlisted one -- each of the three cases tried and caught. Replays now store their inventory by item name (format 2). The slot list tells a world from a newer build ("from a newer version"), an older format ("needs upgrading") and a damaged one apart from an empty slot; nothing can be created over any of them. The upgrader itself is left until there is a format change for it to do. |
 | 24 | **Lighting's triangle cost, and the frame rate** | done | 2026-09-22, the user asked why the frame rate had fallen so far. Measured, not guessed: on the same scripted flight as 2026-09-21, today's build is as fast as yesterday's (14.5 vs 14.6 fps with lighting and clouds off, 14.1 with everything on) -- **no regression** (F-66). What had changed is the scene and the setting: walking at eye height puts close-up textured ground over the whole screen (rasterize 46 -> 72 ms), and the user plays at Far. Light in the merge key rounded in the near meshes, sky to every 4th level and torch to every 2nd (F-65): 25% fewer near triangles with torches about, +4% fps on the walk. Default view back to near (D-76). The `flight` and `replay_*` test scenes make these comparisons repeatable. |
 | 22 | **N: step the clock** | done | 2026-09-22, asked for by the user: a debug key moving the world's clock a quarter of a day, for looking at night without waiting. |
+| 27 | **The player's data out of the app's directory** | done | 2026-09-22, the user's catch (D-80): worlds, settings.txt, replays and screenshots move from `/sd/apps/at.cavac.craftminer` to `/sd/craftminer`, which the launcher does not manage. `world/datadir.c` moves what an earlier build left there on the first start -- a rename per entry, never over an existing one, nothing on a second start -- host-tested. Test-kit shots go to `/sd/craftminer/test`. |
+| 26 | **Screenshots** | done | 2026-09-22, asked for by the user: a new action, `Screenshot`, **0** by default and rebindable, saves the frame as the player sees it (HUD included) to `/sd/craftminer/screenshots/shotNNN.png` with the test kit's PNG writer; a "Saved ..." line shows for 2.5 s on the frames after, so it is never in the picture. |
 | 25 | **The depth plane in internal SRAM, and a key sort** | done | 2026-09-22, the user's call (D-77). Engine option `SE_SCENE_DEPTH16_INTERNAL`: at quarter resolution a plain 16-bit depth plane (188 KB) in internal SRAM, cleared each frame (0.29 ms), instead of the stamped PSRAM plane; the flat list it displaced went to PSRAM. Depth order is now a radix sort of 32-bit keys in internal SRAM plus one gather, not a qsort of the records. Same scenes as F-66: flight 13.97 -> 16.30 fps, near walk 10.22 -> 12.36, Far walk 7.08 -> 7.99 (F-67). |
 
 ---
@@ -1695,6 +1698,14 @@ frame time than the fell.
 
 ### Decisions (D-n), each with date and who decided
 
+- **D-80** 2026-09-22, **the user**: **the player's data lives in
+  /sd/craftminer, not in the app's install directory.** The launcher owns
+  /sd/apps/<slug> and may empty it on an update or a reinstall; worlds,
+  settings, replays and screenshots must survive both. The install
+  directory keeps only what ships with the app. Data an earlier build left
+  there is moved across on start (a rename per entry, never overwriting),
+  so nobody's world is lost in the move. Amends D-67's "next to the
+  worlds, in the app's directory".
 - **D-78** 2026-09-22, **the user**: **the Far Lands are a short walk west,
   sudden, and Beta 1.7.3's own.** The edge moves from x = -100000 to about
   5-10 minutes' walk from spawn (x = -2048, about 8 minutes at walking

@@ -46,6 +46,7 @@ static se_binding_def_t const BINDINGS[CM_ACTION_COUNT] = {
     [CM_PAUSE]      = {CM_PAUSE, "Pause", "pause", BSP_INPUT_SCANCODE_ESC},
     [CM_DROP]       = {CM_DROP, "Drop", "drop", BSP_INPUT_SCANCODE_G},
     [CM_INFO]       = {CM_INFO, "Show position", "info", BSP_INPUT_SCANCODE_BACKSPACE},
+    [CM_SCREENSHOT] = {CM_SCREENSHOT, "Screenshot", "screenshot", BSP_INPUT_SCANCODE_0},
 };
 
 // The navigation key a scancode ALSO arrives as, where there is one.

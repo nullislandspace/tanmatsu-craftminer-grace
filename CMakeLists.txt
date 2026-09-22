@@ -33,6 +33,7 @@ set(APP_SOURCES
     main/world/region.c
     main/world/vfs_compat.c
     main/world/worldstore.c
+    main/world/datadir.c
     main/world/chunkmesh.c
     main/world/chunk_worker.c
     main/world/chunk_render.c
@@ -83,7 +84,7 @@ list(APPEND APP_SOURCES
     main/testkit/screenshot.c
     main/testkit/showtime.c
 )
-add_compile_definitions(SCREENSHOT_DIR="/sd/apps/at.cavac.craftminer/test")
+add_compile_definitions(SCREENSHOT_DIR="/sd/craftminer/test")
 
 # Build identity for the debug console's READY records: the git commit
 # (marked -dirty when there are uncommitted changes) and the build time.

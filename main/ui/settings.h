@@ -5,10 +5,11 @@
 //  What the Graphics, Audio and Controls menus change -- key bindings
 //  included -- in ONE TEXT FILE ON THE SD CARD, next to the worlds:
 //
-//      <install dir>/settings.txt
+//      /sd/craftminer/settings.txt
 //
-//  so copying the app's directory backs up a player's worlds and their
-//  settings together (D-67). It is plain `key=value` lines: readable, and
+//  so copying that directory backs up a player's worlds and their
+//  settings together (D-67). Not the app's install directory: the
+//  launcher owns that, and may empty it on an update (datadir.h, D-80). It is plain `key=value` lines: readable, and
 //  fixable by hand if it ever needs to be. Unknown keys are ignored and
 //  missing ones keep their defaults, so the file survives settings being
 //  added and removed, the way level.cmw survives new tags.
@@ -34,7 +35,7 @@
 // medium was, until its cost on foot was measured (F-66).
 #define SETTINGS_VIEW_DEFAULT 0
 
-// Read settings.txt from `dir` (the app's install directory). Missing
+// Read settings.txt from `dir` (CM_DATA_DIR, datadir.h). Missing
 // keys keep their defaults (near, textured, half resolution, music and
 // effects on, gyroscope off, every key its default binding). Call once at
 // boot, AFTER input_init(): the key bindings it restores are the ones

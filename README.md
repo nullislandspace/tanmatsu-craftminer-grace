@@ -8,6 +8,13 @@ Slug `at.cavac.craftminer`. It installs to the **SD card only** — `metadata.js
 says `external_only`, so the launcher will not put it in internal flash, and
 `make install` uploads to `/sd/apps/at.cavac.craftminer`.
 
+**The player's data is NOT there.** Worlds, `settings.txt`, replays and
+screenshots live in **`/sd/craftminer`**, which the launcher does not manage,
+so an update or a reinstall cannot delete them. The install directory holds
+only what the app ships with (`app.so`, the textures). Builds before this kept
+the data in the install directory; the first start of a newer one moves it
+across (`main/world/datadir.h`).
+
 The project comes from
 [tanmatsu-template-grace](https://github.com/nullislandspace/tanmatsu-template-grace),
 which stays as the `upstream` remote: `git fetch upstream && git merge upstream/main`
@@ -91,8 +98,9 @@ opens**, since pausing is what people do before switching a handheld off.
 Volume and brightness are the device's own settings, shared with the launcher
 and every other app (`se_hw`, the launcher's `system` NVS namespace). Everything
 else — graphics, audio switches, gyroscope, every key binding — is one text
-file on the SD card, `/sd/apps/at.cavac.craftminer/settings.txt`, next to
-`worlds/`. Copy that directory and you have backed up everything. The file is
+file on the SD card, `/sd/craftminer/settings.txt`, next to `worlds/`,
+`replays/` and `screenshots/`. Copy that directory and you have backed up
+everything. The file is
 plain `key=value` lines; delete one to get its default back.
 
 ### Day, night and light
@@ -138,6 +146,7 @@ The camera is the player unless you press **F**. The defaults:
 | `F1`–`F6` | hotbar slot |
 | `Esc` | pause menu |
 | `Backspace` | show position, heading and time of day |
+| `0` | screenshot, saved to `/sd/craftminer/screenshots/shotNNN.png` |
 | `F` | switch to the debug camera and back (not if you have bound F to something) |
 
 The crosshair marks where the pick ray goes — which is **not** the centre of the

@@ -32,6 +32,8 @@
 #include "world/vfs_compat.h"
 #include "world/worldgen.h"
 #include "world/farlands.h"
+#include "world/datadir.h"
+#include <sys/stat.h>
 #include <time.h>
 #include "world/chunk_worker.h"
 #include "world/chunkmesh.h"
@@ -1492,6 +1494,82 @@ static void clear_store(void) {
     for (int i = 0; i < prior; i++) worldstore_delete(old[i].slug);
 }
 
+// The player's data moving out of the install directory (datadir.h):
+// everything moves, a second start finds nothing to do, and an entry
+// already at the new place is never overwritten.
+static bool dd_write(char const* path, char const* text) {
+    FILE* f = fopen(path, "wb");
+    if (f == NULL) return false;
+    fputs(text, f);
+    fclose(f);
+    return true;
+}
+
+static bool dd_reads(char const* path, char const* text) {
+    char  buf[64] = {0};
+    FILE* f       = fopen(path, "rb");
+    if (f == NULL) return false;
+    size_t const n = fread(buf, 1, sizeof(buf) - 1, f);
+    fclose(f);
+    buf[n] = '\0';
+    return strcmp(buf, text) == 0;
+}
+
+static bool dd_exists(char const* path) {
+    struct stat st;
+    return stat(path, &st) == 0;
+}
+
+static void check_datadir(void) {
+    printf("the data directory\n");
+    char const* const OLD = "build/host/ddtest/apps/at.cavac.craftminer";
+    char const* const NEW = "build/host/ddtest/craftminer";
+    // A clean slate: what an earlier run left is renamed out of the way
+    // by removing the files it could have made.
+    char const* const LEFT[] = {"build/host/ddtest/craftminer/worlds/slot1/level.cmw", "build/host/ddtest/craftminer/settings.txt",
+                                "build/host/ddtest/craftminer/replays/last.cmr", "build/host/ddtest/craftminer/screenshots/shot001.png"};
+    for (size_t i = 0; i < sizeof(LEFT) / sizeof(LEFT[0]); i++) remove(LEFT[i]);
+    remove("build/host/ddtest/craftminer/worlds/slot1");
+    remove("build/host/ddtest/craftminer/worlds");
+    remove("build/host/ddtest/craftminer/replays");
+    remove("build/host/ddtest/craftminer/screenshots");
+    remove("build/host/ddtest/craftminer");
+
+    // An install directory as a build before this left it.
+    CHECK(cm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1"), "could not make the old worlds");
+    CHECK(cm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/replays"), "could not make the old replays");
+    CHECK(cm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/screenshots"), "could not make the old screenshots");
+    CHECK(cm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/textures"), "could not make the textures");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1/level.cmw", "testworld");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/settings.txt", "view=2");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/replays/last.cmr", "replay");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/screenshots/shot001.png", "png");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/textures/dirt.png", "dirt");
+
+    char      report[1024];
+    int const moved = datadir_adopt(OLD, NEW, report, sizeof(report));
+    printf("  %d entries moved\n", moved);
+    CHECK(moved == 4, "%d entries moved, expected 4 (worlds, settings.txt, replays, screenshots)", moved);
+    CHECK(dd_reads("build/host/ddtest/craftminer/worlds/slot1/level.cmw", "testworld"), "the world did not arrive");
+    CHECK(dd_reads("build/host/ddtest/craftminer/settings.txt", "view=2"), "settings.txt did not arrive");
+    CHECK(dd_reads("build/host/ddtest/craftminer/replays/last.cmr", "replay"), "the replay did not arrive");
+    CHECK(dd_reads("build/host/ddtest/craftminer/screenshots/shot001.png", "png"), "the screenshot did not arrive");
+    CHECK(!dd_exists("build/host/ddtest/apps/at.cavac.craftminer/worlds"), "the old worlds are still there");
+    CHECK(dd_reads("build/host/ddtest/apps/at.cavac.craftminer/textures/dirt.png", "dirt"),
+          "the app's own files were touched");
+
+    // Started again: nothing to do.
+    CHECK(datadir_adopt(OLD, NEW, report, sizeof(report)) == 0, "a second start moved something");
+
+    // An old build run after this one writes settings into the install
+    // directory again: the new place's copy wins, nothing is overwritten.
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/settings.txt", "view=0");
+    CHECK(datadir_adopt(OLD, NEW, report, sizeof(report)) == 0, "an entry was moved over an existing one");
+    CHECK(dd_reads("build/host/ddtest/craftminer/settings.txt", "view=2"), "the new settings.txt was overwritten");
+    CHECK(strstr(report, "left") != NULL, "a clash was not reported: \"%s\"", report);
+    remove("build/host/ddtest/apps/at.cavac.craftminer/settings.txt");
+}
+
 static void check_slots(void) {
     printf("save slots\n");
     CHECK(worldstore_init(STORE_BASE), "worldstore_init failed");
@@ -2614,6 +2692,7 @@ int main(void) {
     check_worldstore();
     check_palette();
     check_slots();
+    check_datadir();
     check_streaming();
     if (!chunk_store_init()) {
         printf("  FAIL: chunk_store_init() for the player checks\n");

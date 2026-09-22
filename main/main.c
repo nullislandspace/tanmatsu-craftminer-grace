@@ -55,6 +55,8 @@
 #include "world/chunkmesh.h"
 #include "world/light.h"
 #include "world/region.h"
+#include "testkit/screenshot.h"
+#include "world/datadir.h"
 #include "world/vfs_compat.h"
 #include "world/worldgen.h"
 #include "world/worldstore.h"
@@ -182,6 +184,12 @@ static void start_loading(double wx, double wz, app_state_t next, char const* wh
 #define TITLE_TIME (DAY_START + 2500)
 
 static daytime_t s_day;
+
+// A screenshot asked for (CM_SCREENSHOT), and the line that says where it
+// went (take_screenshot).
+static bool   s_shot_wanted;
+static char   s_shot_msg[64];
+static double s_shot_msg_until;
 
 // The position overlay (CM_INFO, Backspace by default).
 static bool s_info;
@@ -641,7 +649,22 @@ static void on_init(void* user) {
     // is applied on entering a world: the title has a view of its own.
     // Bindings registered first: the settings file restores them.
     input_init();
-    settings_load(graceloader_get_install_basepath());
+    // THE PLAYER'S DATA lives in /sd/craftminer, where the launcher cannot
+    // empty it on an update (datadir.h). Earlier builds kept it in the
+    // install directory; it moves across here, before anything reads it.
+    {
+        char      report[1024];
+        int const moved = datadir_adopt(graceloader_get_install_basepath(), CM_DATA_DIR, report, sizeof(report));
+        if (moved < 0) ESP_LOGE(TAG, "could not create %s", CM_DATA_DIR);
+        for (char* line = report; *line != '\0';) {
+            char* const end = strchr(line, '\n');
+            if (end != NULL) *end = '\0';
+            ESP_LOGI(TAG, "data: %s", line);
+            if (end == NULL) break;
+            line = end + 1;
+        }
+    }
+    settings_load(CM_DATA_DIR);
     // The launcher's key-cap PNGs, for the Controls menu (synthracer's
     // icons.c). Missing ones fall back to a text label.
     icons_load();
@@ -653,7 +676,7 @@ static void on_init(void* user) {
     log_memory("textures loaded");
 
     // The worlds on the card.
-    if (!worldstore_init(graceloader_get_install_basepath())) {
+    if (!worldstore_init(CM_DATA_DIR)) {
         ESP_LOGE(TAG, "worldstore_init failed");
         return;
     }
@@ -797,7 +820,7 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
 static void stop_recording(void) {
     if (!replay_recording()) return;
     char dir[160], path[192];
-    snprintf(dir, sizeof(dir), "%s/replays", graceloader_get_install_basepath());
+    snprintf(dir, sizeof(dir), "%s/replays", CM_DATA_DIR);
     cm_mkdir_p(dir);
     snprintf(path, sizeof(path), "%s/last.cmr", dir);
     bool const ok = replay_record_end(path);
@@ -915,9 +938,9 @@ static bool enter_flight(void) {
 static bool enter_replay(void) {
     char           path[192];
     replay_start_t st;
-    snprintf(path, sizeof(path), "%s/replays/test.cmr", graceloader_get_install_basepath());
+    snprintf(path, sizeof(path), "%s/replays/test.cmr", CM_DATA_DIR);
     if (!replay_load(path, &st)) {
-        snprintf(path, sizeof(path), "%s/replays/last.cmr", graceloader_get_install_basepath());
+        snprintf(path, sizeof(path), "%s/replays/last.cmr", CM_DATA_DIR);
         if (!replay_load(path, &st)) {
             ESP_LOGW(TAG, "no replay to play (replays/test.cmr or replays/last.cmr)");
             return false;
@@ -1377,6 +1400,13 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
         return;
     }
 
+    // A screenshot: taken at the end of the frame being drawn, once
+    // everything including the HUD is on it (on_render).
+    if (sc == input_key(CM_SCREENSHOT)) {
+        s_shot_wanted = true;
+        return;
+    }
+
     // The debug keys stand aside for a key a player has bound to
     // something: binding Jump to F must not also start the flying camera.
     if (input_key_bound(sc)) return;
@@ -1446,6 +1476,36 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
 // from +z towards +x (forward (sin yaw, cos yaw), right (cos yaw,
 // -sin yaw)), which is north-to-east on a map with north up; and the sun
 // rises at +x (game/daytime.c), so east is where it should be.
+// --- Screenshots (CM_SCREENSHOT, 0 by default) ---------------------------
+//
+// The player's own, not the test kit's: the frame as they see it, HUD and
+// all, into /sd/craftminer/screenshots/shotNNN.png -- next to the worlds,
+// so it comes off the card with them. The "saved" line shows on the frames
+// AFTER the capture, so it is never in the picture.
+
+static void take_screenshot(pax_buf_t* fb) {
+    char dir[160], path[192];
+    snprintf(dir, sizeof(dir), "%s/screenshots", CM_DATA_DIR);
+    cm_mkdir_p(dir);
+    // The next free number. The stdio here has no stat(), so "free" is
+    // "does not open".
+    int n = 1;
+    for (; n < 1000; n++) {
+        snprintf(path, sizeof(path), "%s/shot%03d.png", dir, n);
+        FILE* f = fopen(path, "rb");
+        if (f == NULL) break;
+        fclose(f);
+    }
+    bool const ok = n < 1000 && screenshot_capture_to(fb, path);
+    if (ok) {
+        snprintf(s_shot_msg, sizeof(s_shot_msg), "Saved screenshots/shot%03d.png", n);
+    } else {
+        snprintf(s_shot_msg, sizeof(s_shot_msg), n < 1000 ? "Screenshot failed" : "screenshots/ is full (999)");
+    }
+    ESP_LOGI(TAG, "screenshot: %s", s_shot_msg);
+    s_shot_msg_until = showtime_now() + 2.5;
+}
+
 static void draw_info(pax_buf_t* fb) {
     static char const* const NAMES[8] = {"north", "north-east", "east", "south-east",
                                          "south", "south-west", "west", "north-west"};
@@ -1464,8 +1524,9 @@ static void draw_info(pax_buf_t* fb) {
     extra[0] = '\0';
     if (replay_recording()) snprintf(extra, sizeof(extra), "RECORDING (R to stop)");
     if (replay_playing()) snprintf(extra, sizeof(extra), "replay %d / %d", replay_position(), replay_length());
-    char const* const lines[4] = {pos, face, clock, extra};
-    hud_text_lines(fb, lines, 4);
+    bool const        msg      = showtime_now() < s_shot_msg_until;
+    char const* const lines[5] = {pos, face, clock, extra, msg ? s_shot_msg : NULL};
+    hud_text_lines(fb, lines, 5);
 }
 
 // The engine clears the framebuffer to cfg.backdrop_argb every frame
@@ -1631,8 +1692,19 @@ static void on_render(pax_buf_t* fb, void* user) {
         hud_mine_progress(fb, player_mine_progress(&s_player));
         hud_player(fb, &s_player);
         hud_inventory(fb, &s_player);
-        if (s_info || replay_recording()) draw_info(fb);
+        if (s_info || replay_recording()) {
+            draw_info(fb);
+        } else if (showtime_now() < s_shot_msg_until) {
+            char const* const line = s_shot_msg;
+            hud_text_lines(fb, &line, 1);
+        }
         prof_end(PROF_HUD);
+    }
+
+    // Last, so the shot has everything the player sees on it.
+    if (s_shot_wanted) {
+        s_shot_wanted = false;
+        take_screenshot(fb);
     }
 
     devtest_after_render(fb, rast_us);

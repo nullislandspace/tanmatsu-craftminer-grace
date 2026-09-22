@@ -128,8 +128,9 @@ void player_state_defaults(player_state_t* p, world_meta_t const* meta);
 
 // --- The store --------------------------------------------------------
 
-// `base` is the app's install directory (graceloader_get_install_basepath()
-// on the badge, a temporary directory in the host checks). Creates
+// `base` is the player's data directory (CM_DATA_DIR, /sd/craftminer, on
+// the badge -- NOT the install directory, which the launcher may empty;
+// datadir.h -- and a temporary directory in the host checks). Creates
 // <base>/worlds if missing.
 bool worldstore_init(char const* base);
 
