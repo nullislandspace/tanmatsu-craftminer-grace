@@ -9,15 +9,21 @@
 #include <math.h>
 #include "math/camera.h"
 #include "synthengine3d.h"
+#include "common/rng.h"
+#include "voxel/starfield.h"
 #include "world/chunk.h"
 
 #define BODY_DIST   350.0f  // the sun and moon: far behind the terrain (draw distance 64)
 #define SUN_HALF    22.0f
 #define MOON_HALF   16.0f
-#define CLOUD_CELL  6.0f  // blocks
+#define CLOUD_CELL  8.0f  // blocks
 #define CLOUD_THICK 2.0f
-#define CLOUD_SPEED 0.8f    // blocks/s, east (+x)
-#define CLOUD_R     100.0f  // clouds this far round the eye are drawn
+#define CLOUD_SPEED 0.8f   // blocks/s, east (+x)
+// Clouds this far round the eye are drawn. The showreel's 100 would be
+// a thousand cells here, for a frame rate that has none to spare; 64
+// is about two hundred cells and still reaches the draw distance.
+#define CLOUD_R 64.0f
+#define STARS_AT 0.3f  // stars once the daylight is below this
 
 static void quad(vec3_t a, vec3_t b, vec3_t c, vec3_t d, uint32_t argb) {
     scene_tri(a.x, a.y, a.z, b.x, b.y, b.z, c.x, c.y, c.z, argb, SE_TRI_EMISSIVE);
@@ -54,22 +60,33 @@ static void slab(vec3_t eye, float x0, float x1, float z0, float z1, uint32_t to
     if (eye.z > z1) quad(v3(x1, y1, z1), v3(x0, y1, z1), v3(x0, y0, z1), v3(x1, y0, z1), side);
 }
 
+// Cloud cells in WORLD cell coordinates: blobs of a smooth noise, not
+// a salt-and-pepper hash.
 static int cloudy(int i, int k) {
-    return voxel_noise2((float)i, (float)k, 3.2f, 50u) > 0.6f;
+    return cm_noise2((float)i, (float)k, 3.2f, 50u) > 0.6f;
 }
 
-void voxel_sky_submit(float t, vec3_t sun_dir, uint32_t fog_argb, float light) {
+void voxel_sky_submit(float t, vec3_t sun_dir, uint32_t fog_argb, float light, int32_t ox, int32_t oz, bool clouds) {
     vec3_t const eye = camera_eye();
+    // The stars first, so everything else draws over them.
+    if (light < STARS_AT) {
+        starfield_init();
+        starfield_submit_above(0.03f);
+    }
     if (sun_dir.y > -0.2f) body(eye, sun_dir, SUN_HALF, 0xFFFFF4C0u);
     vec3_t const moon = v3_scale(sun_dir, -1.0f);
     if (moon.y > -0.2f) body(eye, moon, MOON_HALF, 0xFFE4E8F4u);
 
+    if (!clouds) return;
     // Clouds: cells of a noise pattern that drifts east; a run of cloudy
-    // cells along x is one slab.
-    float const shift = CLOUD_SPEED * t;
-    int const   i0    = (int)floorf((eye.x - shift - CLOUD_R) / CLOUD_CELL),
-              i1      = (int)ceilf((eye.x - shift + CLOUD_R) / CLOUD_CELL);
-    int const      k0 = (int)floorf((eye.z - CLOUD_R) / CLOUD_CELL), k1 = (int)ceilf((eye.z + CLOUD_R) / CLOUD_CELL);
+    // cells along x is one slab. Worked out in world coordinates (the
+    // eye plus the origin) and drawn relative to the origin. The drift
+    // wraps every few hours of play, so the float stays small.
+    float const shift = fmodf(CLOUD_SPEED * t, CLOUD_CELL * 4096.0f);
+    double const wex  = (double)eye.x + (double)ox, wez = (double)eye.z + (double)oz;
+    int const    i0   = (int)floor((wex - shift - CLOUD_R) / CLOUD_CELL),
+              i1      = (int)ceil((wex - shift + CLOUD_R) / CLOUD_CELL);
+    int const k0 = (int)floor((wez - CLOUD_R) / CLOUD_CELL), k1 = (int)ceil((wez + CLOUD_R) / CLOUD_CELL);
     uint32_t const top = mix(0xFF000000u, 0xFFF8F8FAu, light), side = mix(0xFF000000u, 0xFFE6EAF0u, light),
                    bottom = mix(0xFF000000u, 0xFFD2D8E2u, light);
     for (int k = k0; k <= k1; k++) {
@@ -77,8 +94,9 @@ void voxel_sky_submit(float t, vec3_t sun_dir, uint32_t fog_argb, float light) {
             if (!cloudy(i, k) || cloudy(i - 1, k)) continue;  // the start of a run
             int j = i;
             while (j + 1 <= i1 && cloudy(j + 1, k)) j++;
-            float const x0 = (float)i * CLOUD_CELL + shift, x1 = (float)(j + 1) * CLOUD_CELL + shift;
-            float const z0 = (float)k * CLOUD_CELL, z1 = z0 + CLOUD_CELL;
+            float const x0 = (float)((double)i * CLOUD_CELL + shift - (double)ox);
+            float const x1 = x0 + (float)(j - i + 1) * CLOUD_CELL;
+            float const z0 = (float)((double)k * CLOUD_CELL - (double)oz), z1 = z0 + CLOUD_CELL;
             float const dx = fmaxf(fmaxf(x0 - eye.x, eye.x - x1), 0.0f),
                         dz = fmaxf(fmaxf(z0 - eye.z, eye.z - z1), 0.0f);
             float const f  = 0.7f * smoothstep(50.0f, CLOUD_R, sqrtf(dx * dx + dz * dz));

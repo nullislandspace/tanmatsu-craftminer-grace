@@ -23,6 +23,7 @@ PURE=(
     main/voxel/voxel_mesh.c main/voxel/voxel_mesh.h
     main/world/blocks.c     main/world/blocks.h
     main/world/chunk.c      main/world/chunk.h
+    main/world/light.c      main/world/light.h
     main/common/rng.c       main/common/rng.h
     main/world/worldgen.c   main/world/worldgen.h
     main/world/chunk_codec.c main/world/chunk_codec.h
@@ -31,6 +32,8 @@ PURE=(
     main/game/physics.c     main/game/physics.h
     main/game/raycast.c     main/game/raycast.h
     main/game/interact.c    main/game/interact.h
+    main/game/daytime.c     main/game/daytime.h
+    main/game/replay.c      main/game/replay.h
     main/items/items.c      main/items/items.h
     main/items/inventory.c  main/items/inventory.h
     main/items/item_entity.c main/items/item_entity.h

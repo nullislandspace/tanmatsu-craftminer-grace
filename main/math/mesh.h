@@ -32,8 +32,9 @@
 // anything else -- a ship's hull, a creature -- which is culled the
 // general way.
 //
-// It costs nothing: the struct was already 32 bytes with a byte of
-// padding here, and it still is.
+// `dir` cost nothing: the struct had a byte of padding. `light` did not
+// fit it, and takes the struct from 32 bytes to 36 -- an eighth more
+// mesh memory, for faces that can be lit.
 #define MESH_DIR_PX   0
 #define MESH_DIR_NX   1
 #define MESH_DIR_PY   2
@@ -42,10 +43,18 @@
 #define MESH_DIR_NZ   5
 #define MESH_DIR_NONE 0xFFu
 
+// The light a face is lit by, from light.h: sky << 4 | block. The world
+// mesher stamps each face with the light of the cell in FRONT of it; the
+// renderer turns the byte into a brightness for the time of day
+// (mesh_render.h, mesh_set_light_lut). Anything else -- a creature, a
+// block in the hand -- is built at full sky light and drawn as it is.
+#define MESH_LIGHT_FULL 0xF0u
+
 typedef struct {
     uint16_t a, b, c;
     uint8_t  mat;
-    uint8_t  dir;  // MESH_DIR_*, or MESH_DIR_NONE
+    uint8_t  dir;    // MESH_DIR_*, or MESH_DIR_NONE
+    uint8_t  light;  // sky << 4 | block; MESH_LIGHT_FULL unless the mesher knows
     float    uv[3][2];
 } mesh_tri_t;
 
@@ -71,6 +80,7 @@ typedef struct {
     // Stamped onto every triangle added from now on. The mesher sets it
     // per face; everything else leaves it at MESH_DIR_NONE.
     uint8_t      dir;
+    uint8_t      light;  // likewise: MESH_LIGHT_FULL unless the mesher says
 } mesh_t;
 
 // Start an empty mesh. Storage grows as parts are added (PSRAM on the
@@ -83,6 +93,8 @@ void mesh_free(mesh_t* m);
 int  mesh_vert(mesh_t* m, vec3_t p);
 // Every triangle added after this carries `dir` (MESH_DIR_*).
 void mesh_set_dir(mesh_t* m, uint8_t dir);
+// ... and this light byte (MESH_LIGHT_FULL, or light.h's sky << 4 | block).
+void mesh_set_light(mesh_t* m, uint8_t light);
 
 void mesh_tri(mesh_t* m, int a, int b, int c, uint8_t mat, float const uv[3][2]);
 // Quad a-b-c-d in outward (CCW-seen-from-outside) order, as (a,b,c) +

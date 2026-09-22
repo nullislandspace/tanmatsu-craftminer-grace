@@ -86,8 +86,9 @@ main/
 *   mesh_render.{c,h}     LIFTED + mesh_submit_world()
 *   camera.{c,h}          LIFTED
   voxel/
-*   voxel_mesh.{c,h}      LIFTED + vox_grid_t.y0 for sections (D-34)     (pure)
-    voxel_sky.{c,h}       LIFTED, not yet built
+*   voxel_mesh.{c,h}      LIFTED + sections (D-34) + light in the merge key (pure)
+*   voxel_sky.{c,h}       LIFTED: sun, moon, world-space clouds, stars
+*   starfield.{c,h}       LIFTED from the showreel's common/
     voxel_fx.{c,h}        LIFTED, not yet built: waits on the crack overlay
     backdrop.{c,h}        LIFTED, not yet built
     horizon.{c,h}         LIFTED, not yet built
@@ -96,6 +97,7 @@ main/
 *   worldgen.{c,h}        pure (seed, cx, cz) -> id/state planes         (pure)
     farlands.{c,h}        the far-lands density field and its ramp       (pure)
 *   chunk.{c,h}           chunk_t, the ring store, world_block/set/state
+*   light.{c,h}           sky + block light: floods on arrival and on change (pure)
 *   chunk_codec.{c,h}     RLE over a chunk's two planes                  (pure)
 *   chunkmesh.{c,h}       one vertical section into a mesh               (pure)
 *   region.{c,h}          region file: header, dual directory, compaction
@@ -105,7 +107,9 @@ main/
 *   chunk_worker.{c,h}    the core-1 task, queues, the ownership contract
 *   chunk_render.{c,h}    per-section LOD cache, frustum cull, submission
   game/
-*   tick.{c,h}            fixed step; replay record/play is step 5.8
+*   tick.{c,h}            fixed step
+*   replay.{c,h}          record / play the per-tick input (pure)
+*   daytime.{c,h}         the clock: sun, sky, fog, the light table (pure)
 *   physics.{c,h}         swept AABB against voxels                      (pure)
 *   raycast.{c,h}         DDA block pick                                 (pure)
 *   player.{c,h}          movement, mining, spawn/place/reset; health/hunger shown only
@@ -121,6 +125,9 @@ main/
 *   inventory.{c,h}       slots, hotbar, stacking, the Tab grid          (pure)
 *   item_entity.{c,h}     dropped items: pool, tick, despawn             (pure)
     recipes.{c,h}         RECIPE TABLE + resolver                        (pure)
+  fred/
+*   fred.{c,h}            PORTED showreel miner: the player's figure and arm
+*   fred_mesh.{c,h}       his meshes, plus an axe and a shovel
   ui/
 *   title.{c,h}           "CraftMiner" in blocks, on a scratch world (D-58)
 *   menu.{c,h}            every menu: title strip, then se_ui panels for slots,
@@ -809,14 +816,14 @@ frame time than the fell.
 | 5.2 | Save policy: chunk unload, pause-menu Save, quit. Never per tick | done | 2026-09-21: `save_world()` writes the player and every edited resident chunk; eviction already saved. 2026-09-22: saves on **opening the pause menu** (D-61), on its Save row, and on Save and quit. Nothing saves on a tick or a timer. |
 | 5.10 | **Player position and inventory in the save** | done | 2026-09-22, asked for by the user. The inventory is stored **by item name** (D-62) — each slot's item, count and wear, plus the selected slot. The position is restored **exactly** (`player_place`), falling back to standing on the ground only if the body would not fit there; before this a returning player was always put on the surface, whatever cave they had left from. A `placed` flag tells a real position from a new world's spawn guess, with a rule for saves from before the flag (F-51). Host-tested: a worn pickaxe, a partial stack and the last slot round-trip; a position 11 blocks down comes back as 11. |
 | 5.11 | **Adopt the pre-slots Testworld** | done | 2026-09-22, asked for by the user: people are already playing. The one world earlier builds kept, `worlds/flyover`, is moved by **one directory rename** into the first free slot and renamed *Testworld*. Nothing is copied, so nothing can be half-copied; a card that never had it is left alone, and a second start finds nothing to do. Host-tested against a hand-written level.cmw in the old format, with a chunk in it: terrain, the placed block, the player's exact position and the seed all survive. **Not yet run on the badge** — it was unreachable when this was written. |
-| 5.7 | **Entities in the save**: write and read `SECTION_ENTITIES` | todo | Carried in from 4.1. The section is reserved in `chunk_codec.h` and nothing writes it, so every drop on the ground is lost on reload. `item_entity_t` is already the shape it will be written in, and the age field is elapsed ticks (D-51) precisely so that a world reopened weeks later behaves. |
-| 5.8 | **Replay record/play**, and synchronous chunks for the `shots` test | **part done** | 2026-09-21: the synchronous half is done (D-59) — a `shots` run switches the worker inline and settles the world, so a shot photographs the world instead of the sky, and three captures of one instant now hash identically. **Replay record/play is still not written.** Carried in from 3.3, was blocked on F-45. A `shots` run SETS the clock rather than running it, so the chunks never stream and every screenshot is empty sky — the fix is the synchronous mode D-15 put there for exactly this. Until both exist, block 3's device accept line cannot be met and shot hashes cover the overlay but not the world. |
-| 5.9 | Move `time_of_day` from the player record to the world (D-52) | todo | A world has one time of day however many players it has had, and the day/night cycle reads it. Cheap because both records are tagged and skippable (D-30). |
-| 5.5 | **Pre-generate and save the spawn area on world creation**, behind a "Creating world" progress bar (D-25) | **part done** | 2026-09-21: `pregenerate()` exists and runs for both the title and the spawn (D-57). The progress bar does not — it happens behind a screen that is not yet showing anything, which is fine for 2.8 s and will not be for a new world's larger area. |
+| 5.7 | **Entities in the save** | done | 2026-09-22: every dropped item goes into level.cmw with the world (D-68) -- by item name, with count, wear, age and what is left of its pickup delay -- and comes back on opening. An item whose chunk is not loaded holds still (no falling, ageing or pickup), which keeps D-33's promise without per-chunk entity sections. Host-tested: a round trip, and an item in an unloaded chunk neither falling nor ageing. |
+| 5.8 | **Replay record/play**, and synchronous chunks for the `shots` test | done | 2026-09-22: `game/replay.{c,h}`. R (a debug key, unless bound) records from where the player stands to `replays/last.cmr`: the start (seed, clock, position, inventory) and each tick's action mask and gyro turn. The `replay` and `replay_third` test scenes play `replays/test.cmr` (else `last.cmr`) on a SCRATCH world of that seed, so no save is touched; under a test the replay runs exactly the ticks that belong to the set clock. Two ordering bugs found making it deterministic (F-59, F-60). Host-tested round trip; on the badge a scripted replay placed a torch at night and mined, photographed in both views. Earlier notes: | 2026-09-21: the synchronous half is done (D-59) — a `shots` run switches the worker inline and settles the world, so a shot photographs the world instead of the sky, and three captures of one instant now hash identically. **Replay record/play is still not written.** Carried in from 3.3, was blocked on F-45. A `shots` run SETS the clock rather than running it, so the chunks never stream and every screenshot is empty sky — the fix is the synchronous mode D-15 put there for exactly this. Until both exist, block 3's device accept line cannot be met and shot hashes cover the overlay but not the world. |
+| 5.9 | Move `time_of_day` from the player record to the world (D-52) | done | 2026-09-22: `world_meta_t.time_of_day`, advanced one per simulation tick and never by the wall clock. A save from before reads the player's copy instead (host-tested with a hand-written old save). New worlds start at a morning. |
+| 5.5 | **Pre-generate and save the spawn area on world creation**, behind a "Creating world" progress bar (D-25) | done | 2026-09-22: an `APP_LOADING` state generates a 60 ms slice a frame and draws "Creating world" / "Loading world" with the world's name and a bar, for the title at boot too. Under a deterministic test it loads in one step, and the frame that finishes carries straight on (F-60). |
 | 5.6 | **The entering sequence** (D-26): physics frozen, 3x3 synchronous, play, then stream the rest | **part done** | 2026-09-21: the tick is frozen until the chunk under the player is resident, and the spawn area is pre-generated before play starts. The "carry on streaming the rest while walking" half already worked. |
 | 5.3 | Pause menu; `f1_exits = false`; quitting saves first | done | 2026-09-22: Resume / Save / Settings / Save and quit to title. Opened by the Pause binding **or Esc, always** (D-63); Esc closes the inventory first if it is open. |
 | 5.4 | `worldlist_ui.c` with index + FatFs rebuild; delete a world | done | 2026-09-22: the slot list reads each slot's level.cmw when it opens (eight file opens, not per frame). Delete asks first with **No** under the cursor, and removes the directories as well as the files, so the slot is really free. `worlds.idx` is still unneeded (1.4). |
-| | **Accept:** a scripted device test creates a world, edits 200 blocks across 3 chunks, saves, reloads, and reports whether every edit survived. **-> hand to the user** | | |
+| | **Accept:** a scripted device test creates a world, edits 200 blocks across 3 chunks, saves, reloads, and reports whether every edit survived. **-> hand to the user** | **done** | 2026-09-22: the `savecheck` scene (`make cycle TEST="perf scene=savecheck secs=3"`), in a hidden world deleted afterwards. **200 of 200 edits survived** on the badge. The test kit gained `devtest_content_failed()` so a miss ends the test "bad". |
 | **6** | **Settings** | | |
 | 6.1 | Controls menu, the synthracer pattern, all actions rebindable | done | 2026-09-22: all 21 actions, plus Reset to defaults. Binding a key another action has **swaps** them, so no two actions share a key and none is left with none. The capture is the engine's `se_ui_capture_key`, fixed to take the cursor keys (F-50), and the key column is synthracer's `keybind_ui.c` with its key-cap icons (`ui/icons.c`), both ported with provenance headers. The main menu is a strip under the title (the user kept it); every other screen is an `se_ui` panel. The polled fallback for keyboards that send arrows as navigation events now follows the binding rather than the action, and the debug keys stand aside for any key a player has bound (D-64). |
 | 6.4 | **Gyroscope look** | done | 2026-09-22, asked for by the user: a Controls checkbox, off by default. The **rate** gyroscope is added up frame by frame and handed to the look beside the cursor keys, one real degree per view degree, so both work at once (D-65). A resting gyroscope's offset is tracked rather than turned into a slow spin. Yaw sign as the diagram in `graceloader_imu.h` predicts; the **pitch sign had to be flipped**, reported by the user on the badge. |
@@ -834,7 +841,14 @@ frame time than the fell.
 | 12 | Mobs: zombies, skeletons, spiders; spawning, pathing, combat; beds and spawn; death keeps the inventory | todo | |
 | 13 | Fishing | todo | |
 | 14 | Audio: SFX voices and procedural music | todo | |
-| 15 | Block and sky lighting | todo | |
+| 15 | Block and sky lighting | done | 2026-09-22, asked for by the user (torches that light the area, computed when a block changes). Pulled forward from the end of the plan: a light plane per chunk (sky and block light, 0..15 each, D-69), flooded when a chunk arrives -- its own light on core 1, the border exchange on the main task (F-58) -- and updated with the two-queue flood on every block change. The mesher keys faces on light; a per-frame table turns light into brightness for the time of day, through the engine's new `SE_TRI_LIGHT`. Host-tested: fall-off, removal, a shaft opened and capped, across a chunk border and into a chunk arriving late. On the badge: a placed torch lights the ground at night. |
+| 16 | **Day and night; sun, moon, clouds, stars** | done | 2026-09-22, asked for by the user. `game/daytime.{c,h}`: a 20-minute day from the world's tick count -- sun direction, sky and fog colours with an orange band at sunrise and sunset, a daylight fraction, the light table. The showreel's blocky sun, moon and clouds (`voxel/voxel_sky.c`, clouds laid out in world coordinates) and its starfield. Night takes 9 light levels off the sky, not Minecraft's 11 (F-57). Clouds are a Graphics toggle; the title has none (they flew through its letters). |
+| 17 | **Fred: first-person arm, held item, third person** | done | 2026-09-22, asked for by the user: the showreel's miner, ported as `fred/fred.{c,h}` and `fred_mesh.{c,h}` with provenance, given an axe and a shovel beside the pickaxe, blocks in their own textures, flowers as sprites and a torch as its stick. Lit by the cell he stands in. First person draws the arm at a third of the showreel's distance and size (D-70). Third person (Settings -> Graphics -> Camera) puts the camera 4 blocks behind his eyes, pulled in by a ray when something is in the way; the crosshair is hidden there, the block outline kept. |
+| 18 | **Position overlay** | done | 2026-09-22, asked for by the user: a new action, `Show position`, Backspace by default and rebindable, toggles coordinates, compass heading (D-71), the world's clock and day, and replay status. |
+| 19 | **Torches could not be taken back** (bug) | done | 2026-09-22, reported by the user (F-56). |
+| 20 | **Terrain vanishing; "walking through" steps** (bug) | done | 2026-09-22, reported by the user as critical: at a step the view went into the ground, and looking round left holes. **Not physics** -- the same collision code walked the user's own terrain on the host for 6400 ticks without once ending inside a block, and the badge log showed the player climbing. It was the engine's geometry lists overflowing and DROPPING triangles, which the engine never reported (F-63). Caps raised, the line list shrunk to pay for it, far meshes' light rounded, the engine's drop counter fixed (D-72). The same walk now peaks at about 3000/6144 flat and 1900/4096 textured, nothing dropped -- at **7-9 fps** at the medium view. |
+| 21 | **Fred's hand**, and the handedness bug | done | 2026-09-22, reported by the user: first person held things in the right hand, third person in the left (F-64). Now a Graphics setting, right by default, and both views follow it. Checked on the badge mid-swing, both ways: right-handed the pickaxe rises by his right shoulder, left-handed by his left. |
+| 22 | **N: step the clock** | done | 2026-09-22, asked for by the user: a debug key moving the world's clock a quarter of a day, for looking at night without waiting. |
 
 ---
 
@@ -1430,8 +1444,92 @@ frame time than the fell.
   linked, and `make verify` caught it before the badge did. The seed parser
   does its own decimal.
 
+- **F-56** 2026-09-22, reported by the user: **a placed torch could not be
+  picked up.** The crosshair's ray stopped only at SOLID blocks, and a torch is
+  not solid, so it could never be aimed at -- nor could a flower or tall grass.
+  The ray now stops at anything but air and liquids (so water still never hides
+  the riverbed), and placing onto tall grass replaces it as the highlight says.
+  Host-tested both ways.
+- **F-57** 2026-09-22: **Minecraft's night (sky light minus 11) is unreadable
+  on this screen.** Measured by photographing the title at midnight: the
+  letters were barely there. Minus 9 leaves a moonlit field dim but legible and
+  still far darker than torchlight.
+- **F-58** 2026-09-22: **lighting a chunk as it arrived cost 23 ms on the main
+  task** -- title pre-generation went 2757 -> 4593 ms. Three wastes removed
+  (marking meshes of a chunk nobody has drawn, seeding the sky flood from every
+  lit cell, re-flooding the neighbours' lit cells) brought it to 8.4 ms, and
+  splitting the work -- a chunk's own light on core 1 while it loads, only the
+  border exchange on the main task -- to about 5 ms a chunk in total, most of it
+  off the frame path.
+- **F-59** 2026-09-22: **settling the player after the frame's ticks undid
+  them.** Entering a world puts the player back at their saved position on the
+  first frame their chunk is resident; that ran AFTER the ticks, so it threw
+  them away. Invisible in play (one frame), fatal to a test that jumps the clock
+  and runs a hundred ticks in that frame. Now it runs before.
+- **F-60** 2026-09-22: **the frame that finished loading was drawn with a
+  camera nobody had set** -- on_update returned early for the loading step, and
+  a test photographed exactly that frame. Now the finishing frame carries on.
+- **F-61** 2026-09-22, found while adding light: **an edit on a chunk border
+  could lose the neighbour's remesh.** world_set marked the neighbour stale
+  without moving its edit_seq, so a mesh of it already in flight came back,
+  was accepted, and cleared the stale bit. `world_mark_dirty` now bumps edit_seq
+  on every chunk it marks.
+- **F-62** 2026-09-22: free PSRAM at boot is now about 13 MiB, down from 20:
+  the light plane adds 4 MiB to the chunk slab and the two flood contexts 1.5 MiB.
+
+- **F-63** 2026-09-22, reported by the user as a critical bug: **nearby
+  terrain vanished and the player seemed to walk into steps.** The engine's
+  geometry lists overflowed and dropped triangles in submission order -- which
+  is slot order, not distance -- so whole patches near the player went missing,
+  a step among them. Two causes stacked: the medium view (already over the flat
+  cap before lighting, the reason near had been the default) and lighting,
+  which splits merged faces (+46% triangles in the fancy meshes, +16% fast,
+  +10% coarse, measured on the user's terrain). It went unseen because the
+  engine only counted drops that happened during near-plane clipping; the
+  common case, a whole triangle arriving at a full list, returned without
+  counting. The walk that showed it submitted 6000-8400 triangles a frame
+  against caps of 4096 + 2048.
+- **F-64** 2026-09-22, reported by the user: **Fred held things in his left
+  hand in third person and his right in first.** The showreel built the miner
+  with his right hand on -x; in this engine the camera's right at yaw 0 is +x
+  (host-checked: a model's +x lands on the right of a camera behind it). One
+  caution from checking it: a screenshot of a figure seen from behind at night
+  easily shows the WORLD's torch where you expect his -- it took a mid-swing
+  shot, pickaxe above the shoulder, to see which hand was which.
+
 ### Decisions (D-n), each with date and who decided
 
+- **D-72** 2026-09-22, Claude: **the geometry caps are 6144 flat (internal
+  SRAM), 256 lines, 4096 textured (PSRAM).** The line list was 112 KB of
+  internal SRAM for the dozen lines of a block outline; shrinking it pays for
+  the bigger flat list, which stays in fast memory. The far meshes round light
+  to every fourth level for merging (16% -> 4% extra triangles there); the
+  near ones keep every level, where banding would show. The frame stats now
+  print how full each list is. Medium stays the default (D-66); at 7-9 fps
+  that is the user's call to revisit, with the frame-rate work they deferred.
+- **D-73** 2026-09-22, **the user**: **Fred's handedness is a setting**, right
+  by default, and both views follow it.
+- **D-68** 2026-09-22, Claude: **dropped items are saved with the world
+  record, not per chunk.** D-33 wanted them in each chunk's own section; that
+  means handing entity data to and from the worker with every chunk save and
+  load, for a pool of 96. A list in level.cmw is far simpler and keeps what
+  D-33 actually promised, because an item in an unloaded chunk holds still (no
+  fall, no ageing, no pickup) until its chunk returns. Revisit when there are
+  creatures, whose numbers will not fit one list.
+- **D-69** 2026-09-22, Claude (the design; the user asked for static torch
+  light): **light is a derived plane, drawn through a table.** One byte a cell,
+  sky and block light, never saved; flooded on arrival and on every change.
+  Faces carry the byte; brightness = a table of it, rebuilt each frame from the
+  time of day and handed to the engine as `SE_TRI_LIGHT` -- so night falls
+  without re-meshing anything. Costs 4 MiB of PSRAM and four bytes a mesh
+  triangle (mesh_tri_t 32 -> 36 bytes).
+- **D-70** 2026-09-22, Claude: **the first-person arm is drawn at a third of
+  the showreel's distance and size.** Same picture; but at 0.9 blocks out it
+  vanished into any block the player was touching, which is every block they
+  mine.
+- **D-71** 2026-09-22, Claude: **+z is north, +x east.** The camera turns right
+  from +z to +x, which is north-to-east on a map with north up, and the sun
+  rises at +x. The position overlay's compass says so.
 - **D-60** 2026-09-22, **the user**: **named worlds in save slots, and the
   Testworld moves into slot 1.** Eight slots, directories `slot1`..`slot8`, the
   name in level.cmw — so a name can be anything the keyboard types and renaming
@@ -1473,7 +1571,9 @@ frame time than the fell.
   will say if it has not changed enough.
 - **D-64** 2026-09-22, Claude: **debug keys yield to bindings.** F (free
   camera) and P (pause the scripted flight) act only on a key no action is
-  bound to. T and V are gone: their jobs are in Settings -> Graphics.
+  bound to. T and V are gone: their jobs are in Settings -> Graphics. N (added
+  later the same day, asked for by the user) moves the world's clock a quarter
+  of a day on, for looking at night without waiting for it.
 - **D-57** 2026-09-21, **the user**: **generate every chunk before the intro
   runs.** The streamer asks for four chunks a frame so that walking never
   stalls, but "never stalls" and "is complete" are different promises and an

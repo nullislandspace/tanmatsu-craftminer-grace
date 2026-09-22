@@ -4,6 +4,11 @@
 
 #include "game/hud.h"
 
+#include <math.h>
+
+#include "math/mesh_render.h"
+#include "world/light.h"
+
 #include <stdio.h>
 
 #include "items/item_entity.h"
@@ -135,6 +140,11 @@ void hud_dropped_items(void) {
         float const      z = (float)(e->body.z - (double)oz);
         float const      h = ITEM_ENTITY_SIZE * 0.5f;
         uint32_t const   c = item_def(e->item).argb;
+        // Lit by the cell it lies in, like the ground under it: a drop
+        // must not glow in the dark.
+        uint32_t const lf = SE_TRI_LIGHT(mesh_light_level(world_light((int32_t)floor(e->body.x),
+                                                                       (int32_t)floor(e->body.y + 0.1),
+                                                                       (int32_t)floor(e->body.z))));
 
         // An axis-aligned box: six quads, two triangles each. Not spun
         // -- a rotation would have to be a function of the tick to stay
@@ -153,9 +163,9 @@ void hud_dropped_items(void) {
         };
         for (int f = 0; f < 6; f++) {
             scene_tri(faces[f].a[0], faces[f].a[1], faces[f].a[2], faces[f].b[0], faces[f].b[1], faces[f].b[2],
-                      faces[f].c[0], faces[f].c[1], faces[f].c[2], c, 0);
+                      faces[f].c[0], faces[f].c[1], faces[f].c[2], c, lf);
             scene_tri(faces[f].a[0], faces[f].a[1], faces[f].a[2], faces[f].c[0], faces[f].c[1], faces[f].c[2],
-                      faces[f].d[0], faces[f].d[1], faces[f].d[2], c, 0);
+                      faces[f].d[0], faces[f].d[1], faces[f].d[2], c, lf);
         }
     }
 }
@@ -354,4 +364,16 @@ void hud_mine_progress(pax_buf_t* fb, float progress) {
     box(fb, x, y, w, h, 0xFF202028u);
     int const fill = (int)((float)w * (progress > 1.0f ? 1.0f : progress));
     box(fb, x, y, fill, h, 0xFFE8E8E8u);
+}
+
+void hud_text_lines(pax_buf_t* fb, char const* const* lines, int n) {
+    if (fb == NULL) return;
+    hud_begin(fb);
+    float const h = 16.0f;
+    for (int i = 0; i < n; i++) {
+        if (lines[i] == NULL || lines[i][0] == '\0') continue;
+        float const y = 10.0f + (float)i * (h + 6.0f);
+        rendertext_draw(fb, 0xFF000000u, NULL, h, 12.0f, y + 1.5f, lines[i]);
+        rendertext_draw(fb, 0xFFFFFFFFu, NULL, h, 10.5f, y, lines[i]);
+    }
 }

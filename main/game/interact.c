@@ -135,7 +135,11 @@ bool interact_place(ray_hit_t const* hit, uint8_t block, phys_body_t const* avoi
     // is no "in front of" to place into.
     if (hit->face == 0xFFu) return false;
 
-    int32_t const x = hit->px, y = hit->py, z = hit->pz;
+    // Aimed at something a placement overwrites -- tall grass -- the
+    // block goes INTO that cell, not in front of it: that is what the
+    // highlighted box promised.
+    bool const    into = block_replaceable(hit->block);
+    int32_t const x = into ? hit->x : hit->px, y = into ? hit->y : hit->py, z = into ? hit->z : hit->pz;
     if (y < 0 || y >= CH_H) return false;
     if (chunk_find(chunk_of(x), chunk_of(z)) == NULL) return false;
     if (!block_replaceable(world_block(x, y, z))) return false;

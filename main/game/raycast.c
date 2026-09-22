@@ -56,7 +56,9 @@ bool ray_pick(double ox, double oy, double oz, float dx, float dy, float dz, flo
     // at. Reporting it would draw a highlight box round a piece of fog
     // and offer to mine it. A ray that reaches one has run out of
     // world, so it stops without a hit.
-#define RAY_HITS(b) ((b) != BLK_BARRIER && (want_solid ? block_solid(b) : (b) != BLK_AIR))
+#define RAY_HITS(b)                                                                                                    \
+    ((b) != BLK_BARRIER &&                                                                                             \
+     (want_solid ? block_solid(b) : ((b) != BLK_AIR && (block_def(b)->flags & BF_LIQUID) == 0)))
 
     // The starting cell counts: standing inside a block, the crosshair
     // is pointing at it.

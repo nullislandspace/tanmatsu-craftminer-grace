@@ -84,6 +84,16 @@ void mesh_submit_counters_reset(void) {
     s_passed = 0;
 }
 
+static uint8_t const* s_lut;
+
+void mesh_set_light_lut(uint8_t const* lut) {
+    s_lut = lut;
+}
+
+uint8_t mesh_light_level(uint8_t light) {
+    return s_lut != NULL ? s_lut[light] : (uint8_t)SE_TRI_LIGHT_MAX;
+}
+
 void mesh_submit_world(mesh_t const* m, vec3_t origin_rel, mesh_mat_t const* mats, int mat_n) {
     if (m == NULL || m->vn == 0 || m->tn == 0) return;
 
@@ -127,16 +137,17 @@ void mesh_submit_world(mesh_t const* m, vec3_t origin_rel, mesh_mat_t const* mat
         float const  cx = vc.x + origin_rel.x, cy = vc.y + origin_rel.y, cz = vc.z + origin_rel.z;
 
         s_passed++;
-        mesh_mat_t const* mat = &mats[t->mat];
+        mesh_mat_t const* mat   = &mats[t->mat];
+        uint32_t const    flags = s_lut != NULL ? mat->flags | SE_TRI_LIGHT(s_lut[t->light]) : mat->flags;
         if (mat->tex != NULL) {
             se_tex_vertex_t const tv[3] = {
                 {ax, ay, az, t->uv[0][0], t->uv[0][1]},
                 {bx, by, bz, t->uv[1][0], t->uv[1][1]},
                 {cx, cy, cz, t->uv[2][0], t->uv[2][1]},
             };
-            scene_textured_tri(tv, mat->tex, mat->flags);
+            scene_textured_tri(tv, mat->tex, flags);
         } else {
-            scene_tri(ax, ay, az, bx, by, bz, cx, cy, cz, mat->argb, mat->flags);
+            scene_tri(ax, ay, az, bx, by, bz, cx, cy, cz, mat->argb, flags);
         }
     }
 }

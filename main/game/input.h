@@ -48,10 +48,11 @@ typedef enum {
     CM_INVENTORY,
     CM_PAUSE,
     CM_DROP,
+    CM_INFO,  // the coordinates-and-heading overlay
     CM_ACTION_COUNT
 } cm_action_t;
 
-// The per-tick mask. 21 actions, so a uint32 with room to spare.
+// The per-tick mask. 22 actions, so a uint32 with room to spare.
 typedef uint32_t cm_actions_t;
 
 static inline bool act_held(cm_actions_t m, cm_action_t a) {
@@ -66,6 +67,11 @@ void input_init(void);
 // simulation tick, not once per frame.
 cm_actions_t input_sample(void);
 
+// A mask from somewhere other than the keyboard -- a replay -- put
+// through the same edge detection input_sample() does, so
+// input_pressed() means the same thing either way. Returns `mask`.
+cm_actions_t input_feed(cm_actions_t mask);
+
 // Edges: actions that went down between the last two samples. What a
 // hotbar slot, the inventory key and a single block placement want --
 // holding a key must not fire them sixty times.
@@ -78,6 +84,11 @@ cm_actions_t input_pressed(void);
 // (the setting is off) reads nothing and discards anything owed. The
 // cursor keys keep working alongside: the two deltas add.
 void input_gyro_frame(float dt, bool on);
+
+// The gyroscope turn owed to the next tick, radians: read it to record
+// it, set it to replay one.
+void input_gyro_owed(float* dyaw, float* dpitch);
+void input_gyro_set_owed(float dyaw, float dpitch);
 
 // The look delta for this tick, in radians. The abstraction a mouse
 // will one day feed instead of the cursor keys; `mask` is the tick's

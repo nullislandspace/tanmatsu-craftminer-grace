@@ -196,7 +196,9 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     double const ex = p->body.x, ey = p->body.y + (double)PHYS_PLAYER_EYE, ez = p->body.z;
     float        dx, dy, dz;
     ray_forward(p->yaw, p->pitch, &dx, &dy, &dz);
-    p->aim_valid = ray_pick(ex, ey, ez, dx, dy, dz, RAY_REACH, true, &p->aim);
+    // Anything that can be pointed at, not only solids: torches, flowers
+    // and tall grass have to be breakable too (F-56).
+    p->aim_valid = ray_pick(ex, ey, ez, dx, dy, dz, RAY_REACH, false, &p->aim);
 
     uint16_t const held = inv_held(&p->inv)->item;
 

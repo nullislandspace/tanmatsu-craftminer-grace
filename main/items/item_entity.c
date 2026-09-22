@@ -4,6 +4,8 @@
 
 #include "items/item_entity.h"
 
+#include <math.h>
+
 #include "common/rng.h"
 #include "world/chunk.h"
 
@@ -23,6 +25,22 @@ void item_entity_reset(void) {
     for (int i = 0; i < ITEM_ENTITY_MAX; i++) s_pool[i].alive = false;
     s_live      = 0;
     s_spawn_seq = 0;
+}
+
+int item_entity_copy(item_entity_t* out, int max) {
+    int n = 0;
+    for (int i = 0; i < ITEM_ENTITY_MAX && n < max; i++) {
+        if (s_pool[i].alive) out[n++] = s_pool[i];
+    }
+    return n;
+}
+
+void item_entity_restore(item_entity_t const* in, int n) {
+    item_entity_reset();
+    for (int i = 0; i < n && i < ITEM_ENTITY_MAX; i++) {
+        if (!in[i].alive) continue;
+        s_pool[s_live++] = in[i];
+    }
 }
 
 int item_entity_live(void) {
@@ -110,10 +128,13 @@ int item_entity_tick(inventory_t* inv, double px, double py, double pz) {
     for (int i = 0; i < ITEM_ENTITY_MAX; i++) {
         item_entity_t* e = &s_pool[i];
         if (!e->alive) continue;
+        // An item in a chunk that is not loaded HOLDS STILL: no fall (it
+        // would drop through the missing ground), no age, no pickup. It
+        // carries on when its chunk comes back -- walking away must not
+        // cost the player their drops (D-33).
+        if (chunk_find(chunk_of((int32_t)floor(e->body.x)), chunk_of((int32_t)floor(e->body.z))) == NULL) continue;
 
-        // The age, in ticks, advancing only because this tick ran. A
-        // chunk nobody is simulating does not get here at all, which is
-        // exactly the intent (D-51).
+        // The age, in ticks, advancing only because this tick ran (D-51).
         e->age++;
         if (e->age >= ITEM_DESPAWN_TICKS) {
             e->alive = false;

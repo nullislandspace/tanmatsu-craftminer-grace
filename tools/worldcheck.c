@@ -33,12 +33,14 @@
 #include "world/worldgen.h"
 #include "world/chunk_worker.h"
 #include "world/chunkmesh.h"
+#include "world/light.h"
 #include "world/worldstore.h"
 #include "se_nbt.h"
 #include "game/physics.h"
 #include "game/raycast.h"
 #include "game/interact.h"
 #include "game/player.h"
+#include "game/replay.h"
 #include "items/inventory.h"
 #include "items/item_entity.h"
 
@@ -1160,21 +1162,21 @@ static void check_worldstore(void) {
     player.bed_x   = -99998;
     player.bed_y   = 70;
     player.bed_z   = 11;
-    player.time_of_day = 4321;
+    meta.time_of_day   = 4321;
     meta.play_secs     = 99;
-    CHECK(worldstore_save(&meta, &player), "worldstore_save failed");
+    CHECK(worldstore_save(&meta, &player, NULL), "worldstore_save failed");
 
     world_meta_t   m2;
     player_state_t p2;
     worldstore_close();
-    CHECK(worldstore_open(meta.slug, &m2, &p2), "worldstore_open failed");
+    CHECK(worldstore_open(meta.slug, &m2, &p2, NULL), "worldstore_open failed");
     CHECK(strcmp(m2.name, meta.name) == 0, "the name did not survive a save/load");
     CHECK(m2.seed == 12345u, "the seed did not survive a save/load");
     CHECK(m2.play_secs == 99, "play_secs did not survive");
     CHECK(p2.x == player.x && p2.y == player.y && p2.z == player.z, "the player position did not survive");
     CHECK(p2.health == 13 && p2.hunger == 7, "player health/hunger did not survive");
     CHECK(p2.has_bed && p2.bed_x == -99998, "the bed spawn did not survive");
-    CHECK(p2.time_of_day == 4321, "time of day did not survive");
+    CHECK(m2.time_of_day == 4321, "the world's time of day did not survive");
 
     // A second world with the same name must not collide.
     world_meta_t   m3;
@@ -1189,7 +1191,7 @@ static void check_worldstore(void) {
     CHECK(n == 2, "expected 2 worlds, listed %d", n);
 
     // Chunks go through the store, which owns the paths.
-    CHECK(worldstore_open(meta.slug, &m2, &p2), "reopening failed");
+    CHECK(worldstore_open(meta.slug, &m2, &p2, NULL), "reopening failed");
     chunk_t c;
     fill_chunk(&c, g_ia, g_sa, 4, -9, m2.seed);
     g_sa[CH_IDX(3, 33, 3)] = ST_PLACED;
@@ -1208,7 +1210,7 @@ static void check_worldstore(void) {
     // Deleting removes the world and its regions.
     CHECK(worldstore_delete(m3.slug), "worldstore_delete failed");
     CHECK(worldstore_list(list, CM_WORLDS_MAX) == 1, "the deleted world is still listed");
-    CHECK(!worldstore_open(m3.slug, &m3, &p3), "a deleted world still opens");
+    CHECK(!worldstore_open(m3.slug, &m3, &p3, NULL), "a deleted world still opens");
 }
 
 // A level.cmw exactly as the builds before save slots wrote it: no
@@ -1243,6 +1245,7 @@ static void write_legacy_level(char const* slug, double x, double y, double z) {
     nbt_write_double(&w, "pitch", 0.0);
     nbt_write_int32(&w, "health", 20);
     nbt_write_int32(&w, "hunger", 20);
+    nbt_write_int64(&w, "time_of_day", 7777);  // where builds before D-52 kept the clock
     nbt_write_end(&w);
     nbt_write_compound(&w, "palette");
     for (int i = 0; i < BLK_COUNT; i++) nbt_write_int32(&w, BLOCKS[i].name, i);
@@ -1289,11 +1292,11 @@ static void check_slots(void) {
     player.x            = 12.25;
     player.y            = 11.0;  // in a cave, far below the surface
     player.z            = -3.75;
-    CHECK(worldstore_save(&meta, &player), "saving the slot world failed");
+    CHECK(worldstore_save(&meta, &player, NULL), "saving the slot world failed");
     worldstore_close();
 
     player_state_t back;
-    CHECK(worldstore_open("slot3", &meta, &back), "reopening slot 3 failed");
+    CHECK(worldstore_open("slot3", &meta, &back, NULL), "reopening slot 3 failed");
     CHECK(back.placed && back.y == 11.0 && back.x == 12.25 && back.z == -3.75, "the exact position did not survive");
     CHECK(back.has_inv, "the inventory did not come back");
     CHECK(back.inv_selected == 4, "the selected slot did not survive (%d)", (int)back.inv_selected);
@@ -1306,9 +1309,39 @@ static void check_slots(void) {
     for (int i = 0; i < INV_SLOTS; i++) filled += back.inv[i].item != 0;
     CHECK(filled == 3, "expected 3 filled slots back, got %d", filled);
 
+    // Dropped items round-trip with the world, by name, age and delay
+    // intact (D-68).
+    static world_items_t items, items_back;
+    memset(&items, 0, sizeof(items));
+    items.n    = 2;
+    items.e[0] = (item_entity_t){.alive = true, .item = BLK_LOG, .count = 5, .age = 300, .pickup_at = 310};
+    phys_body_init(&items.e[0].body, 4.25, 30.0, -6.5);
+    items.e[1] = (item_entity_t){.alive = true, .item = ITEM_AXE_STONE, .count = 1, .wear = 40, .age = 11999,
+                                 .pickup_at = 12039};
+    phys_body_init(&items.e[1].body, -1.0, 12.5, 2.0);
+    CHECK(worldstore_open("slot3", &meta, &back, NULL), "reopening slot 3 for the items failed");
+    CHECK(worldstore_save(&meta, &back, &items), "saving the items failed");
+    worldstore_close();
+    CHECK(worldstore_open("slot3", &meta, &back, &items_back), "reopening slot 3 with its items failed");
+    CHECK(items_back.n == 2, "%d items came back, not 2", items_back.n);
+    CHECK(items_back.e[0].item == BLK_LOG && items_back.e[0].count == 5 && items_back.e[0].age == 300 &&
+              items_back.e[0].pickup_at == 310 && items_back.e[0].body.x == 4.25,
+          "the logs on the ground did not survive");
+    CHECK(items_back.e[1].item == ITEM_AXE_STONE && items_back.e[1].wear == 40 && items_back.e[1].age == 11999,
+          "the axe on the ground did not survive");
+    // In an unloaded chunk, an item holds still: it neither falls nor
+    // ages. (Nothing is resident here: the store was cleared.)
+    item_entity_restore(items_back.e, items_back.n);
+    item_entity_tick(NULL, 0.0, 0.0, 0.0);
+    CHECK(item_entity_at(0)->age == 300 && item_entity_at(0)->body.y == 30.0,
+          "an item in an unloaded chunk aged or fell (age %u, y %.2f)", item_entity_at(0)->age,
+          item_entity_at(0)->body.y);
+    item_entity_reset();
+    worldstore_close();
+
     // Renaming touches the name only.
     CHECK(worldstore_rename("slot3", "Renamed"), "rename failed");
-    CHECK(worldstore_open("slot3", &meta, &back), "reopening after the rename failed");
+    CHECK(worldstore_open("slot3", &meta, &back, NULL), "reopening after the rename failed");
     CHECK(strcmp(meta.name, "Renamed") == 0 && meta.seed == 99u, "rename lost the seed or the name");
     CHECK(back.inv[4].count == 37 && back.y == 11.0, "rename lost the player");
     worldstore_close();
@@ -1317,7 +1350,7 @@ static void check_slots(void) {
     // the first free slot under its new name, with its terrain and its
     // player intact -- and a second start finds nothing more to do.
     write_legacy_level("flyover", 40.5, 30.0, -7.5);
-    CHECK(worldstore_open("flyover", &meta, &back), "the legacy world does not open as it is");
+    CHECK(worldstore_open("flyover", &meta, &back, NULL), "the legacy world does not open as it is");
     chunk_t c;
     fill_chunk(&c, g_ia, g_sa, 2, 3, meta.seed);
     g_ia[CH_IDX(5, 40, 5)] = BLK_GLASS;
@@ -1330,10 +1363,12 @@ static void check_slots(void) {
     CHECK(slot == 0, "the legacy world went to slot %d, not the first free one", slot + 1);
     CHECK(worldstore_slot_peek(0, &peek) && strcmp(peek.name, "Testworld") == 0, "slot 1 is not called Testworld");
     CHECK(peek.seed == 0xC0FFEEu, "the Testworld lost its seed");
-    CHECK(!worldstore_open("flyover", &meta, &back), "the legacy world is still where it was");
-    CHECK(worldstore_open("slot1", &meta, &back), "the adopted world does not open");
+    CHECK(!worldstore_open("flyover", &meta, &back, NULL), "the legacy world is still where it was");
+    CHECK(worldstore_open("slot1", &meta, &back, NULL), "the adopted world does not open");
     CHECK(back.placed && back.x == 40.5 && back.y == 30.0, "a legacy player who had played was not put back exactly");
     CHECK(!back.has_inv, "a legacy player got an inventory they never saved");
+    CHECK(meta.time_of_day == 7777, "the clock from the old player record was not moved to the world (%lld)",
+          (long long)meta.time_of_day);
     chunk_t cb;
     memset(&cb, 0, sizeof(cb));
     cb.id = g_ib;
@@ -1350,7 +1385,7 @@ static void check_slots(void) {
     // A legacy player who never left through Esc still has the default
     // at the spawn column's centre: that is a guess, not a position.
     write_legacy_level("flyover", 0.5, (double)CH_SEA_LEVEL + 2.0, 0.5);
-    CHECK(worldstore_open("flyover", &meta, &back), "the second legacy world does not open");
+    CHECK(worldstore_open("flyover", &meta, &back, NULL), "the second legacy world does not open");
     CHECK(!back.placed, "the untouched default position was taken as a real one");
     worldstore_close();
     CHECK(worldstore_adopt_legacy("flyover", "Testworld") == 1, "with slot 1 taken, the next free slot is 2");
@@ -1633,6 +1668,111 @@ static void set_block(int32_t x, int32_t y, int32_t z, uint8_t b, uint8_t st) {
     chunk_resummarise(c);
 }
 
+// Light (world/light.h): the floods have to agree with the rule they
+// implement, both ways -- light arriving where it should, and going
+// away again when its source does. A solid world 20 deep with rooms
+// carved into it, lit and changed through world_set like the game does.
+static int lsky(int32_t x, int32_t y, int32_t z) {
+    return light_sky(world_light(x, y, z));
+}
+static int lblk(int32_t x, int32_t y, int32_t z) {
+    return light_block(world_light(x, y, z));
+}
+
+static void check_light(void) {
+    printf("light\n");
+    CHECK(light_init(), "light_init failed");
+    chunk_store_clear();  // flat_world will not reuse a chunk an earlier check edited
+    CHECK(flat_world(20) != NULL, "the light world would not become resident");
+    for (int32_t cz = -1; cz <= 1; cz++)
+        for (int32_t cx = -1; cx <= 1; cx++) light_chunk_ready(chunk_find(cx, cz));
+
+    CHECK(lsky(3, 20, 3) == 15 && lsky(3, 40, 3) == 15, "open air above the ground is not full sky");
+    CHECK(lsky(3, 19, 3) == 0, "solid stone carries sky light");
+
+    // A sealed room underground: dark.
+    for (int x = 2; x <= 8; x++)
+        for (int z = 2; z <= 8; z++)
+            for (int y = 10; y <= 12; y++) world_set(x, y, z, BLK_AIR, 0);
+    CHECK(lsky(5, 11, 5) == 0 && lblk(5, 11, 5) == 0, "a sealed room is not dark");
+
+    // A torch lights it, one level less per block, and takes it back.
+    world_set(5, 10, 5, BLK_TORCH, ST_PLACED);
+    printf("  torch: %d at it, %d one away, %d three away, %d round a corner\n", lblk(5, 10, 5), lblk(6, 10, 5),
+           lblk(8, 10, 5), lblk(8, 12, 8));
+    CHECK(lblk(5, 10, 5) == 14, "a torch's own cell is %d, not 14", lblk(5, 10, 5));
+    CHECK(lblk(6, 10, 5) == 13 && lblk(8, 10, 5) == 11, "torchlight does not fall off one level a block");
+    CHECK(lblk(8, 12, 8) == 14 - (3 + 2 + 3), "torchlight does not travel by the Manhattan path");
+    CHECK(lblk(5, 10, 10) == 0, "torchlight went through solid stone");
+    world_set(5, 10, 5, BLK_AIR, 0);
+    int left = 0;
+    for (int x = 2; x <= 8; x++)
+        for (int z = 2; z <= 8; z++)
+            for (int y = 10; y <= 12; y++) left += lblk(x, y, z);
+    CHECK(left == 0, "removing the torch left %d levels of its light behind", left);
+
+    // A shaft to the surface: daylight falls straight down it undimmed,
+    // spreads into the room, and goes when the shaft is capped.
+    for (int y = 13; y <= 19; y++) world_set(5, y, 5, BLK_AIR, 0);
+    printf("  shaft: %d at its foot, %d beside it, %d in the far corner\n", lsky(5, 10, 5), lsky(6, 10, 5),
+           lsky(2, 10, 2));
+    CHECK(lsky(5, 12, 5) == 15 && lsky(5, 10, 5) == 15, "daylight does not reach the foot of an open shaft");
+    CHECK(lsky(6, 10, 5) == 14, "daylight does not spread from the shaft into the room");
+    world_set(5, 19, 5, BLK_STONE, ST_PLACED);
+    CHECK(lsky(5, 10, 5) == 0 && lsky(6, 11, 5) == 0 && lsky(5, 18, 5) == 0, "capping the shaft did not darken it");
+    world_set(5, 19, 5, BLK_AIR, 0);
+    CHECK(lsky(5, 10, 5) == 15, "uncapping the shaft did not bring the daylight back");
+
+    // Leaves and water dim light rather than stop it.
+    CHECK(light_filter(BLK_LEAVES) == 1 && light_filter(BLK_WATER) == 2 && light_filter(BLK_GLASS) == 0 &&
+              light_filter(BLK_STONE) == 15 && light_filter(BLK_TORCH) == 0,
+          "the light filters are not what light.h says");
+
+    // Across a chunk border, and into a chunk that arrives afterwards.
+    for (int x = 12; x <= 19; x++) world_set(x, 11, 5, BLK_AIR, 0);  // a tunnel through x = 15|16
+    world_set(15, 11, 5, BLK_TORCH, ST_PLACED);
+    CHECK(lblk(16, 11, 5) == 13 && lblk(19, 11, 5) == 10, "torchlight stops at the chunk border");
+    chunk_t* nb = chunk_find(1, 0);
+    memset(nb->lt, 0, CH_CELLS);  // as if (1, 0) had only just arrived
+    light_chunk_ready(nb);
+    CHECK(lblk(16, 11, 5) == 13 && lblk(19, 11, 5) == 10, "a chunk arriving next to a torch was not lit by it");
+    CHECK(lsky(20, 20, 3) == 15, "the newly arrived chunk has no daylight");
+    world_set(15, 11, 5, BLK_AIR, 0);
+    CHECK(lblk(17, 11, 5) == 0, "removing a torch left its light in the next chunk");
+    chunk_store_clear();
+}
+
+// A replay is a start and a stream of per-tick inputs; it has to come
+// back from the card exactly, gyro turns included, or it replays some
+// other walk.
+static void check_replay(void) {
+    printf("replays\n");
+    replay_start_t st = {.seed = 0xC0FFEEu, .time_of_day = 4242, .x = 12.5, .y = 30.0, .z = -7.25,
+                         .yaw = 1.25f, .pitch = -0.3f, .selected = 3};
+    st.inv[0] = (inv_slot_t){ITEM_PICK_STONE, 1, 9};
+    st.inv[5] = (inv_slot_t){BLK_TORCH, 17, 0};
+    CHECK(replay_record_begin(&st), "could not start recording");
+    for (int i = 0; i < 300; i++) replay_record_tick((uint32_t)(i * 2654435761u), (float)i * 0.01f, -(float)i * 0.02f);
+    CHECK(replay_record_end("build/host/test.cmr"), "could not write the replay");
+    replay_start_t back;
+    CHECK(replay_load("build/host/test.cmr", &back), "could not read the replay back");
+    CHECK(back.seed == st.seed && back.time_of_day == 4242 && back.x == 12.5 && back.z == -7.25 &&
+              back.yaw == 1.25f && back.selected == 3,
+          "the replay's start did not survive");
+    CHECK(back.inv[0].item == ITEM_PICK_STONE && back.inv[0].wear == 9 && back.inv[5].count == 17,
+          "the replay's inventory did not survive");
+    int      n  = 0;
+    bool     ok = true;
+    uint32_t m;
+    float    gy, gp;
+    while (replay_next(&m, &gy, &gp)) {
+        ok = ok && m == (uint32_t)(n * 2654435761u) && gy == (float)n * 0.01f && gp == -(float)n * 0.02f;
+        n++;
+    }
+    CHECK(n == 300 && ok, "the replay played back %d ticks%s", n, ok ? "" : ", not the ones recorded");
+    CHECK(!replay_playing(), "a finished replay says it is still playing");
+}
+
 static void check_physics(void) {
     printf("physics\n");
     CHECK(flat_world(8) != NULL, "the test world would not become resident");
@@ -1821,6 +1961,22 @@ static void check_raycast(void) {
 
     // Reach: the same ray from further away finds nothing.
     CHECK(!ray_pick(0.5, 9.5, 8.5, 1.0f, 0.0f, 0.0f, RAY_REACH, true, &h), "a ray reached further than RAY_REACH");
+
+    // A placed torch can be pointed at (F-56): the crosshair ray is the
+    // non-solid one, and it must stop at the torch -- while a solid-only
+    // ray looks straight through it. Water is looked through by both.
+    set_block(8, 9, 11, BLK_TORCH, ST_PLACED);
+    CHECK(ray_pick(8.5, 9.5, 8.5, 0.0f, 0.0f, 1.0f, RAY_REACH, false, &h) && h.block == BLK_TORCH && h.z == 11,
+          "the crosshair ray does not stop at a placed torch");
+    CHECK(!ray_pick(8.5, 9.5, 8.5, 0.0f, 0.0f, 1.0f, RAY_REACH, true, &h) || h.block != BLK_TORCH,
+          "a solid-only ray stopped at a torch");
+    set_block(8, 9, 11, BLK_AIR, 0);
+    set_block(8, 11, 8, BLK_WATER, 0);
+    set_block(8, 10, 8, BLK_WATER, 0);
+    CHECK(ray_pick(8.5, 12.5, 8.5, 0.0f, -1.0f, 0.0f, RAY_REACH, false, &h) && h.y == 7,
+          "water hid the floor from the crosshair (hit y %d)", h.y);
+    set_block(8, 11, 8, BLK_AIR, 0);
+    set_block(8, 10, 8, BLK_AIR, 0);
 
     // Straight down finds the floor.
     CHECK(ray_pick(8.5, 12.0, 8.5, 0.0f, -1.0f, 0.0f, RAY_REACH, true, &h), "a ray straight down missed the floor");
@@ -2180,6 +2336,8 @@ int main(void) {
     check_felling();
     check_items();
     check_inv_cursor();
+    check_light();
+    check_replay();
     check_drops();
     chunk_store_shutdown();
     if (s_fail) {

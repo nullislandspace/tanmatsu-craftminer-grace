@@ -26,6 +26,9 @@ static bool s_half     = true;
 static bool s_music    = true;
 static bool s_sfx      = true;
 static bool s_gyro     = false;
+static bool s_clouds   = true;
+static bool s_third    = false;
+static bool s_left     = false;
 
 // Bindings are keyed by the action's stable short name (input.c's
 // table, which never changes once shipped), so reordering the actions
@@ -54,6 +57,12 @@ static void apply_line(char* line) {
         s_sfx = v != 0;
     } else if (strcmp(key, "gyro") == 0) {
         s_gyro = v != 0;
+    } else if (strcmp(key, "clouds") == 0) {
+        s_clouds = v != 0;
+    } else if (strcmp(key, "third_person") == 0) {
+        s_third = v != 0;
+    } else if (strcmp(key, "left_handed") == 0) {
+        s_left = v != 0;
     } else if (strncmp(key, KEY_PREFIX, strlen(KEY_PREFIX)) == 0) {
         char const* name = key + strlen(KEY_PREFIX);
         for (int a = 0; a < CM_ACTION_COUNT; a++) {
@@ -94,8 +103,8 @@ void settings_save(void) {
     }
     fputs("# CraftMiner settings. Volume and brightness are the badge's own and live\n"
           "# with the launcher. Keys are BSP scancodes; delete a line to get its default.\n", f);
-    fprintf(f, "view=%d\ntextures=%d\nhalf_res=%d\nmusic=%d\neffects=%d\ngyro=%d\n", s_view, s_textured, s_half,
-            s_music, s_sfx, s_gyro);
+    fprintf(f, "view=%d\ntextures=%d\nhalf_res=%d\nclouds=%d\nthird_person=%d\nleft_handed=%d\nmusic=%d\neffects=%d\ngyro=%d\n",
+            s_view, s_textured, s_half, s_clouds, s_third, s_left, s_music, s_sfx, s_gyro);
     for (int a = 0; a < CM_ACTION_COUNT; a++) {
         fprintf(f, KEY_PREFIX "%s=0x%04x\n", input_action_id((cm_action_t)a), (unsigned)input_key((cm_action_t)a));
     }
@@ -189,5 +198,35 @@ bool settings_gyro(void) {
 void settings_set_gyro(bool on) {
     if (on == s_gyro) return;
     s_gyro = on;
+    settings_save();
+}
+
+bool settings_clouds(void) {
+    return s_clouds;
+}
+
+void settings_set_clouds(bool on) {
+    if (on == s_clouds) return;
+    s_clouds = on;
+    settings_save();
+}
+
+bool settings_third_person(void) {
+    return s_third;
+}
+
+void settings_set_third_person(bool on) {
+    if (on == s_third) return;
+    s_third = on;
+    settings_save();
+}
+
+bool settings_left_handed(void) {
+    return s_left;
+}
+
+void settings_set_left_handed(bool on) {
+    if (on == s_left) return;
+    s_left = on;
     settings_save();
 }

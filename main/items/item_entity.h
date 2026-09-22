@@ -16,10 +16,10 @@
 //  must not cost the player their drops. Idling next to them is what
 //  does.
 //
-//  NOT YET PERSISTED. The chunk format reserves SECTION_ENTITIES
-//  (chunk_codec.h) and nothing writes it, so drops are lost on a
-//  reload. That is block 5's save work, and this struct is already the
-//  shape it will be written in.
+//  SAVED WITH THE WORLD (D-68): every live item goes into level.cmw on
+//  a save, and comes back when the world is opened. An item whose chunk
+//  is not loaded holds still -- no falling, no ageing, no pickup -- so
+//  keeping them all in one list loses nothing by it.
 //
 //  Pure: no engine, no allocation. tools/worldcheck.c ticks it.
 // =====================================================================
@@ -69,6 +69,13 @@ int item_entity_throw(double x, double y, double z, uint16_t item, int count, ui
 // One tick: fall, age, despawn, and fly into `inv` when the player at
 // (px, py, pz) is close enough. Returns how many were picked up.
 int item_entity_tick(inventory_t* inv, double px, double py, double pz);
+
+// Every live item, copied into `out` (at most `max`): what a save
+// writes. Returns how many.
+int item_entity_copy(item_entity_t* out, int max);
+
+// Empty the pool and fill it with `in`: what opening a world does.
+void item_entity_restore(item_entity_t const* in, int n);
 
 // For the renderer and the tests.
 int                  item_entity_live(void);

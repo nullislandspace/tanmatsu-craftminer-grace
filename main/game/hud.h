@@ -53,3 +53,7 @@ void hud_mine_progress(pax_buf_t* fb, float progress);
 // The dropped items lying about, as small cubes. Submitted with the
 // world, between scene_begin() and scene_prepare().
 void hud_dropped_items(void);
+
+// A few lines of text at the top left, with a shadow so they read over
+// sky and ground alike: the position overlay (CM_INFO).
+void hud_text_lines(pax_buf_t* fb, char const* const* lines, int n);

@@ -3,6 +3,7 @@
 // =====================================================================
 
 #include "world/chunk_worker.h"
+#include "world/light.h"
 #include <string.h>
 #include "common/psram.h"
 #include "world/chunkmesh.h"
@@ -86,12 +87,14 @@ static bool do_load(int32_t cx, int32_t cz) {
     if (r == 1) {
         c->flags |= CF_GENERATED;
         chunk_resummarise(c);
+        light_chunk_local(c);  // its own light, here on core 1 (light.h)
         return true;
     }
     if (r < 0) return false;
 
     // Not on the card: this is the first time anyone has been here.
     worldgen_chunk(c, s_seed);
+    light_chunk_local(c);
     // Freshly generated and not yet written, so it has to be saved
     // before the slot can be reused.
     c->flags |= CF_EDITED;
@@ -127,6 +130,10 @@ static void apply(result_t* r) {
                 s_loaded_total++;
                 c->lod_stale = CH_MESH_ALL;
                 c->lod_built = 0;
+                // The light it trades with the chunks already here -- its
+                // own was worked out on the worker. On the main task,
+                // like every write to a resident chunk (light.h).
+                light_chunk_join(c);
             }
         }
         return;

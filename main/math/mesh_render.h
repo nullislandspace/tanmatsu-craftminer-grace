@@ -49,6 +49,19 @@ typedef struct {
 // MESH_DIR_NONE fall back to the general test.
 void mesh_submit_world(mesh_t const* m, vec3_t origin_rel, mesh_mat_t const* mats, int mat_n);
 
+// How mesh_submit_world lights a triangle: its light byte (mesh.h,
+// sky << 4 | block) indexes `lut`, whose entry -- 0..SE_TRI_LIGHT_MAX --
+// goes to the engine as SE_TRI_LIGHT. The game rebuilds the table when
+// the time of day moves, so night falls on every chunk without one of
+// them being re-meshed. NULL (the default) draws everything at full
+// light. The table is read, not copied: keep it alive.
+void mesh_set_light_lut(uint8_t const* lut);
+
+// The brightness (0..SE_TRI_LIGHT_MAX) the current table gives a light
+// byte: for things drawn outside the chunk meshes -- a dropped item,
+// Fred -- lit by the cell they stand in. Full brightness with no table.
+uint8_t mesh_light_level(uint8_t light);
+
 // Triangles looked at and triangles actually handed to the scene since
 // the last reset. The ratio says whether submit time is going on the
 // cull or on the engine, which is not guessable from the outside.

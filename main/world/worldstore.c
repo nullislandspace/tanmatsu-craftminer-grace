@@ -10,11 +10,16 @@
 //      int64  created, last_played
 //      int32  play_secs
 //      int32  spawn_x/y/z
+//      int64  time_of_day     the world's clock (D-52); older saves kept
+//                             it in the player compound instead
 //      compound "player"      every field a named tag; see read_player
 //        compound "inventory" int32 selected, then one compound per
 //                             non-empty slot, named by its index:
 //                             string item (the NAME), int32 count, wear
 //      compound "palette"     block NAME -> the id it was saved as
+//      compound "items"       one compound per dropped item, by index:
+//                             string item, int32 count/wear/age/delay,
+//                             double x/y/z (D-68)
 //    end
 //
 //  Readers loop tags and skip what they do not know, so neither
@@ -196,7 +201,7 @@ static void write_inventory(NbtWriter* w, player_state_t const* p) {
     for (int i = 0; i < INV_SLOTS; i++) {
         inv_slot_t const* s = &p->inv[i];
         if (s->item == 0 || s->count == 0) continue;
-        char key[8];
+        char key[12];
         snprintf(key, sizeof(key), "%d", i);
         nbt_write_compound(w, key);
         nbt_write_string(w, "item", item_def(s->item).name);
@@ -276,7 +281,6 @@ static void write_player(NbtWriter* w, player_state_t const* p) {
     nbt_write_int32(w, "bed_x", p->bed_x);
     nbt_write_int32(w, "bed_y", p->bed_y);
     nbt_write_int32(w, "bed_z", p->bed_z);
-    nbt_write_int64(w, "time_of_day", p->time_of_day);
     nbt_write_int32(w, "placed", p->placed ? 1 : 0);
     if (p->has_inv) write_inventory(w, p);
     nbt_write_end(w);
@@ -327,7 +331,83 @@ static void read_player(NbtReader* r, player_state_t* p) {
 
 // --- level.cmw --------------------------------------------------------
 
-static bool write_level(char const* slug, world_meta_t const* m, player_state_t const* p) {
+// Dropped items. Stored by NAME, like the inventory; the pickup delay
+// as what is LEFT of it, so it means the same whatever the age.
+static void write_items(NbtWriter* w, world_items_t const* items) {
+    nbt_write_compound(w, "items");
+    int k = 0;
+    for (int i = 0; items != NULL && i < items->n; i++) {
+        item_entity_t const* e = &items->e[i];
+        if (!e->alive || e->item == 0) continue;
+        char key[12];
+        snprintf(key, sizeof(key), "%d", k++);
+        nbt_write_compound(w, key);
+        nbt_write_string(w, "item", item_def(e->item).name);
+        nbt_write_int32(w, "count", e->count);
+        nbt_write_int32(w, "wear", e->wear);
+        nbt_write_int32(w, "age", (int32_t)e->age);
+        nbt_write_int32(w, "delay", e->pickup_at > e->age ? (int32_t)(e->pickup_at - e->age) : 0);
+        nbt_write_double(w, "x", e->body.x);
+        nbt_write_double(w, "y", e->body.y);
+        nbt_write_double(w, "z", e->body.z);
+        nbt_write_end(w);
+    }
+    nbt_write_end(w);
+}
+
+static void read_item(NbtReader* r, world_items_t* items) {
+    char          name[NAME_BUF];
+    item_entity_t e;
+    memset(&e, 0, sizeof(e));
+    double  x = 0.0, y = 0.0, z = 0.0;
+    int32_t count = 0, delay = 0;
+    for (;;) {
+        int const type = nbt_read_tag(r, name, sizeof(name));
+        if (type == NBT_END || type < 0 || r->error) break;
+        if (type == NBT_STRING && strcmp(name, "item") == 0) {
+            char buf[NAME_BUF];
+            nbt_read_string(r, buf, sizeof(buf));
+            e.item = item_by_name(buf);
+        } else if (type == NBT_INT32) {
+            int32_t const v = nbt_read_int32(r);
+            if (strcmp(name, "count") == 0) count = v;
+            else if (strcmp(name, "wear") == 0) e.wear = (uint16_t)(v < 0 ? 0 : v);
+            else if (strcmp(name, "age") == 0) e.age = (uint32_t)(v < 0 ? 0 : v);
+            else if (strcmp(name, "delay") == 0) delay = v < 0 ? 0 : v;
+        } else if (type == NBT_DOUBLE) {
+            double const v = nbt_read_double(r);
+            if (strcmp(name, "x") == 0) x = v;
+            else if (strcmp(name, "y") == 0) y = v;
+            else if (strcmp(name, "z") == 0) z = v;
+        } else {
+            nbt_skip_payload(r, type);
+        }
+    }
+    if (items == NULL || e.item == 0 || count <= 0 || items->n >= ITEM_ENTITY_MAX) return;
+    int const cap = item_def(e.item).stack_max;
+    e.alive       = true;
+    e.count       = (uint8_t)(count > cap ? cap : count);
+    e.pickup_at   = e.age + (uint32_t)delay;
+    phys_body_init(&e.body, x, y, z);
+    e.body.w              = ITEM_ENTITY_SIZE;
+    e.body.h              = ITEM_ENTITY_SIZE;
+    items->e[items->n++]  = e;
+}
+
+static void read_items(NbtReader* r, world_items_t* items) {
+    char name[NAME_BUF];
+    for (;;) {
+        int const type = nbt_read_tag(r, name, sizeof(name));
+        if (type == NBT_END || type < 0 || r->error) break;
+        if (type == NBT_COMPOUND) {
+            read_item(r, items);
+        } else {
+            nbt_skip_payload(r, type);
+        }
+    }
+}
+
+static bool write_level(char const* slug, world_meta_t const* m, player_state_t const* p, world_items_t const* items) {
     char path[192];
     level_path(path, sizeof(path), slug);
     FILE* f = fopen(path, "wb");
@@ -354,8 +434,10 @@ static bool write_level(char const* slug, world_meta_t const* m, player_state_t 
     nbt_write_int32(&w, "spawn_x", m->spawn_x);
     nbt_write_int32(&w, "spawn_y", m->spawn_y);
     nbt_write_int32(&w, "spawn_z", m->spawn_z);
+    nbt_write_int64(&w, "time_of_day", m->time_of_day);
     write_player(&w, p);
     write_palette(&w);
+    write_items(&w, items);
     nbt_write_end(&w);
 
     bool const ok = w.error == 0;
@@ -366,8 +448,8 @@ static bool write_level(char const* slug, world_meta_t const* m, player_state_t 
 // `p` may be NULL when only the metadata is wanted (the world list).
 // The palette is read into the store's remap ONLY for `palette`: the
 // list and the slot peek must not disturb the remap of a world that is
-// open while they run.
-static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, bool palette) {
+// open while they run. `items` NULL skips the dropped items.
+static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, bool palette, world_items_t* items) {
     char path[192];
     level_path(path, sizeof(path), slug);
     FILE* f = fopen(path, "rb");
@@ -385,6 +467,7 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
         return false;
     }
 
+    bool saw_time = false;
     NbtReader r;
     if (nbt_read_open(&r, f) != 0) {
         fclose(f);
@@ -396,6 +479,7 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
     snprintf(m->name, sizeof(m->name), "%s", slug);
     m->format = 0;
     if (palette) remap_identity();
+    if (items != NULL) items->n = 0;
     if (p != NULL) player_state_defaults(p, NULL);
 
     char name[NAME_BUF];
@@ -417,6 +501,8 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
             }
         } else if (type == NBT_COMPOUND && strcmp(name, "palette") == 0 && palette) {
             read_palette(&r);
+        } else if (type == NBT_COMPOUND && strcmp(name, "items") == 0 && items != NULL) {
+            read_items(&r, items);
         } else if (type == NBT_INT32) {
             int32_t const v = nbt_read_int32(&r);
             if (strcmp(name, "format") == 0) m->format = v;
@@ -429,6 +515,10 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
             int64_t const v = nbt_read_int64(&r);
             if (strcmp(name, "created") == 0) m->created = v;
             else if (strcmp(name, "last_played") == 0) m->last_played = v;
+            else if (strcmp(name, "time_of_day") == 0) {
+                m->time_of_day = v;
+                saw_time       = true;
+            }
         } else if (type == NBT_STRING) {
             char buf[CM_WORLD_NAME_MAX];
             nbt_read_string(&r, buf, sizeof(buf));
@@ -438,6 +528,10 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
         }
     }
 
+    // A save from before the clock moved to the world (D-52): take the
+    // player's. Only possible when the player was read, which the world
+    // list does not need.
+    if (!saw_time && p != NULL) m->time_of_day = p->time_of_day;
     bool const ok = r.error == 0 && m->format > 0;
     fclose(f);
     return ok;
@@ -479,7 +573,7 @@ int worldstore_list(world_meta_t* out, int max) {
         if (strlen(entry) >= CM_WORLD_SLUG_MAX) continue;
         // A directory with no readable level.cmw is not a world -- the
         // index is an optimisation, the directories are the truth.
-        if (read_level(entry, &out[n], NULL, false)) n++;
+        if (read_level(entry, &out[n], NULL, false, NULL)) n++;
     }
     cm_dir_close(d);
 
@@ -513,6 +607,7 @@ static bool create_at(char const* slug, char const* name, uint32_t seed, world_m
     meta->last_played = meta->created;
     meta->play_secs   = 0;
     meta->format      = CM_LEVEL_FORMAT;
+    meta->time_of_day = 1000;  // DAY_START (game/daytime.h): a morning
     // Spawn height is settled once the terrain around it exists; the
     // caller raises the player onto the ground after pre-generation.
     meta->spawn_x = 0;
@@ -529,7 +624,7 @@ static bool create_at(char const* slug, char const* name, uint32_t seed, world_m
     player_state_defaults(player, meta);
     // A world written by this build has current ids, so no remap.
     remap_identity();
-    if (!write_level(meta->slug, meta, player)) return false;
+    if (!write_level(meta->slug, meta, player, NULL)) return false;
     open_paths(meta->slug);
     return true;
 }
@@ -552,7 +647,7 @@ bool worldstore_slot_peek(int slot, world_meta_t* meta) {
     if (slot < 0 || slot >= CM_SLOTS || meta == NULL) return false;
     char slug[CM_WORLD_SLUG_MAX];
     worldstore_slot_slug(slot, slug, sizeof(slug));
-    return read_level(slug, meta, NULL, false);
+    return read_level(slug, meta, NULL, false, NULL);
 }
 
 bool worldstore_create_in(int slot, char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player) {
@@ -574,12 +669,13 @@ bool worldstore_rename(char const* slug, char const* name) {
     bool const needed = s_remap_needed;
     memcpy(remap, s_remap, sizeof(remap));
 
-    world_meta_t   m;
-    player_state_t p;
-    bool           ok = read_level(slug, &m, &p, true);
+    world_meta_t         m;
+    player_state_t       p;
+    static world_items_t items;  // 96 of them: not for the stack
+    bool                 ok = read_level(slug, &m, &p, true, &items);
     if (ok) {
         snprintf(m.name, sizeof(m.name), "%s", name);
-        ok = write_level(slug, &m, &p);
+        ok = write_level(slug, &m, &p, &items);
     }
 
     memcpy(s_remap, remap, sizeof(remap));
@@ -620,9 +716,9 @@ int worldstore_adopt_legacy(char const* legacy_slug, char const* name) {
     return slot;
 }
 
-bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* player) {
+bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* player, world_items_t* items) {
     if (slug == NULL || meta == NULL || player == NULL) return false;
-    if (!read_level(slug, meta, player, true)) return false;
+    if (!read_level(slug, meta, player, true, items)) return false;
     open_paths(slug);
     return true;
 }
@@ -645,9 +741,10 @@ bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* 
     return true;
 }
 
-bool worldstore_save(world_meta_t const* meta, player_state_t const* player) {
+bool worldstore_save(world_meta_t const* meta, player_state_t const* player, world_items_t const* items) {
     if (!s_open || meta == NULL || player == NULL) return false;
-    return write_level(s_open_slug, meta, player);
+    if (s_scratch) return true;  // a scratch world has nowhere to be saved, by design
+    return write_level(s_open_slug, meta, player, items);
 }
 
 bool worldstore_delete(char const* slug) {

@@ -80,7 +80,10 @@ opens**, since pausing is what people do before switching a handheld off.
   one. *Reset to defaults* puts them all back. Esc always pauses, whatever Pause
   is bound to, so there is no way to lock yourself out.
 * **Graphics** — view distance (near / **medium**, the default / far), textures
-  on or off, half or full resolution.
+  on or off, half or full resolution, clouds on or off, and the **camera**:
+  first person (Fred's arm and what it holds) or third person (Fred himself,
+  the camera behind him), and **Fred's hand**: right (the default) or left, in
+  both views.
 * **Audio** — the device volume, plus music and sound-effect switches that are
   remembered for when the game has sounds (it has none yet).
 * **Display** — screen, keyboard and LED brightness.
@@ -92,11 +95,23 @@ file on the SD card, `/sd/apps/at.cavac.craftminer/settings.txt`, next to
 `worlds/`. Copy that directory and you have backed up everything. The file is
 plain `key=value` lines; delete one to get its default back.
 
+### Day, night and light
+
+A day is 20 minutes, and the world's clock only runs while you play it. The
+sun rises in the east, the sky turns orange at sunrise and sunset and dark
+blue at night, with a square moon, stars and drifting blocky clouds.
+
+**Torches light the area round them** — fourteen blocks, one level dimmer a
+block, through air, glass and plants, dimmed by leaves and water, stopped by
+anything solid. Daylight comes down through open sky and a little way into
+cave mouths; a cave with no torch in it is dark at noon. Light is worked out
+when a block is placed or removed, never per frame.
+
 ### What a save keeps
 
 Where you were — exactly, so a cave is still a cave when you come back —
-which way you faced, health, hunger, and **everything you carry**, down to each
-tool's wear. Items are stored by name, so the inventory survives items being
+which way you faced, health, hunger, **everything you carry**, down to each
+tool's wear, **everything lying on the ground**, and the world's time of day. Items are stored by name, so the inventory survives items being
 added or renumbered. Edited terrain is saved with it. A world is written when
 you pause, save, quit to the title, or when a chunk you edited leaves memory;
 never on a timer.
@@ -122,6 +137,7 @@ The camera is the player unless you press **F**. The defaults:
 | `Tab` | inventory — cursor keys move, `F1`–`F6` put a stack on the hotbar |
 | `F1`–`F6` | hotbar slot |
 | `Esc` | pause menu |
+| `Backspace` | show position, heading and time of day |
 | `F` | switch to the debug camera and back (not if you have bound F to something) |
 
 The crosshair marks where the pick ray goes — which is **not** the centre of the
@@ -146,6 +162,8 @@ frame cannot depend on which keys are held.
 | cursor keys | look |
 | `L-Ctrl` | three times the speed |
 | `P` | pause the scripted flight |
+| `R` | in a world: start / stop recording a replay (`replays/last.cmr`) |
+| `N` | in a world: the clock a quarter of a day on (morning, noon, evening, midnight) |
 
 Textures and view distance, which used to be the `T` and `V` keys, are in
 Settings → Graphics.

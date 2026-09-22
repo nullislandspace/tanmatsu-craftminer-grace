@@ -23,9 +23,14 @@ void mesh_set_dir(mesh_t* m, uint8_t dir) {
     if (m != NULL) m->dir = dir;
 }
 
+void mesh_set_light(mesh_t* m, uint8_t light) {
+    if (m != NULL) m->light = light;
+}
+
 void mesh_init(mesh_t* m) {
     memset(m, 0, sizeof(*m));
     m->dir = MESH_DIR_NONE;  // only the mesher knows better
+    m->light = MESH_LIGHT_FULL;
 }
 
 void mesh_free(mesh_t* m) {
@@ -97,6 +102,7 @@ void mesh_tri(mesh_t* m, int a, int b, int c, uint8_t mat, float const uv[3][2])
     t->c          = (uint16_t)c;
     t->mat        = mat;
     t->dir        = m->dir;
+    t->light      = m->light;
     memcpy(t->uv, uv, sizeof(t->uv));
 }
 

@@ -180,6 +180,7 @@ typedef enum {
 typedef struct {
     uint8_t* id;  // CH_CELLS block ids -- the mesher's input, verbatim
     uint8_t* st;  // CH_CELLS state bytes
+    uint8_t* lt;  // CH_CELLS light bytes: sky << 4 | block (light.h). Derived, never saved
 
     int32_t cx, cz;
     uint8_t cstate;    // chunk_state_t
@@ -296,6 +297,13 @@ uint8_t world_state(int32_t x, int32_t y, int32_t z);
 // between them would not be rebuilt. No-op outside the world or on a
 // chunk that is not resident.
 void world_set(int32_t x, int32_t y, int32_t z, uint8_t block, uint8_t state);
+
+// Every mesh that could show the cell (x, y, z) is out of date: its
+// section, the section next door when it sits on a section's edge, and
+// the neighbouring chunk when it sits on a chunk's. Bumps edit_seq on
+// each, so a mesh already in flight is not accepted over the change.
+// world_set does this; light.c does it for a cell whose light changed.
+void world_mark_dirty(int32_t x, int32_t y, int32_t z);
 
 // The y a body standing at (x, z) rests on: one above the highest solid
 // block. 0 if the column is empty, CH_H if it is full.

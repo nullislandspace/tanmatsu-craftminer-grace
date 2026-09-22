@@ -457,11 +457,12 @@ static void update_controls(void) {
 }
 
 static char const* const VIEW_NAMES[SETTINGS_VIEW_COUNT] = {"Near", "Medium", "Far"};
+#define GRAPHICS_ROWS 7
 
 static menu_cmd_t update_graphics(void) {
     menu_cmd_t cmd = {0};
     int*       cur = &s_cursor[SCR_GRAPHICS];
-    nav(cur, 4);
+    nav(cur, GRAPHICS_ROWS);
     int const dir = (s_act & ACT_RIGHT) ? 1 : (s_act & ACT_LEFT) ? -1 : (s_act & ACT_OK) ? 1 : 0;
     if (dir != 0) {
         switch (*cur) {
@@ -480,6 +481,9 @@ static menu_cmd_t update_graphics(void) {
                 settings_set_half_res(!settings_half_res());
                 cmd.kind = MENU_CMD_GRAPHICS;
                 break;
+            case 3: settings_set_clouds(!settings_clouds()); break;
+            case 4: settings_set_third_person(!settings_third_person()); break;
+            case 5: settings_set_left_handed(!settings_left_handed()); break;
             default:
                 if (s_act & ACT_OK) go(SCR_SETTINGS);
                 break;
@@ -712,15 +716,18 @@ void menu_draw(pax_buf_t* fb) {
         } break;
 
         case SCR_GRAPHICS: {
-            se_menu_row_t const rows[4] = {
+            se_menu_row_t const rows[GRAPHICS_ROWS] = {
                 {.label = "View distance", .kind = SE_MENU_VAL_TEXT, .value = VIEW_NAMES[settings_view()]},
                 {.label = "Textures", .kind = SE_MENU_VAL_CHECK, .checked = settings_textured()},
                 {.label = "Resolution",
                  .kind  = SE_MENU_VAL_TEXT,
                  .value = settings_half_res() ? "Half (faster)" : "Full (sharper)"},
+                {.label = "Clouds", .kind = SE_MENU_VAL_CHECK, .checked = settings_clouds()},
+                {.label = "Camera", .kind = SE_MENU_VAL_TEXT, .value = settings_third_person() ? "Third person" : "First person"},
+                {.label = "Fred's hand", .kind = SE_MENU_VAL_TEXT, .value = settings_left_handed() ? "Left" : "Right"},
                 {.label = "Back"},
             };
-            draw_list(fb, "Graphics", NULL, rows, 4, s_cursor[SCR_GRAPHICS], HINT_ADJUST, 260.0f);
+            draw_list(fb, "Graphics", NULL, rows, GRAPHICS_ROWS, s_cursor[SCR_GRAPHICS], HINT_ADJUST, 260.0f);
         } break;
 
         case SCR_AUDIO: {

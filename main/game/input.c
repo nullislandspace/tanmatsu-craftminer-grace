@@ -45,6 +45,7 @@ static se_binding_def_t const BINDINGS[CM_ACTION_COUNT] = {
     [CM_INVENTORY]  = {CM_INVENTORY, "Inventory", "inv", BSP_INPUT_SCANCODE_TAB},
     [CM_PAUSE]      = {CM_PAUSE, "Pause", "pause", BSP_INPUT_SCANCODE_ESC},
     [CM_DROP]       = {CM_DROP, "Drop", "drop", BSP_INPUT_SCANCODE_G},
+    [CM_INFO]       = {CM_INFO, "Show position", "info", BSP_INPUT_SCANCODE_BACKSPACE},
 };
 
 // The navigation key a scancode ALSO arrives as, where there is one.
@@ -72,6 +73,10 @@ static bsp_input_navigation_key_t nav_for(uint16_t sc) {
         default: return BSP_INPUT_NAVIGATION_KEY_NONE;
     }
 }
+
+_Static_assert(CM_ACTION_COUNT <= SE_BINDINGS_MAX,
+               "more actions than the engine keeps bindings for: se_bindings_init clamps, and the last ones "
+               "would silently never fire (F-11)");
 
 static cm_actions_t s_last, s_pressed;
 
@@ -185,6 +190,22 @@ cm_actions_t input_sample(void) {
     s_pressed = m & ~s_last;
     s_last    = m;
     return m;
+}
+
+cm_actions_t input_feed(cm_actions_t mask) {
+    s_pressed = mask & ~s_last;
+    s_last    = mask;
+    return mask;
+}
+
+void input_gyro_owed(float* dyaw, float* dpitch) {
+    if (dyaw != NULL) *dyaw = s_owed_yaw;
+    if (dpitch != NULL) *dpitch = s_owed_pitch;
+}
+
+void input_gyro_set_owed(float dyaw, float dpitch) {
+    s_owed_yaw   = dyaw;
+    s_owed_pitch = dpitch;
 }
 
 cm_actions_t input_pressed(void) {

@@ -97,7 +97,17 @@ static void exit_to_launcher(char const* why) {
     bsp_device_restart_to_launcher();
 }
 
+// Set by the content (devtest_content_failed): the test ends "bad"
+// whatever its own measurements said.
+static bool s_content_bad;
+
+void devtest_content_failed(char const* why) {
+    s_content_bad = true;
+    report_emitf("FAIL", "{\"t\":\"fail\",\"why\":\"%s\"}", why ? why : "");
+}
+
 static void end_test(char const* status) {
+    if (s_content_bad && strcmp(status, "ok") == 0) status = "bad";
     report_emitf("END", "{\"t\":\"end\",\"status\":\"%s\",\"scene\":\"%s\"}", status, s_scene);
     s_test = T_IDLE;
     // Idle again, so the console banner belongs back on -- even though

@@ -105,6 +105,22 @@ void chunk_render_shutdown(void) {
     s_ready = false;
 }
 
+void chunk_render_block_mats(uint8_t block, mesh_mat_t out[3]) {
+    static vox_face_t const FACE[3] = {VF_TOP, VF_SIDE, VF_BOTTOM};
+    for (int i = 0; i < 3; i++) {
+        int const m = voxel_face_mat(block, FACE[i]);
+        // Leaves in the hand take the opaque texture: a cube of cut-out
+        // leaves at arm's length is mostly holes.
+        out[i] = s_tex_mats[m >= 0 && m != VM_LEAVES ? m : VM_LEAVES_FAST];
+    }
+}
+
+static uint32_t s_fog_override;
+
+void chunk_render_set_fog(uint32_t argb) {
+    s_fog_override = argb;
+}
+
 void chunk_render_set_view(cm_view_t const* v) {
     if (v == NULL) return;
     s_view = *v;
@@ -364,7 +380,8 @@ void chunk_render_submit(double eye_wx, double eye_wz) {
                 if (!flat_built[step]) {
                     float const qf = (float)step / (float)(FOG_STEPS - 1);
                     for (int mi = 0; mi < VM_COUNT; mi++) {
-                        flat_cache[step][mi] = (mesh_mat_t){NULL, mix_argb(s_mean[mi], s_view.fog_argb, qf), 0};
+                        uint32_t const fog = s_fog_override != 0 ? s_fog_override : s_view.fog_argb;
+                        flat_cache[step][mi] = (mesh_mat_t){NULL, mix_argb(s_mean[mi], fog, qf), 0};
                     }
                     flat_built[step] = true;
                 }

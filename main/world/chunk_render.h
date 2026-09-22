@@ -26,6 +26,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include "math/mesh_render.h"
 #include "synthengine3d.h"
 
 // The distance ladder. Blocks.
@@ -51,6 +52,16 @@ bool chunk_render_init(void);
 void chunk_render_shutdown(void);
 
 void             chunk_render_set_view(cm_view_t const* v);
+
+// What the far chunks fade into, overriding the view's own fog colour:
+// the sky's colour at this time of day (game/daytime.h). 0 goes back to
+// the view's.
+void chunk_render_set_fog(uint32_t argb);
+
+// A block's three textured materials -- top, sides, bottom -- in the
+// order voxel_build_cube() wants: for a block drawn outside the world,
+// in Fred's hand or lying on the ground.
+void chunk_render_block_mats(uint8_t block, mesh_mat_t out[3]);
 cm_view_t const* chunk_render_view(void);
 
 // Flat mean colours instead of textures everywhere: 3-4x cheaper to

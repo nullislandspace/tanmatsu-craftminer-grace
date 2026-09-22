@@ -40,6 +40,7 @@
 #include <stdint.h>
 
 #include "items/inventory.h"
+#include "items/item_entity.h"
 #include "world/chunk.h"
 
 #define CM_WORLD_NAME_MAX 32
@@ -71,6 +72,10 @@ typedef struct {
     uint32_t play_secs;
     int32_t  spawn_x, spawn_y, spawn_z;  // world spawn, chosen at creation
     int32_t  format;                     // CM_LEVEL_FORMAT when written
+    // The world's clock in ticks (game/daytime.h): ONE per world, however
+    // many players it has had (D-52). Elapsed ticks, advanced only while
+    // the world is being played (D-51).
+    int64_t  time_of_day;
 } world_meta_t;
 
 // Everything about the player that outlives a session. Add fields
@@ -88,7 +93,9 @@ typedef struct {
     int32_t hunger;
     int32_t bed_x, bed_y, bed_z;
     bool    has_bed;
-    int64_t time_of_day;  // ticks since the world's dawn
+    // Where the world's clock used to be kept. Read from old saves only,
+    // and moved onto world_meta_t.time_of_day (D-52); no longer written.
+    int64_t time_of_day;
 
     // What they were carrying. Stored by item NAME, so an inventory
     // survives items being added or renumbered (D-31's rule, applied to
@@ -98,6 +105,16 @@ typedef struct {
     inv_slot_t inv[INV_SLOTS];
     int32_t    inv_selected;
 } player_state_t;
+
+// What is lying on the ground: every dropped item in the world, saved
+// with the world record (D-68) -- position, what it is (by NAME), how
+// many, wear, age and pickup delay. Items in chunks that are not loaded
+// hold still until they are (item_entity.h), so saving them all at once
+// loses nothing.
+typedef struct {
+    int           n;
+    item_entity_t e[ITEM_ENTITY_MAX];
+} world_items_t;
 
 // Sensible values for a player who has never played.
 void player_state_defaults(player_state_t* p, world_meta_t const* meta);
@@ -142,7 +159,8 @@ bool worldstore_rename(char const* slug, char const* name);
 int worldstore_adopt_legacy(char const* legacy_slug, char const* name);
 
 // Open an existing world: reads level.cmw, builds the block remap.
-bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* player);
+// `items`, if not NULL, gets what was lying on the ground.
+bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* player, world_items_t* items);
 
 // Open a world that HAS NO DIRECTORY: every chunk is generated on
 // demand and nothing is ever written. The title screen's landscape is
@@ -155,8 +173,8 @@ bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* playe
 bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* player);
 
 // Write level.cmw for the open world. Chunks are saved separately, as
-// they are evicted (see world_chunk_save).
-bool worldstore_save(world_meta_t const* meta, player_state_t const* player);
+// they are evicted (see world_chunk_save). `items` may be NULL: none.
+bool worldstore_save(world_meta_t const* meta, player_state_t const* player, world_items_t const* items);
 
 void worldstore_close(void);
 bool worldstore_delete(char const* slug);

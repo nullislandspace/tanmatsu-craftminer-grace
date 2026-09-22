@@ -56,6 +56,20 @@ void settings_set_textured(bool on);
 bool settings_half_res(void);
 void settings_set_half_res(bool on);
 
+// The drifting clouds: a couple of hundred flat triangles and a lot of
+// sky to fill, so they can be switched off. On by default.
+bool settings_clouds(void);
+void settings_set_clouds(bool on);
+
+// Third person: the camera behind Fred instead of behind his eyes.
+// First person, with his arm and what it holds, by default.
+bool settings_third_person(void);
+void settings_set_third_person(bool on);
+
+// Which hand Fred holds things in, in both views. Right by default.
+bool settings_left_handed(void);
+void settings_set_left_handed(bool on);
+
 // The game has no sound yet (block 14). These are stored now so the
 // menu exists and a player's choice is already remembered when it
 // does; setting them also switches the engine mixer's gates, so they

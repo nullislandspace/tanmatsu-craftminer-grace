@@ -36,9 +36,12 @@ typedef struct {
 // something the picker should report.
 //
 // `want_solid` picks what counts as a hit: true stops at anything that
-// stops the player (BF_SOLID), which is what a block-breaking ray
-// wants; false stops at anything that is not air, which is what a
-// ray meant to hit a flower or a torch wants.
+// stops the player (BF_SOLID); false stops at anything you can POINT AT
+// -- every block but air and liquids -- which is what the player's
+// crosshair wants: a torch or a flower is not solid, and a ray that
+// ignored them made a placed torch impossible to take back (F-56).
+// Liquids are looked through either way, so water never hides the
+// riverbed from the pick.
 bool ray_pick(double ox, double oy, double oz, float dx, float dy, float dz, float max, bool want_solid,
               ray_hit_t* out);
 

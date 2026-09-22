@@ -115,3 +115,8 @@ void devtest_after_render(pax_buf_t* fb, int64_t rast_us);
 // Once per statistics period, before the app logs its own line: emits a
 // PERF record while a perf test runs.
 void devtest_period(float fps, float frame_ms);
+
+// The content's own check failed -- a scene that tests something rather
+// than just drawing it (CraftMiner's `savecheck`). Emits a FAIL record
+// and makes the running test end "bad".
+void devtest_content_failed(char const* why);

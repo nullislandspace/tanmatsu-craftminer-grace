@@ -5,6 +5,7 @@
 #include "world/chunk.h"
 #include <string.h>
 #include "common/psram.h"
+#include "world/light.h"
 
 static chunk_t  s_slots[CH_SLOT_COUNT];
 static uint8_t* s_slab;  // one allocation for every plane of every slot
@@ -13,7 +14,10 @@ static mesh_t*  s_meshes;  // CH_SLOT_COUNT x CH_MESH_N, likewise
 
 // Two planes per slot, so a slot's bytes are contiguous and the whole
 // resident set is one allocation. Nothing here allocates again.
-#define SLOT_BYTES ((size_t)CH_CELLS * 2u)
+// Three planes a slot: block ids, state, and light (light.h). Light is
+// derived -- never saved -- but lives here with the rest so a chunk's
+// cells are all in one place for the mesher.
+#define SLOT_BYTES ((size_t)CH_CELLS * 3u)
 
 // Free every mesh a slot holds. An empty section never allocated, so
 // most of these are no-ops.
@@ -49,6 +53,7 @@ bool chunk_store_init(void) {
         uint8_t* base     = s_slab + (size_t)i * SLOT_BYTES;
         s_slots[i].id     = base;
         s_slots[i].st     = base + CH_CELLS;
+        s_slots[i].lt     = base + 2u * CH_CELLS;
         s_slots[i].lod    = s_meshes + (size_t)i * CH_MESH_N;
         s_slots[i].cstate = CS_FREE;
         for (int m = 0; m < CH_MESH_N; m++) mesh_init(&s_slots[i].lod[m]);
@@ -135,6 +140,7 @@ chunk_t* chunk_claim(int32_t cx, int32_t cz) {
     c->lod_stale = CH_MESH_ALL;
     memset(c->id, BLK_AIR, CH_CELLS);
     memset(c->st, 0, CH_CELLS);
+    memset(c->lt, 0, CH_CELLS);
     memset(c->top, 0, sizeof(c->top));
 
     c->cx     = cx;
@@ -210,6 +216,30 @@ static void mark_stale(chunk_t* c, int y) {
     }
 }
 
+// Mark `c` stale around y AND move its edit_seq on. The second half is
+// the one that matters when a mesh of it is already in flight: a result
+// is only accepted if edit_seq has not moved since it was asked for, so
+// without the bump the old mesh would come back, clear the stale bit
+// just set, and the change would never be drawn.
+static void touch(chunk_t* c, int y) {
+    if (c == NULL) return;
+    mark_stale(c, y);
+    c->edit_seq++;
+}
+
+void world_mark_dirty(int32_t x, int32_t y, int32_t z) {
+    if (y < 0 || y >= CH_H) return;
+    int32_t const cx = chunk_of(x), cz = chunk_of(z);
+    int const     lx = chunk_off(x), lz = chunk_off(z);
+    touch(chunk_find(cx, cz), (int)y);
+    // A cell on the chunk's edge is the neighbour's face-deciding border
+    // (and, for light, the cell in front of its faces).
+    if (lx == 0) touch(chunk_find(cx - 1, cz), (int)y);
+    if (lx == CH_W - 1) touch(chunk_find(cx + 1, cz), (int)y);
+    if (lz == 0) touch(chunk_find(cx, cz - 1), (int)y);
+    if (lz == CH_D - 1) touch(chunk_find(cx, cz + 1), (int)y);
+}
+
 void world_set(int32_t x, int32_t y, int32_t z, uint8_t block, uint8_t state) {
     if (y < 0 || y >= CH_H) return;
     int32_t const cx = chunk_of(x), cz = chunk_of(z);
@@ -220,11 +250,10 @@ void world_set(int32_t x, int32_t y, int32_t z, uint8_t block, uint8_t state) {
     size_t const i = CH_IDX(lx, y, lz);
     if (c->id[i] == block && c->st[i] == state) return;
 
+    uint8_t const was = c->id[i];
     c->id[i]  = block;
     c->st[i]  = state;
     c->flags |= CF_EDITED;
-    c->edit_seq++;
-    mark_stale(c, (int)y);
 
     // The column summary, kept incrementally.
     uint8_t* t = &c->top[lz * CH_W + lx];
@@ -246,10 +275,9 @@ void world_set(int32_t x, int32_t y, int32_t z, uint8_t block, uint8_t state) {
     // A cell on a border shows a face to the chunk next door, and that
     // face lives in the NEIGHBOUR's mesh. Without this the two would
     // disagree and a seam would open.
-    if (lx == 0) mark_stale(chunk_find(cx - 1, cz), (int)y);
-    if (lx == CH_W - 1) mark_stale(chunk_find(cx + 1, cz), (int)y);
-    if (lz == 0) mark_stale(chunk_find(cx, cz - 1), (int)y);
-    if (lz == CH_D - 1) mark_stale(chunk_find(cx, cz + 1), (int)y);
+    world_mark_dirty(x, y, z);
+    // Light follows the block: a torch placed, a wall that now shades.
+    light_block_changed(x, y, z, was, block);
 }
 
 int world_ground(int32_t x, int32_t z) {

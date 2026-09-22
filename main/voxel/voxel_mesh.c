@@ -149,7 +149,10 @@ void voxel_build_cube(mesh_t* m, float half) {
 void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
     int const      w = g->w, h = g->h, d = g->d, H = h + 2, W = w + 2;
     uint8_t const* cells = g->cells;
-#define CELL(x, y, z) cells[((size_t)((z) + 1) * (size_t)W + (size_t)((x) + 1)) * (size_t)H + (size_t)((y) + 1)]
+#define CIDX(x, y, z) (((size_t)((z) + 1) * (size_t)W + (size_t)((x) + 1)) * (size_t)H + (size_t)((y) + 1))
+#define CELL(x, y, z) cells[CIDX(x, y, z)]
+    uint8_t const* lights = g->lights;
+#define LIGHT(x, y, z) (lights != NULL ? lights[CIDX(x, y, z)] : (uint8_t)MESH_LIGHT_FULL)
 
     // Faces only exist between a cube and a cell that is not one: from
     // one below the lowest such cell (border included) up to the highest
@@ -168,10 +171,12 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
     if (yhi < ylo) return;
     int const band = yhi - ylo + 1;
 
-    // The mask of one slice: material + 1 of the face at (p, q), 0 none.
+    // The mask of one slice: the face at (p, q) as light << 8 | material
+    // + 1, 0 none. Light in the key is what stops a lit face merging
+    // with a dark one.
     int const side = w > d ? w : d;
-    uint8_t*  mask =
-        cm_calloc((size_t)side * (size_t)(side > band ? side : band), 1);  // F-12: PSRAM, not the scarce internal heap
+    uint16_t* mask = cm_calloc((size_t)side * (size_t)(side > band ? side : band),
+                               sizeof(uint16_t));  // F-12: PSRAM, not the scarce internal heap
     if (!mask) {
         m->failed = true;
         return;
@@ -213,12 +218,13 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                     }
                     uint8_t const      b    = CELL(x, y, z);
                     block_kind_t const kb   = block_kind(b);
-                    uint8_t            v    = 0;
+                    uint16_t           v    = 0;
                     bool const         edge = g->skirt && (x + nx < 0 || x + nx >= w || z + nz < 0 || z + nz >= d);
                     if ((kb == K_CUBE || kb == K_SEE) && (edge || face_shows(b, CELL(x + nx, y + ny, z + nz), mode)))
                         // A skirt takes the block's top material: it only
                         // closes a seam, so it should match the ground.
-                        v = (uint8_t)(mode_mat(b, edge ? VF_TOP : face, mode) + 1);
+                        v = (uint16_t)(((unsigned)LIGHT(x + nx, y + ny, z + nz) << 8) |
+                                       (unsigned)(mode_mat(b, edge ? VF_TOP : face, mode) + 1));
                     mask[q * pn + p] = v;
                 }
             }
@@ -226,7 +232,7 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
             // every row matches; clear what it covers.
             for (int q = 0; q < qn; q++) {
                 for (int p = 0; p < pn;) {
-                    uint8_t const v = mask[q * pn + p];
+                    uint16_t const v = mask[q * pn + p];
                     if (v == 0) {
                         p++;
                         continue;
@@ -234,14 +240,14 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                     int wp = 1;
                     while (p + wp < pn && mask[q * pn + p + wp] == v) wp++;
                     int        hq       = 1;
-                    bool const no_stack = sides && v == VM_GRASS_SIDE + 1;
+                    bool const no_stack = sides && (v & 0xFFu) == VM_GRASS_SIDE + 1;
                     while (!no_stack && q + hq < qn) {
                         bool row = true;
                         for (int i = 0; i < wp && row; i++) row = mask[(q + hq) * pn + p + i] == v;
                         if (!row) break;
                         hq++;
                     }
-                    for (int j = 0; j < hq; j++) memset(&mask[(q + j) * pn + p], 0, (size_t)wp);
+                    for (int j = 0; j < hq; j++) memset(&mask[(q + j) * pn + p], 0, (size_t)wp * sizeof(uint16_t));
                     // Into the box's own coordinates. Which of x0/y0/z0
                     // applies depends on which axis the face looks
                     // along: `slice` runs along that axis, `p` and `q`
@@ -249,7 +255,8 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                     int const sw = slice + (dir.axis == 0 ? g->x0 : dir.axis == 1 ? g->y0 : g->z0);
                     int const pw = p + (dir.axis == 0 ? g->z0 : g->x0);
                     int const qw = q0 + q + (dir.axis == 1 ? g->z0 : g->y0);
-                    emit(m, dir, sw, pw, qw, wp, hq, step, (uint8_t)(v - 1));
+                    mesh_set_light(m, (uint8_t)(v >> 8));
+                    emit(m, dir, sw, pw, qw, wp, hq, step, (uint8_t)((v & 0xFFu) - 1));
                     p += wp;
                 }
             }
@@ -265,6 +272,7 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                 uint8_t const      b = CELL(x, y, z);
                 block_kind_t const k = block_kind(b);
                 int const          X = x + g->x0, Y = y + g->y0, Z = z + g->z0;
+                if (k == K_PLANT || k == K_TORCH) mesh_set_light(m, LIGHT(x, y, z));  // lit by its own cell
                 if (k == K_PLANT && mode == VOX_MESH_FANCY) emit_plant(m, X, Y, Z, (uint8_t)voxel_face_mat(b, VF_SIDE));
                 if (k == K_TORCH) {
                     float const cx = (float)X + 0.5f, cz = (float)Z + 0.5f, r = 1.0f / 16.0f;
@@ -273,5 +281,8 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
             }
         }
     }
+    mesh_set_light(m, MESH_LIGHT_FULL);
+#undef LIGHT
 #undef CELL
+#undef CIDX
 }

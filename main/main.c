@@ -24,12 +24,16 @@
 #include "esp_heap_caps.h"
 #include "esp_log.h"
 #include "esp_timer.h"
+#include "game/daytime.h"
+#include "fred/fred.h"
 #include "game/flycam.h"
+#include "game/raycast.h"
 #include "game/hud.h"
 #include "game/input.h"
 #include "game/interact.h"
 #include "game/membench.h"
 #include "game/player.h"
+#include "game/replay.h"
 #include "items/item_entity.h"
 #include "game/tick.h"
 #include "gl_input.h"
@@ -38,14 +42,17 @@
 #include "synthengine3d.h"  // the whole public API
 #include "testkit/devtest.h"
 #include "testkit/profile.h"
+#include "testkit/report.h"
 #include "testkit/showtime.h"
 #include "ui/icons.h"
 #include "ui/menu.h"
 #include "ui/settings.h"
 #include "ui/title.h"
+#include "voxel/voxel_sky.h"
 #include "world/chunk.h"
 #include "world/chunk_render.h"
 #include "world/chunk_worker.h"
+#include "world/light.h"
 #include "world/region.h"
 #include "world/vfs_compat.h"
 #include "world/worldgen.h"
@@ -154,6 +161,7 @@ typedef enum { CAM_PLAYER = 0, CAM_FREE, CAM_SCRIPTED } cam_mode_t;
 typedef enum {
     APP_TITLE = 0,  // "CraftMiner" in blocks over a generated meadow
     APP_PLAY,       // a real world, open and saving
+    APP_LOADING,    // generating what the next state will look at, with a progress bar
 } app_state_t;
 
 static app_state_t s_app = APP_TITLE;
@@ -162,7 +170,56 @@ static double      s_title_t0;
 static bool enter_title(void);
 static bool enter_world(int slot, bool create, char const* name, uint32_t seed);
 static void save_world(char const* why);
-static void pregenerate(double wx, double wz, char const* why);
+static void start_loading(double wx, double wz, app_state_t next, char const* what);
+
+// --- The time of day ------------------------------------------------------
+//
+// The world's clock (world_meta_t.time_of_day) moves one tick per
+// simulation tick while a world is played, and everything the sky and
+// the light need comes from it (game/daytime.h), worked out once a
+// frame. The title stands at a fixed morning.
+#define TITLE_TIME (DAY_START + 2500)
+
+static daytime_t s_day;
+
+// The position overlay (CM_INFO, Backspace by default).
+static bool s_info;
+
+// Fred (fred/fred.h): his walk cycle and the swing of his arm, advanced
+// each frame from what the player is doing -- drawing, not simulation,
+// so they need not be replayable.
+#define FRED_BACK      4.0f   // third person: blocks behind his eyes
+#define FRED_STROKES   1.8f   // swings a second while mining
+static float s_walk, s_stride, s_swing_t;
+// The `replay_third` test scene: third person for this run only, without
+// touching the player's settings.txt.
+static bool  s_force_third;
+// ... and `replay_left`: third person, left-handed, likewise for this run only.
+static bool  s_force_left;
+
+static bool left_handed(void) {
+    return s_force_left || settings_left_handed();
+}
+
+static bool third_person(void) {
+    return s_force_third || settings_third_person();
+}
+
+// Replays (game/replay.h). A recording is started and stopped with R
+// in a world; a replay is played by the `replay` test scene, on a
+// scratch world of the recorded seed. `s_replay_t0` is the show time of
+// its first tick, so a test that SETS the clock still gets the tick
+// that belongs to that moment.
+static double s_replay_t0;
+// This run is a replay scene: the player keeps the camera even under a
+// test, since the replay is itself the reproducible thing a test wants.
+static bool   s_in_replay;
+static bool enter_replay(void);
+static bool run_savecheck(void);
+// The title's clock. A test scene can move it ("title_night") to look at
+// the night sky without playing through a day.
+static int64_t   s_title_time = TITLE_TIME;
+static uint8_t   s_lut[256];  // light byte -> brightness, for mesh_render
 
 static player_t     s_player;
 static tick_clock_t s_tick;
@@ -280,6 +337,7 @@ static struct {
 } const SCENES[] = {
     {"block", -1},
     {"title", -1},
+    {"title_night", -1},
     {"near", 0},
     {"medium", 1},
     {"far", 2},
@@ -287,6 +345,21 @@ static struct {
 
 static bool content_select(char const* name) {
     if (name == NULL) return false;
+    // "savecheck" -- block 5's acceptance: 200 edits through a save.
+    if (strcmp(name, "savecheck") == 0) {
+        s_content    = "savecheck";
+        s_content_t0 = showtime_now();
+        return run_savecheck();
+    }
+    // "replay" -- play replays/test.cmr (or the last recording) on a
+    // scratch world: the reproducible walk the perf and shots tests want.
+    if (strcmp(name, "replay") == 0 || strcmp(name, "replay_third") == 0 || strcmp(name, "replay_left") == 0) {
+        s_content     = strcmp(name, "replay") == 0 ? "replay" : strcmp(name, "replay_left") == 0 ? "replay_left" : "replay_third";
+        s_content_t0  = showtime_now();
+        s_force_third = strcmp(name, "replay") != 0;
+        s_force_left  = strcmp(name, "replay_left") == 0;
+        return enter_replay();
+    }
     // "menu_<screen>" -- the title with one menu screen open over it.
     // An underscore, not a colon: the scene name is part of the shot's
     // file name, and FAT refuses a colon.
@@ -304,6 +377,7 @@ static bool content_select(char const* name) {
     for (size_t i = 0; i < sizeof(SCENES) / sizeof(SCENES[0]); i++) {
         if (strcmp(name, SCENES[i].name) != 0) continue;
         s_content    = SCENES[i].name;
+        s_title_time = strcmp(name, "title_night") == 0 ? TITLE_TIME + DAY_TICKS / 2 + 3000 : TITLE_TIME;
         s_content_t0 = showtime_now();
         s_time_off   = s_content_t0;  // the content's own t = 0
         // The title is a pure function of ITS clock, so a test's t = 0
@@ -374,8 +448,15 @@ static void frame_stats(void) {
     int tested = 0, passed = 0, drawn = 0, sections = 0, resident = 0, missing = 0;
     mesh_submit_counters(&tested, &passed);
     chunk_render_stats(&drawn, &sections, &resident, &missing);
-    ESP_LOGI(TAG, "world: %d chunks / %d sections drawn of %d resident (%d missing), %d tris tested -> %d submitted",
-             drawn, sections, resident, missing, tested, passed);
+    int     flat_n = 0, tex_n = 0, lines_n = 0;
+    int64_t unused_us = 0;
+    scene_raster_stats(&flat_n, &lines_n, &unused_us, &unused_us);
+    scene_textured_stats(&tex_n, &unused_us);
+    ESP_LOGI(TAG,
+             "world: %d chunks / %d sections drawn of %d resident (%d missing), %d tris tested -> %d submitted "
+             "(flat %d/%d, textured %d/%d)",
+             drawn, sections, resident, missing, tested, passed, flat_n, SE_SCENE_TRI_CAP, tex_n,
+             SE_SCENE_TEXTURED_TRI_CAP);
 
     // A full list drops in submission order, so anything here is a hole
     // in the picture -- a corner of the world, a chunk, half a title.
@@ -384,6 +465,11 @@ static void frame_stats(void) {
     if (dropped_tri > 0 || dropped_ttri > 0) {
         ESP_LOGW(TAG, "GEOMETRY DROPPED: %d flat past the %d cap, %d textured past %d -- the view is incomplete",
                  dropped_tri, SE_SCENE_TRI_CAP, dropped_ttri, SE_SCENE_TEXTURED_TRI_CAP);
+    }
+
+    if (s_app == APP_PLAY) {
+        ESP_LOGI(TAG, "player at %.2f %.2f %.2f%s", s_player.body.x, s_player.body.y, s_player.body.z,
+                 phys_fits(&s_player.body, s_player.body.x, s_player.body.y, s_player.body.z) ? "" : " INSIDE A BLOCK");
     }
 
     // The streaming's flow, as rates. A world that lags behind the
@@ -430,10 +516,9 @@ static void on_init(void* user) {
     // 5.1), not on a second text splash the player has to sit through.
     se_splash();
 
-    // A sun over the left shoulder. `brightness` is the directional
-    // share of the light; the rest is fill, so a face turned away goes
-    // dim rather than black.
-    se_light_set(&(se_light_t){.x = -600.0f, .y = 900.0f, .z = -400.0f, .brightness = 0.55f, .two_sided = false});
+    // The sun is set every frame from the time of day (on_render); this
+    // is only what the first frame sees.
+    se_light_set(&(se_light_t){.x = -600.0f, .y = 900.0f, .z = -400.0f, .brightness = 0.45f, .two_sided = false});
 
     // Both output-neutral, both off by default. Frustum culling is a
     // near-pure win. Depth ordering trades a sort against overdraw, and
@@ -452,6 +537,9 @@ static void on_init(void* user) {
     }
     ESP_LOGI(TAG, "chunk slab: %u KiB (%d slots x %u KiB)", (unsigned)(chunk_store_bytes() / 1024), CH_SLOT_COUNT,
              (unsigned)(chunk_store_bytes() / CH_SLOT_COUNT / 1024));
+    // Torchlight and daylight need their flood queues. Without them the
+    // world is simply drawn fully lit.
+    if (!light_init()) ESP_LOGW(TAG, "no light queues: the world will be fully lit");
     log_memory("world resident");
 
     // The half-size layer the scene draws into. It has to match the
@@ -480,6 +568,7 @@ static void on_init(void* user) {
         ESP_LOGE(TAG, "chunk_render_init failed");
         return;
     }
+    fred_init();  // after the block textures: a block in his hand uses them
     // The player's graphics and audio choices. The view distance itself
     // is applied on entering a world: the title has a view of its own.
     // Bindings registered first: the settings file restores them.
@@ -540,6 +629,7 @@ static void on_init(void* user) {
 
 static world_meta_t   s_meta;
 static player_state_t s_saved;
+static world_items_t  s_items;  // what lies on the ground, as saved and loaded
 
 static void drain_and_clear(void) {
     // Synchronous mode drains the queues as part of switching, which is
@@ -551,6 +641,7 @@ static void drain_and_clear(void) {
 }
 
 static bool enter_title(void) {
+    s_in_replay = false;
     drain_and_clear();
     worldstore_close();
     if (!title_begin()) return false;
@@ -563,24 +654,22 @@ static bool enter_title(void) {
     // from the middle, so one point is enough.
     double px, pz;
     title_stream_at(0.5 * 16.0, &px, &pz);  // the middle of the loop
-    pregenerate(px, pz, "the title");
-    s_title_t0 = showtime_now();
-    s_app      = APP_TITLE;
     s_cam_mode = CAM_PLAYER;
-    menu_open_title();
-    ESP_LOGI(TAG, "title");
+    menu_close();  // opened when the loading is done
+    start_loading(px, pz, APP_TITLE, "Loading");
     return true;
 }
 
 // Open the world in `slot` -- or, with `create`, make one there first.
 static bool enter_world(int slot, bool create, char const* name, uint32_t seed) {
+    s_in_replay = false;
     drain_and_clear();
     title_end();
 
     char slug[CM_WORLD_SLUG_MAX];
     worldstore_slot_slug(slot, slug, sizeof(slug));
     bool const ok = create ? worldstore_create_in(slot, name, seed, &s_meta, &s_saved)
-                           : worldstore_open(slug, &s_meta, &s_saved);
+                           : worldstore_open(slug, &s_meta, &s_saved, &s_items);
     if (!ok) {
         ESP_LOGE(TAG, "could not %s the world in slot %d", create ? "create" : "open", slot + 1);
         enter_title();
@@ -591,15 +680,12 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
              (unsigned)s_meta.seed);
 
     chunk_worker_set_seed(s_meta.seed);
-    // The ground under the player before the player is on it (D-26).
-    // The rest streams in behind them while they are already walking,
-    // which is what the freeze below covers.
-    pregenerate(s_saved.x, s_saved.z, "the spawn");
     // The player's own view distance: the title's is generous because
     // it is looking at one static word, not walking.
     cm_view_t const pv = cm_view_preset(settings_view());
     chunk_render_set_view(&pv);
-    item_entity_reset();
+    // What was lying on the ground when they left.
+    item_entity_restore(s_items.e, create ? 0 : s_items.n);
 
     // WHO THEY WERE. Health, hunger and what they carry come back from
     // the save; a player with nothing saved gets the starting kit.
@@ -628,11 +714,148 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     // Frozen until the chunk under them is resident: nobody falls
     // through terrain that has not arrived yet (D-26).
     tick_freeze(&s_tick, true);
-    s_app      = APP_PLAY;
     s_cam_mode = CAM_PLAYER;
     menu_close();
+    // The ground under the player before the player is on it (D-26),
+    // behind a progress bar (5.5). The rest streams in behind them while
+    // they are already walking, which is what the freeze above covers.
+    start_loading(s_saved.x, s_saved.z, APP_PLAY, create ? "Creating world" : "Loading world");
     ESP_LOGI(TAG, "entering at %.1f, %.1f, %.1f (%s)", s_saved.x, s_saved.y, s_saved.z,
              s_saved.placed ? "where they left" : "a new player");
+    return true;
+}
+
+// Finish a recording and write it to replays/last.cmr.
+static void stop_recording(void) {
+    if (!replay_recording()) return;
+    char dir[160], path[192];
+    snprintf(dir, sizeof(dir), "%s/replays", graceloader_get_install_basepath());
+    cm_mkdir_p(dir);
+    snprintf(path, sizeof(path), "%s/last.cmr", dir);
+    bool const ok = replay_record_end(path);
+    ESP_LOGI(TAG, "replay recording stopped: %s %s", path, ok ? "written" : "NOT WRITTEN");
+}
+
+// THE SAVE CHECK (block 5's acceptance): make a world, edit 200 blocks
+// across three chunks, save it, throw everything away, open it again and
+// count the edits that came back. In a world of its own -- "savecheck",
+// outside the slots, so no menu ever shows it -- deleted afterwards
+// whatever the result. `make cycle TEST="perf scene=savecheck secs=3"`:
+// a SAVECHECK record carries the count, and a miss ends the test "bad".
+#define SAVECHECK_EDITS 200
+
+static void settle_world(double wx, double wz);
+
+static bool run_savecheck(void) {
+    static struct {
+        int32_t x, y, z;
+        uint8_t b, st;
+    } e[SAVECHECK_EDITS];
+    static uint8_t const CYCLE[5] = {BLK_GLASS, BLK_AIR, BLK_PLANKS, BLK_TORCH, BLK_COBBLE};
+
+    drain_and_clear();
+    title_end();
+    worldstore_close();
+    worldstore_delete("savecheck");  // whatever a crashed run left
+    world_meta_t   m;
+    player_state_t p;
+    if (!worldstore_create("savecheck", 0x5AFE5AFEu, &m, &p)) {
+        devtest_content_failed("could not create the savecheck world");
+        return true;
+    }
+    chunk_worker_set_seed(m.seed);
+    chunk_worker_set_synchronous(true);
+    settle_world(8.0, 8.0);
+
+    // Three chunks, a spread of heights, placing and removing both.
+    for (int i = 0; i < SAVECHECK_EDITS; i++) {
+        int32_t const bx = (i % 3 == 1) ? CH_W : 0, bz = (i % 3 == 2) ? CH_D : 0;
+        e[i].x           = bx + (i * 7) % CH_W;
+        e[i].z           = bz + (i * 11) % CH_D;
+        e[i].y           = 12 + (i * 5) % 40;
+        uint8_t const b  = CYCLE[i % 5];
+        world_set(e[i].x, e[i].y, e[i].z, b, b == BLK_AIR ? 0 : ST_PLACED);
+    }
+    // What the world says now is what has to come back -- a later edit
+    // may land on an earlier one's cell.
+    for (int i = 0; i < SAVECHECK_EDITS; i++) {
+        e[i].b  = world_block(e[i].x, e[i].y, e[i].z);
+        e[i].st = world_state(e[i].x, e[i].y, e[i].z);
+    }
+
+    int saved = 0;
+    for (int i = 0; i < CH_SLOT_COUNT; i++) {
+        chunk_t const* c = chunk_slot_at(i);
+        if (c->cstate == CS_READY && (c->flags & CF_EDITED) != 0 && chunk_worker_request_save(c->cx, c->cz)) saved++;
+    }
+    bool const level_ok = worldstore_save(&m, &p, NULL);
+
+    // Everything gone from memory, then back from the card.
+    drain_and_clear();
+    worldstore_close();
+    int survived = 0;
+    if (worldstore_open("savecheck", &m, &p, NULL)) {
+        chunk_worker_set_seed(m.seed);
+        settle_world(8.0, 8.0);
+        for (int i = 0; i < SAVECHECK_EDITS; i++) {
+            if (world_block(e[i].x, e[i].y, e[i].z) == e[i].b && world_state(e[i].x, e[i].y, e[i].z) == e[i].st)
+                survived++;
+        }
+    }
+    report_emitf("SAVECHECK", "{\"t\":\"savecheck\",\"edits\":%d,\"survived\":%d,\"chunks_saved\":%d,\"level\":%s}",
+                 SAVECHECK_EDITS, survived, saved, level_ok ? "true" : "false");
+    ESP_LOGI(TAG, "savecheck: %d of %d edits survived (%d chunks saved, level.cmw %s)", survived, SAVECHECK_EDITS,
+             saved, level_ok ? "written" : "FAILED");
+    if (survived != SAVECHECK_EDITS || !level_ok) devtest_content_failed("edits were lost across a save and reload");
+
+    drain_and_clear();
+    worldstore_close();
+    worldstore_delete("savecheck");
+    enter_title();
+    return true;
+}
+
+// Play a replay: its seed as a scratch world -- nothing saved, nobody's
+// world touched -- the player where the recording started, carrying what
+// they carried then.
+static bool enter_replay(void) {
+    char           path[192];
+    replay_start_t st;
+    snprintf(path, sizeof(path), "%s/replays/test.cmr", graceloader_get_install_basepath());
+    if (!replay_load(path, &st)) {
+        snprintf(path, sizeof(path), "%s/replays/last.cmr", graceloader_get_install_basepath());
+        if (!replay_load(path, &st)) {
+            ESP_LOGW(TAG, "no replay to play (replays/test.cmr or replays/last.cmr)");
+            return false;
+        }
+    }
+    ESP_LOGI(TAG, "replay %s: %d ticks, seed %u", path, replay_length(), (unsigned)st.seed);
+    drain_and_clear();
+    title_end();
+    worldstore_open_scratch(st.seed, &s_meta, &s_saved);
+    s_meta.time_of_day = st.time_of_day;
+    chunk_worker_set_seed(st.seed);
+    cm_view_t const pv = cm_view_preset(settings_view());
+    chunk_render_set_view(&pv);
+    item_entity_reset();
+    player_reset(&s_player);
+    memcpy(s_player.inv.slot, st.inv, sizeof(s_player.inv.slot));
+    s_player.inv.selected = (int)st.selected;
+    s_player.inv.open     = false;
+    s_saved.x = st.x, s_saved.y = st.y, s_saved.z = st.z, s_saved.yaw = st.yaw, s_saved.pitch = st.pitch;
+    s_saved.placed = true;
+    phys_body_init(&s_player.body, st.x, st.y, st.z);
+    s_player.yaw = s_player.prev_yaw = st.yaw;
+    s_player.pitch = s_player.prev_pitch = st.pitch;
+    s_player.prev_x = st.x, s_player.prev_y = st.y, s_player.prev_z = st.z;
+    s_player_ready = false;
+    input_feed(0);
+    tick_reset(&s_tick, showtime_now());
+    tick_freeze(&s_tick, true);
+    s_cam_mode = CAM_PLAYER;
+    menu_close();
+    start_loading(st.x, st.z, APP_PLAY, "Loading replay");
+    s_in_replay = true;
     return true;
 }
 
@@ -670,45 +893,92 @@ static void save_world(char const* why) {
     // the world is on the card.
     while (!chunk_worker_idle()) chunk_worker_collect(64);
 
-    bool const ok = worldstore_save(&s_meta, &s_saved);
+    s_items.n     = item_entity_copy(s_items.e, ITEM_ENTITY_MAX);
+    bool const ok = worldstore_save(&s_meta, &s_saved, &s_items);
     ESP_LOGI(TAG, "saved (%s): %d chunk(s), level.cmw %s", why, chunks, ok ? "written" : "FAILED");
     menu_status(ok ? "Saved" : "SAVING FAILED");
 }
 
-// Generate every chunk the view will want, NOW, before anything is
-// drawn or animated.
+// --- Loading ---------------------------------------------------------------
 //
-// The streamer asks for four chunks a frame on purpose -- it is built
-// so that walking never stalls -- but "never stalls" and "is complete"
-// are different promises, and an opening sequence needs the second
-// one. The title writes its letters into the world with world_set(),
-// which NO-OPS on a chunk that is not resident yet; a title that starts
-// before its world exists spends its first seconds spelling half a
-// word, and which half depends on the SD card that morning.
+// Every chunk the next screen will look at is generated BEFORE it
+// starts (D-57): the title writes its letters into the world and a
+// player must not stand on terrain that is still arriving. The streamer
+// asks for four chunks a frame on purpose -- it is built so that walking
+// never stalls -- but "never stalls" and "is complete" are different
+// promises, and an opening needs the second one.
 //
-// So: switch the worker inline, run the streamer until it says nothing
-// is missing, switch back. On the badge that is 56 ms a chunk (F-23)
-// and a few seconds for a full view -- which is why it happens while
-// the screen still says nothing, and never once the player is in
-// control.
-static void pregenerate(double wx, double wz, char const* why) {
-    int64_t const t0       = esp_timer_get_time();
-    bool const    to_async = !chunk_worker_synchronous();
+// So the worker runs inline and the streamer is driven to completion --
+// a slice of it each frame, with a frame drawn in between, so the player
+// watches a progress bar fill instead of a frozen screen (5.5). A new
+// world's spawn is 56 ms a chunk to generate (F-23), which is seconds.
+
+#define LOAD_SLICE_US 60000  // generation per frame; the bar redraws in between
+#define LOAD_GUARD    2000   // streamer rounds before giving up on "complete"
+
+static struct {
+    double      wx, wz;
+    app_state_t next;
+    char const* what;
+    int64_t     t0;
+    int         rounds;
+    float       progress;  // 0..1, for the bar
+} s_load;
+
+static void start_loading(double wx, double wz, app_state_t next, char const* what) {
+    s_load = (typeof(s_load)){.wx = wx, .wz = wz, .next = next, .what = what, .t0 = esp_timer_get_time()};
     chunk_worker_set_synchronous(true);
+    s_app = APP_LOADING;
+}
 
-    int missing = 0;
-    int rounds  = 0;
-    for (; rounds < 600; rounds++) {
-        chunk_render_stream(wx, wz);
-        chunk_render_stats(NULL, NULL, NULL, &missing);
-        if (missing == 0) break;
+static void loading_step(void) {
+    int64_t const t0      = esp_timer_get_time();
+    int           missing = 0, resident = 0;
+    do {
+        chunk_render_stream(s_load.wx, s_load.wz);
+        chunk_render_stats(NULL, NULL, &resident, &missing);
+        s_load.rounds++;
+        // A test that sets the clock renders a frame or two per moment:
+        // for it, loading is one step, however long it takes.
+    } while (missing > 0 && s_load.rounds < LOAD_GUARD &&
+             (devtest_deterministic() || esp_timer_get_time() - t0 < LOAD_SLICE_US));
+    s_load.progress = resident + missing > 0 ? (float)resident / (float)(resident + missing) : 1.0f;
+    if (missing > 0 && s_load.rounds < LOAD_GUARD) return;
+
+    // Done. Back to streaming on core 1 -- unless a test wants the
+    // world to be exactly reproducible (D-59).
+    chunk_worker_set_synchronous(devtest_deterministic());
+    ESP_LOGI(TAG, "loaded (%s): %d chunks resident in %d rounds, %lld ms%s", s_load.what, resident, s_load.rounds,
+             (long long)((esp_timer_get_time() - s_load.t0) / 1000), missing == 0 ? "" : " (INCOMPLETE)");
+    s_app = s_load.next;
+    if (s_app == APP_TITLE) {
+        // A test that picked a moment of the title keeps its own clock.
+        if (!devtest_running()) s_title_t0 = showtime_now();
+        if (!menu_active()) menu_open_title();
+        ESP_LOGI(TAG, "title");
+    } else {
+        tick_reset(&s_tick, showtime_now());
+        // A replay's first tick is now -- or, under a test, the moment the
+        // test called t = 0, so its clock and the replay's agree.
+        s_replay_t0 = devtest_running() ? s_content_t0 : showtime_now();
     }
-    if (to_async) chunk_worker_set_synchronous(false);
+}
 
-    int resident = 0;
-    chunk_render_stats(NULL, NULL, &resident, NULL);
-    ESP_LOGI(TAG, "pregenerated %s: %d chunks resident in %d rounds, %lld ms%s", why, resident, rounds,
-             (long long)((esp_timer_get_time() - t0) / 1000), missing == 0 ? "" : " (INCOMPLETE)");
+// The loading screen: what is happening, and how far along it is.
+static void draw_loading(pax_buf_t* fb) {
+    pax_background(fb, 0xFF14181Eu);
+    float const       w   = (float)DISPLAY_LOG_W, h = (float)DISPLAY_LOG_H;
+    char const* const msg = s_load.what != NULL ? s_load.what : "Loading";
+    pax_vec2f const   sz  = rendertext_size(NULL, 30.0f, msg);
+    rendertext_draw(fb, 0xFFFFFFFFu, NULL, 30.0f, (w - sz.x) * 0.5f, h * 0.40f, msg);
+    // The world's name -- not a scratch world's placeholder.
+    if (s_load.next == APP_PLAY && s_meta.name[0] != '\0' && s_meta.name[0] != '(') {
+        pax_vec2f const nz = rendertext_size(NULL, 18.0f, s_meta.name);
+        rendertext_draw(fb, 0xFFA0A8B0u, NULL, 18.0f, (w - nz.x) * 0.5f, h * 0.40f + 42.0f, s_meta.name);
+    }
+    float const bw = 420.0f, bh = 14.0f, bx = (w - bw) * 0.5f, by = h * 0.62f;
+    pax_simple_rect(fb, 0xFF3A4048u, bx, by, bw, bh);
+    pax_simple_rect(fb, 0xFF6CC24Au, bx, by, bw * s_load.progress, bh);
 }
 
 // Fill the world in before drawing, for a test that must be exactly
@@ -733,12 +1003,47 @@ static void settle_world(double wx, double wz) {
     ESP_LOGW(TAG, "the world would not settle; a shot will be incomplete");
 }
 
+// The ground under the player has to exist before they may fall
+// through it (D-26). Frozen until the chunk they are standing in is
+// resident, which on entering a world is the first thing that arrives.
+//
+// BEFORE the frame's ticks, not after: settling puts the player back at
+// their saved position, and done after the ticks it would undo them. One
+// frame of that is invisible in play; a test that jumps the clock runs a
+// hundred ticks in that frame, and lost them all.
+static void settle_player(cam_mode_t mode) {
+    if (mode != CAM_PLAYER || menu_active()) return;
+    bool const standing =
+        chunk_find(chunk_of((int32_t)floor(s_player.body.x)), chunk_of((int32_t)floor(s_player.body.z))) != NULL;
+    tick_freeze(&s_tick, !standing);
+    if (standing && !s_player_ready) {
+        // The terrain is here, so the position can be settled: put a
+        // returning player back exactly where they left, and a new one --
+        // or one whose spot is now inside something -- on the ground at
+        // their column.
+        bool const exact =
+            s_saved.placed && player_place(&s_player, s_saved.x, s_saved.y, s_saved.z, s_saved.yaw, s_saved.pitch);
+        if (!exact) player_spawn(&s_player, s_saved.x, s_saved.z, s_player.yaw);
+        s_player_ready = true;
+        ESP_LOGI(TAG, "player standing at %.1f, %.1f, %.1f", s_player.body.x, s_player.body.y, s_player.body.z);
+    }
+}
+
 // Per frame. `dt` is seconds since the last frame, already clamped --
 // unused for now: the content is drawn from the show clock instead.
 static void on_update(float dt, void* user) {
     (void)user;
     showtime_frame();
     devtest_update();
+
+    // Generating what the next screen needs, a slice a frame.
+    if (s_app == APP_LOADING) {
+        loading_step();
+        // Still loading: nothing else to do. Just finished: carry on with
+        // this frame, or it is drawn with a camera that was never set --
+        // which is the frame a test that sets the clock photographs.
+        if (s_app == APP_LOADING) return;
+    }
 
     // A `shots` test SETS the clock instead of running it, so a frame
     // has to be able to draw a world that arrived in no time at all.
@@ -766,6 +1071,8 @@ static void on_update(float dt, void* user) {
                 break;
             case MENU_CMD_SAVE: save_world("from the pause menu"); break;
             case MENU_CMD_SAVE_QUIT:
+                stop_recording();
+                replay_stop();
                 save_world("quitting to the title");
                 enter_title();
                 break;
@@ -810,8 +1117,9 @@ static void on_update(float dt, void* user) {
         return;
     }
 
-    cam_mode_t const mode = devtest_running() ? CAM_SCRIPTED : s_cam_mode;
+    cam_mode_t const mode = devtest_running() && !s_in_replay ? CAM_SCRIPTED : s_cam_mode;
     s_cam_effective       = mode;
+    settle_player(mode);
 
     // Where the camera will be this frame decides what has to exist.
     if (mode == CAM_SCRIPTED) {
@@ -852,11 +1160,33 @@ static void on_update(float dt, void* user) {
         // hand it to the look along with the cursor keys. Only while the
         // player is actually looking round -- not reading the inventory,
         // not frozen waiting for ground.
-        input_gyro_frame(dt, settings_gyro() && s_player_ready && !s_player.inv.open);
-        int const n = tick_due(&s_tick, showtime_now());
+        input_gyro_frame(dt, settings_gyro() && s_player_ready && !s_player.inv.open && !replay_playing());
+        int n = tick_due(&s_tick, showtime_now());
+        if (replay_playing() && devtest_deterministic()) {
+            // A test that SETS the clock gets exactly the ticks that
+            // belong to that moment, however many -- not five a frame
+            // with the rest forgiven.
+            int const want = (int)((showtime_now() - s_replay_t0) * (double)TICK_HZ);
+            n              = want > replay_position() ? want - replay_position() : 0;
+        }
         for (int i = 0; i < n; i++) {
-            cm_actions_t const mask = input_sample();
+            cm_actions_t mask;
+            if (replay_playing()) {
+                uint32_t m  = 0;
+                float    gy = 0.0f, gp = 0.0f;
+                if (!replay_next(&m, &gy, &gp)) ESP_LOGI(TAG, "replay finished after %d ticks", replay_length());
+                mask = input_feed(m);
+                input_gyro_set_owed(gy, gp);
+            } else {
+                mask = input_sample();
+                if (replay_recording()) {
+                    float gy = 0.0f, gp = 0.0f;
+                    input_gyro_owed(&gy, &gp);
+                    replay_record_tick(mask, gy, gp);
+                }
+            }
             player_tick(&s_player, mask, input_pressed());
+            s_meta.time_of_day++;  // the world's clock is its own ticks (D-51)
         }
         s_ticks_last_frame = n;
 
@@ -868,6 +1198,29 @@ static void on_update(float dt, void* user) {
         s_cam.wz    = z;
         s_cam.yaw   = yaw;
         s_cam.pitch = pitch;
+
+        // Fred's animation: a stride that follows how fast he is going,
+        // a walk cycle that runs with it, and a swing while he mines.
+        float const speed = sqrtf(s_player.body.vx * s_player.body.vx + s_player.body.vz * s_player.body.vz);
+        float const want  = s_player.body.on_ground ? fminf(speed / PL_WALK, 1.0f) : 0.0f;
+        s_stride += (want - s_stride) * fminf(dt * 8.0f, 1.0f);
+        s_walk += dt * 9.0f * s_stride;
+        s_swing_t = s_player.mining ? s_swing_t + dt * FRED_STROKES : 0.0f;
+
+        // THIRD PERSON: behind him along the line he looks down, pulled
+        // in when something is in the way so the camera never ends up in
+        // a wall -- the ray is cast back from his eyes, and the camera
+        // stops a little short of whatever it hits.
+        if (third_person()) {
+            float fx, fy, fz;
+            ray_forward(yaw, pitch, &fx, &fy, &fz);
+            float     back = FRED_BACK;
+            ray_hit_t h;
+            if (ray_pick(x, y, z, -fx, -fy, -fz, FRED_BACK, true, &h)) back = fmaxf(h.dist - 0.3f, 0.4f);
+            s_cam.wx = x - (double)(fx * back);
+            s_cam.wy = (float)y - fy * back;
+            s_cam.wz = z - (double)(fz * back);
+        }
     }
 
     // Take delivery of what core 1 finished, with a budget so a burst
@@ -876,26 +1229,6 @@ static void on_update(float dt, void* user) {
     chunk_render_stream(s_cam.wx, s_cam.wz);
     if (devtest_deterministic()) settle_world(s_cam.wx, s_cam.wz);
 
-    // The ground under the player has to exist before they may fall
-    // through it (D-26). Frozen until the chunk they are standing in is
-    // resident, which on entering a world is the first thing that
-    // arrives.
-    if (mode == CAM_PLAYER && !menu_active()) {
-        bool const standing = chunk_find(chunk_of((int32_t)floor(s_player.body.x)),
-                                         chunk_of((int32_t)floor(s_player.body.z))) != NULL;
-        tick_freeze(&s_tick, !standing);
-        if (standing && !s_player_ready) {
-            // The terrain is here, so the position can be settled: put
-            // a returning player back exactly where they left, and a new
-            // one -- or one whose spot is now inside something -- on the
-            // ground at their column.
-            bool const exact = s_saved.placed && player_place(&s_player, s_saved.x, s_saved.y, s_saved.z,
-                                                              s_saved.yaw, s_saved.pitch);
-            if (!exact) player_spawn(&s_player, s_saved.x, s_saved.z, s_player.yaw);
-            s_player_ready = true;
-            ESP_LOGI(TAG, "player standing at %.1f, %.1f, %.1f", s_player.body.x, s_player.body.y, s_player.body.z);
-        }
-    }
 }
 
 // Whatever the engine did not consume itself (it takes volume, the
@@ -944,10 +1277,39 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
         return;
     }
 
+    // The position overlay, on its own binding.
+    if (sc == input_key(CM_INFO)) {
+        s_info = !s_info;
+        return;
+    }
+
     // The debug keys stand aside for a key a player has bound to
     // something: binding Jump to F must not also start the flying camera.
     if (input_key_bound(sc)) return;
     switch (sc) {
+        case BSP_INPUT_SCANCODE_R:
+            // Record a replay: from here, until R again. Written to
+            // replays/last.cmr; copy it to test.cmr to make it the one
+            // the `replay` scene plays.
+            if (replay_recording()) {
+                stop_recording();
+            } else if (!replay_playing()) {
+                replay_start_t st = {
+                    .seed        = s_meta.seed,
+                    .time_of_day = s_meta.time_of_day,
+                    .x           = s_player.body.x,
+                    .y           = s_player.body.y,
+                    .z           = s_player.body.z,
+                    .yaw         = s_player.yaw,
+                    .pitch       = s_player.pitch,
+                    .selected    = s_player.inv.selected,
+                };
+                memcpy(st.inv, s_player.inv.slot, sizeof(st.inv));
+                bool const ok = replay_record_begin(&st);
+                ESP_LOGI(TAG, "replay recording %s", ok ? "started (R to stop)" : "could not start");
+            }
+            break;
+
         case BSP_INPUT_SCANCODE_F:
             s_cam_mode   = (s_cam_mode == CAM_PLAYER) ? CAM_FREE : CAM_PLAYER;
             s_free_ready = false;  // re-place the free camera where the player is
@@ -957,6 +1319,16 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
             tick_reset(&s_tick, showtime_now());
             ESP_LOGI(TAG, "camera: %s", s_cam_mode == CAM_PLAYER ? "player" : "free flight");
             break;
+
+        case BSP_INPUT_SCANCODE_N: {
+            // Testing: the world's clock a quarter of a day on -- morning,
+            // noon, evening, midnight -- so night can be looked at without
+            // waiting ten minutes for it. Saved like any other time.
+            s_meta.time_of_day += DAY_TICKS / 4;
+            int hh = 0, mm = 0;
+            daytime_clock(s_meta.time_of_day, &hh, &mm);
+            ESP_LOGI(TAG, "time of day: %02d:%02d", hh, mm);
+        } break;
 
         case BSP_INPUT_SCANCODE_P:
             if (s_flying) {
@@ -973,6 +1345,35 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
     }
 }
 
+// The position overlay: where the player is, which way they face, the
+// world's time, and whether a replay is being made or played.
+//
+// THE COMPASS: +z is north and +x east. The engine's camera turns right
+// from +z towards +x (forward (sin yaw, cos yaw), right (cos yaw,
+// -sin yaw)), which is north-to-east on a map with north up; and the sun
+// rises at +x (game/daytime.c), so east is where it should be.
+static void draw_info(pax_buf_t* fb) {
+    static char const* const NAMES[8] = {"north", "north-east", "east", "south-east",
+                                         "south", "south-west", "west", "north-west"};
+    float deg = s_player.yaw * (180.0f / 3.14159265f);
+    deg       = fmodf(deg, 360.0f);
+    if (deg < 0.0f) deg += 360.0f;
+    int const octant = (int)((deg + 22.5f) / 45.0f) & 7;
+
+    int hh = 0, mm = 0;
+    daytime_clock(s_meta.time_of_day, &hh, &mm);
+
+    char pos[64], face[48], clock[48], extra[48];
+    snprintf(pos, sizeof(pos), "X %.1f   Y %.1f   Z %.1f", s_player.body.x, s_player.body.y, s_player.body.z);
+    snprintf(face, sizeof(face), "facing %s (%d)", NAMES[octant], (int)(deg + 0.5f) % 360);
+    snprintf(clock, sizeof(clock), "%02d:%02d   day %lld", hh, mm, (long long)(s_meta.time_of_day / DAY_TICKS) + 1);
+    extra[0] = '\0';
+    if (replay_recording()) snprintf(extra, sizeof(extra), "RECORDING (R to stop)");
+    if (replay_playing()) snprintf(extra, sizeof(extra), "replay %d / %d", replay_position(), replay_length());
+    char const* const lines[4] = {pos, face, clock, extra};
+    hud_text_lines(fb, lines, 4);
+}
+
 // The engine clears the framebuffer to cfg.backdrop_argb every frame
 // when no backdrop callback is registered -- a full 800x480 CPU fill.
 // The upscaled layer covers every pixel of it, so that clear is pure
@@ -986,6 +1387,12 @@ static void on_backdrop(pax_buf_t* fb, void* user) {
 // Per frame, after the engine has cleared the backdrop.
 static void on_render(pax_buf_t* fb, void* user) {
     (void)user;
+    if (s_app == APP_LOADING) {
+        draw_loading(fb);
+        devtest_after_render(fb, 0);
+        frame_stats();
+        return;
+    }
 
     // Everything is submitted relative to an integer origin near the
     // camera, so the floats the rasteriser sees stay small however far
@@ -998,6 +1405,22 @@ static void on_render(pax_buf_t* fb, void* user) {
     chunk_render_rel(ox, oz, s_cam.wx, (double)s_cam.wy, s_cam.wz, &rx, &ry, &rz);
     render_set_camera_6dof(rx, ry, rz, s_cam.yaw, s_cam.pitch, 0.0f);
 
+    // The time of day: the sky, the fog, the sun, and how bright each
+    // light level is. Cheap -- a 256-entry table -- so every frame.
+    s_day = daytime_at(s_app == APP_PLAY ? s_meta.time_of_day : s_title_time);
+    daytime_light_lut(s_day.day, s_lut);
+    mesh_set_light_lut(s_lut);
+    chunk_render_set_fog(s_day.fog_argb);
+    {
+        // The directional light comes from whichever of the sun and the
+        // moon is up, far off along its direction, so it models the
+        // sides of blocks by day and by night alike. How BRIGHT it is
+        // belongs to the light table, not to this.
+        vec3_t const d = s_day.sun_dir.y > -0.05f ? s_day.sun_dir : v3_scale(s_day.sun_dir, -1.0f);
+        se_light_set(&(se_light_t){
+            .x = rx + d.x * 5000.0f, .y = ry + d.y * 5000.0f, .z = rz + d.z * 5000.0f, .brightness = 0.45f});
+    }
+
     bool const       half   = s_half_ok && settings_half_res();
     pax_buf_t* const target = half ? &s_half.buf : fb;
     scene_set_render_scale(half ? 2 : 1);
@@ -1007,7 +1430,7 @@ static void on_render(pax_buf_t* fb, void* user) {
     // not cover is what shows through after the upscale.
     prof_begin(PROF_FILL);
     if (half) {
-        se_ppa_fill(target, 0, 0, DISPLAY_LOG_H / 2, CM_SKY_ARGB);
+        se_ppa_fill(target, 0, 0, DISPLAY_LOG_H / 2, s_day.sky_argb);
         se_ppa_wait_job(0);
     } else {
         // Full resolution draws straight into the framebuffer, which
@@ -1015,7 +1438,7 @@ static void on_render(pax_buf_t* fb, void* user) {
         // A CPU clear, not a PPA fill: the CPU draws into this buffer
         // next, and a DMA fill under its cache is a coherence problem
         // this path is not worth having.
-        pax_background(fb, CM_SKY_ARGB);
+        pax_background(fb, s_day.sky_argb);
     }
     prof_end(PROF_FILL);
 
@@ -1023,6 +1446,11 @@ static void on_render(pax_buf_t* fb, void* user) {
 
     prof_begin(PROF_SUBMIT);
     mesh_submit_counters_reset();
+    // The sky first -- sun or moon, clouds, stars -- so the world draws
+    // over it wherever they overlap.
+    // No clouds on the title: its letters stand at the height they fly at.
+    voxel_sky_submit((float)showtime_now(), s_day.sun_dir, s_day.fog_argb, s_day.day, ox, oz,
+                     settings_clouds() && s_app == APP_PLAY);
     chunk_render_submit(s_cam.wx, s_cam.wz);
     // The box round the block the crosshair found, while the player is
     // the one aiming. It is an edge, so the engine draws it after every
@@ -1031,6 +1459,34 @@ static void on_render(pax_buf_t* fb, void* user) {
         hud_block_outline(s_player.aim.x, s_player.aim.y, s_player.aim.z);
     }
     hud_dropped_items();
+    // Fred: his arm and what it holds in first person, all of him in
+    // third. Lit by the cell he is in, like the world round him.
+    if (s_app == APP_PLAY && s_cam_effective == CAM_PLAYER) {
+        fred_hold_t const hold  = fred_hold_for(inv_held(&s_player.inv)->item);
+        float const       swing = s_player.mining ? fred_stroke(s_swing_t) : 0.0f;
+        if (third_person()) {
+            double px, py, pz;
+            float  pyaw, ppitch;
+            player_eye(&s_player, tick_alpha(&s_tick), &px, &py, &pz, &pyaw, &ppitch);
+            float rfx, rfy, rfz;
+            chunk_render_rel(ox, oz, px, py - (double)PHYS_PLAYER_EYE, pz, &rfx, &rfy, &rfz);
+            xform_t const     root = {mat3_rot_y(pyaw), v3(rfx, rfy, rfz), 1.0f};
+            fred_pose_t const pose = {
+                .walk        = s_walk,
+                .stride      = s_stride,
+                .swing       = swing,
+                .head_pitch  = ppitch,
+                .hold        = hold,
+                .left_handed = left_handed()};
+            fred_submit(&root, &pose,
+                        world_light((int32_t)floor(px), (int32_t)floor(py - 0.6), (int32_t)floor(pz)));
+        } else {
+            float const bob = 0.03f * s_stride * fabsf(sinf(s_walk));
+            fred_submit_fp_arm(swing, &hold, bob,
+                               world_light((int32_t)floor(s_cam.wx), (int32_t)floor(s_cam.wy), (int32_t)floor(s_cam.wz)),
+                               left_handed());
+        }
+    }
     prof_end(PROF_SUBMIT);
 
     prof_begin(PROF_PREPARE);
@@ -1074,10 +1530,14 @@ static void on_render(pax_buf_t* fb, void* user) {
         prof_end(PROF_HUD);
     } else if (s_cam_effective != CAM_FREE) {
         prof_begin(PROF_HUD);
-        hud_crosshair(fb);
+        // In third person the pick ray still starts at his eyes, so a
+        // crosshair in the middle of a camera behind him would point at
+        // the wrong thing: the block outline shows what he aims at.
+        if (!third_person()) hud_crosshair(fb);
         hud_mine_progress(fb, player_mine_progress(&s_player));
         hud_player(fb, &s_player);
         hud_inventory(fb, &s_player);
+        if (s_info || replay_recording()) draw_info(fb);
         prof_end(PROF_HUD);
     }
 

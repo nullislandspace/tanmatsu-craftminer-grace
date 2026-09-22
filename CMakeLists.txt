@@ -22,8 +22,11 @@ set(APP_SOURCES
     # by the host checks (`make check`); world/blocks.c is the registry
     # it and everything else read instead of switching on block ids.
     main/voxel/voxel_mesh.c
+    main/voxel/voxel_sky.c
+    main/voxel/starfield.c
     main/world/blocks.c
     main/world/chunk.c
+    main/world/light.c
     main/world/worldgen.c
     main/world/chunk_codec.c
     main/world/region.c
@@ -44,12 +47,18 @@ set(APP_SOURCES
     main/game/input.c
     main/game/player.c
     main/game/tick.c
+    main/game/daytime.c
+    main/game/replay.c
     main/game/hud.c
 
     # Items, and the inventory that holds them.
     main/items/items.c
     main/items/inventory.c
     main/items/item_entity.c
+
+    # Fred, the player's figure (from the showreel's miner).
+    main/fred/fred.c
+    main/fred/fred_mesh.c
 
     # Screens.
     main/ui/title.c
@@ -170,7 +179,16 @@ set(ENGINE_DEPS "")
 # z-fight, so that is a trade worth making to stop seeing through
 # walls.
 add_compile_definitions(RENDER_NEAR_CLIP_Z=0.1f)
-add_compile_definitions(SE_SCENE_TEXTURED_TRI_CAP=2048)
+# The geometry lists (F-63). Lighting splits merged faces and the medium
+# view draws more of them, and past a cap the engine DROPS triangles --
+# nearby terrain vanished, and you saw "through the ground" at a step.
+#   flat 6144      in internal SRAM, 240 KB: paid for by the line list
+#   lines 256      CraftMiner draws a dozen (the block outline); the
+#                  default 4096 was 112 KB of internal SRAM for nothing
+#   textured 4096  in PSRAM (it never fitted internal), 272 KB
+add_compile_definitions(SE_SCENE_TRI_CAP=6144)
+add_compile_definitions(SE_SCENE_LINE_CAP=256)
+add_compile_definitions(SE_SCENE_TEXTURED_TRI_CAP=4096)
 add_compile_definitions(SE_BINDINGS_MAX=24)
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/synthengine3D/CMakeLists.txt)

@@ -110,6 +110,12 @@ typedef struct {
     int            x0, y0, z0;
     int            step;   // blocks per cell: 1, or 2 for a half-resolution world
     bool           skirt;  // side faces on the box's outer edges whatever is beyond
+    // The light of each cell (light.h: sky << 4 | block), laid out
+    // exactly like `cells`, or NULL for full daylight everywhere. A face
+    // takes the light of the cell IN FRONT of it -- the air it faces --
+    // and faces only merge with neighbours lit the same, so a torch's
+    // pool of light is not smeared across a whole wall.
+    uint8_t const* lights;
 } vox_grid_t;
 
 // A single block for drawing outside the world (a dropped item, a block
