@@ -34,12 +34,20 @@ size_t chunkmesh_scratch_bytes(void) {
 #define BOX(w, h, x, y, z) \
     ((((size_t)((z) + 1) * (size_t)((w) + 2)) + (size_t)((x) + 1)) * (size_t)((h) + 2) + (size_t)((y) + 1))
 
-// The light a face merges on (F-63). Light in the merge key splits faces
-// that would otherwise be one rectangle -- 46% more triangles in the
-// nearest meshes, measured on a real world. Up close every level shows,
-// so they keep all of them; further off, a pair of levels either side is
-// invisible, and rounding to every fourth level takes lighting's cost in
-// those meshes from 16% to 4%.
+// The light a face merges on (F-63, F-65). Light in the merge key splits
+// faces that would otherwise be one rectangle: measured over 25 chunks of
+// a real world, 46% more triangles in the nearest meshes from sky light
+// alone, and another 45% with a torch or so a chunk, each torch laying a
+// fourteen-level ring of strips round itself.
+//
+//   near  SKY to every 4th level, TORCH to every 2nd (0xCE): daylight at
+//         a cave mouth fades in 4-block bands, torchlight in 2-block ones
+//         -- 25% fewer triangles than full precision with torches about,
+//         and two thirds of the sky's cost gone on open ground. Deep caves
+//         have no sky light to round, so they look as they did.
+//   far   both to every 4th level (0xCC): bands there are too far off to
+//         see, and lighting's cost in those meshes drops from 16% to 4%.
+#define LIGHT_NEAR_MASK   0xCEu
 #define LIGHT_COARSE_MASK 0xCCu
 
 static void fill_fine(uint8_t* cells, uint8_t* lights, int32_t cx, int32_t cz, int sect, uint8_t lmask) {
@@ -130,6 +138,12 @@ static void fill_coarse(uint8_t* cells, uint8_t* lights, int32_t cx, int32_t cz,
     }
 }
 
+static bool s_lighting = true;
+
+void chunkmesh_set_lighting(bool on) {
+    s_lighting = on;
+}
+
 bool chunkmesh_build(int32_t cx, int32_t cz, int lod, int sect, uint8_t* scratch, mesh_t* out) {
     if (scratch == NULL || out == NULL) return false;
     if (sect < 0 || sect >= CH_SECT_N) return false;
@@ -155,11 +169,11 @@ bool chunkmesh_build(int32_t cx, int32_t cz, int lod, int sect, uint8_t* scratch
             // the crack. Sides only -- a section's top and bottom meet
             // another section of the same chunk, at the same resolution.
             .skirt = true,
-            .lights = scratch + BOX_CELLS,
+            .lights = s_lighting ? scratch + BOX_CELLS : NULL,
         };
         voxel_mesh_build(out, &g, VOX_MESH_FAST);
     } else {
-        fill_fine(scratch, scratch + BOX_CELLS, cx, cz, sect, lod == LOD_FANCY ? 0xFFu : LIGHT_COARSE_MASK);
+        fill_fine(scratch, scratch + BOX_CELLS, cx, cz, sect, lod == LOD_FANCY ? LIGHT_NEAR_MASK : LIGHT_COARSE_MASK);
         vox_grid_t const g = {
             .cells = scratch,
             .w     = CH_W,
@@ -170,7 +184,7 @@ bool chunkmesh_build(int32_t cx, int32_t cz, int lod, int sect, uint8_t* scratch
             .z0    = 0,
             .step  = 1,
             .skirt = false,
-            .lights = scratch + BOX_CELLS,
+            .lights = s_lighting ? scratch + BOX_CELLS : NULL,
         };
         voxel_mesh_build(out, &g, lod == LOD_FANCY ? VOX_MESH_FANCY : VOX_MESH_FAST);
     }

@@ -79,7 +79,7 @@ opens**, since pausing is what people do before switching a handheld off.
   another action already had moves to that action's old key, so no two share
   one. *Reset to defaults* puts them all back. Esc always pauses, whatever Pause
   is bound to, so there is no way to lock yourself out.
-* **Graphics** — view distance (near / **medium**, the default / far), textures
+* **Graphics** — view distance (**near**, the default / medium / far), textures
   on or off, half or full resolution, clouds on or off, and the **camera**:
   first person (Fred's arm and what it holds) or third person (Fred himself,
   the camera behind him), and **Fred's hand**: right (the default) or left, in

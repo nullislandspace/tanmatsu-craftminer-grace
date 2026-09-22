@@ -48,4 +48,9 @@ size_t chunkmesh_scratch_bytes(void);
 // arrives.
 //
 // False if the chunk is not resident or the mesh could not be built.
+// Light in the meshes on or off. Off, faces merge as they did before
+// lighting and every face is drawn at full light -- for measuring what
+// the lighting costs (a test switch, not a setting).
+void chunkmesh_set_lighting(bool on);
+
 bool chunkmesh_build(int32_t cx, int32_t cz, int lod, int sect, uint8_t* scratch, mesh_t* out);

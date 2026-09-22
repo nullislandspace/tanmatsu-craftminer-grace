@@ -827,7 +827,7 @@ frame time than the fell.
 | **6** | **Settings** | | |
 | 6.1 | Controls menu, the synthracer pattern, all actions rebindable | done | 2026-09-22: all 21 actions, plus Reset to defaults. Binding a key another action has **swaps** them, so no two actions share a key and none is left with none. The capture is the engine's `se_ui_capture_key`, fixed to take the cursor keys (F-50), and the key column is synthracer's `keybind_ui.c` with its key-cap icons (`ui/icons.c`), both ported with provenance headers. The main menu is a strip under the title (the user kept it); every other screen is an `se_ui` panel. The polled fallback for keyboards that send arrows as navigation events now follows the binding rather than the action, and the debug keys stand aside for any key a player has bound (D-64). |
 | 6.4 | **Gyroscope look** | done | 2026-09-22, asked for by the user: a Controls checkbox, off by default. The **rate** gyroscope is added up frame by frame and handed to the look beside the cursor keys, one real degree per view degree, so both work at once (D-65). A resting gyroscope's offset is tracked rather than turned into a slow spin. Yaw sign as the diagram in `graceloader_imu.h` predicts; the **pitch sign had to be flipped**, reported by the user on the badge. |
-| 6.2 | Graphics menu: textures, render scale, view distance; NVS | done | 2026-09-22: view distance (**default medium**, the user's call; near before), textures, half / full resolution, in NVS under `craftminer`. Replaces the T and V debug keys. Full resolution clears its own sky now, which it never had to while it was only the no-PPA fallback. |
+| 6.2 | Graphics menu: textures, render scale, view distance; NVS | done | 2026-09-22: view distance (default near -- medium for a few hours, D-66 then D-76), textures, half / full resolution, in NVS under `craftminer`. Replaces the T and V debug keys. Full resolution clears its own sky now, which it never had to while it was only the no-PPA fallback. |
 | 6.3 | Audio and display via `se_hw.h` | done | 2026-09-22: device volume and the three brightnesses through `se_hw` (shared with the launcher); music and effects switches stored and wired to the mixer's gates, and labelled as waiting for block 14, since the game makes no sound yet. |
 | | **Accept:** every menu reached on the badge, a key rebound and used, a world created, played, saved, reopened with its inventory; the Testworld adopted | **in progress** | 2026-09-22: the Testworld adoption **ran on the user's card** — `worlds/flyover` became `slot1`, named *Testworld*, all five region files with it (a copy of the original is kept off the badge). The title strip renders (screenshot). The user is testing the rest by hand: the gyroscope works after one sign flip (F-55), and the inventory cursor bug (F-54) was found that way. `make check` covers slots, the inventory round trip and the adoption. |
 | **7** | **Far Lands** | | |
@@ -849,6 +849,7 @@ frame time than the fell.
 | 20 | **Terrain vanishing; "walking through" steps** (bug) | done | 2026-09-22, reported by the user as critical: at a step the view went into the ground, and looking round left holes. **Not physics** -- the same collision code walked the user's own terrain on the host for 6400 ticks without once ending inside a block, and the badge log showed the player climbing. It was the engine's geometry lists overflowing and DROPPING triangles, which the engine never reported (F-63). Caps raised, the line list shrunk to pay for it, far meshes' light rounded, the engine's drop counter fixed (D-72). The same walk now peaks at about 3000/6144 flat and 1900/4096 textured, nothing dropped -- at **7-9 fps** at the medium view. |
 | 21 | **Fred's hand**, and the handedness bug | done | 2026-09-22, reported by the user: first person held things in the right hand, third person in the left (F-64). Now a Graphics setting, right by default, and both views follow it. Checked on the badge mid-swing, both ways: right-handed the pickaxe rises by his right shoulder, left-handed by his left. |
 | 23 | **Permanent block ids; slots that say why they cannot be opened** | done | 2026-09-22, the user's call after F-52 was explained (D-74, D-75). Every block numbered explicitly; `tools/ids.txt` lists every block id and name and every item name ever shipped, and `make check` fails on a renumbered, renamed, removed or unlisted one -- each of the three cases tried and caught. Replays now store their inventory by item name (format 2). The slot list tells a world from a newer build ("from a newer version"), an older format ("needs upgrading") and a damaged one apart from an empty slot; nothing can be created over any of them. The upgrader itself is left until there is a format change for it to do. |
+| 24 | **Lighting's triangle cost, and the frame rate** | done | 2026-09-22, the user asked why the frame rate had fallen so far. Measured, not guessed: on the same scripted flight as 2026-09-21, today's build is as fast as yesterday's (14.5 vs 14.6 fps with lighting and clouds off, 14.1 with everything on) -- **no regression** (F-66). What had changed is the scene and the setting: walking at eye height puts close-up textured ground over the whole screen (rasterize 46 -> 72 ms), and the user plays at Far. Light in the merge key rounded in the near meshes, sky to every 4th level and torch to every 2nd (F-65): 25% fewer near triangles with torches about, +4% fps on the walk. Default view back to near (D-76). The `flight` and `replay_*` test scenes make these comparisons repeatable. |
 | 22 | **N: step the clock** | done | 2026-09-22, asked for by the user: a debug key moving the world's clock a quarter of a day, for looking at night without waiting. |
 
 ---
@@ -1500,8 +1501,35 @@ frame time than the fell.
   easily shows the WORLD's torch where you expect his -- it took a mid-swing
   shot, pickaxe above the shoulder, to see which hand was which.
 
+- **F-65** 2026-09-22: **where lighting's extra triangles come from.**
+  Measured on the host, 25 chunks of the user's terrain, nearest meshes:
+  no lighting 32034; sky light at full precision 46806 (+46%) -- all of it sky,
+  since generated terrain has no torches; rounded to every 2nd level 43712;
+  to every 4th 37514. Then with 30 torches placed (one a chunk or so, as round
+  a base) full precision is 67792: each torch lays a fourteen-level ring of
+  strips round itself. Sky every 4th and torch every 2nd: 50868, 25% under full
+  precision. On the badge that took the medium walk from 7.61 to 7.94 fps.
+  The torchlight bands are mild (checked at night); cave-mouth bands were not
+  photographed.
+- **F-66** 2026-09-22, the user: "didn't we get like 15 FPS yesterday?" **Yes,
+  and today still does, on the same scene.** Yesterday's 15.3 (F-39) was the
+  scripted debug flight -- 3 blocks up, looking across the land -- at near.
+  Rebuilding that commit and adding the same flight to today's build:
+  14.60 fps yesterday, 14.51 today with lighting and clouds off, 14.09 with
+  everything on. The frame rates people see come from WALKING: at eye height
+  the screen is close-up textured ground, rasterize 72 ms instead of 46, 9.6
+  fps at near, 7.9 at medium, 7.35 at Far (the user's own setting). So the
+  work that would move the frame rate is the rasterizer's per-span setup
+  (F-40), not undoing features. Lesson recorded with it: a frame rate belongs
+  to a scene, and two numbers from two scenes compare nothing -- the same
+  mistake as F-36, the other way round.
+
 ### Decisions (D-n), each with date and who decided
 
+- **D-76** 2026-09-22, **the user**: **near is the default view distance
+  again**, replacing D-66, once the walk measured medium at 7.9 fps against
+  near's 9.6. It only changes what a player gets before choosing: a
+  settings.txt that says otherwise (the user's own says Far) is kept.
 - **D-74** 2026-09-22, **the user**: **a block id, once shipped, never
   changes** -- nor its name, and a block is never removed, only retired. Item
   names likewise. That makes F-52 impossible instead of fixing it, costs a
@@ -1584,7 +1612,7 @@ frame time than the fell.
   exactly as they were. Volume and brightness stay the launcher's. The NVS
   values written by the builds of the same day are not migrated: they existed
   for hours, on one badge.
-- **D-66** 2026-09-22, **the user**: **medium is the default view distance.**
+- **D-66** 2026-09-22, **the user** (replaced by D-76 the same day): **medium is the default view distance.**
   Near was chosen when medium measured about 4400 flat triangles, past the 4096
   cap (the comment that said so went with the settings rewrite). Sectioning and
   culling have changed that number since; the GEOMETRY DROPPED log line is what

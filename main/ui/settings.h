@@ -30,11 +30,12 @@
 // View distance: an index into cm_view_preset() -- 0 near, 1 medium,
 // 2 far.
 #define SETTINGS_VIEW_COUNT 3
-// What a player gets before choosing: medium, the user's call.
-#define SETTINGS_VIEW_DEFAULT 1
+// What a player gets before choosing: near, the user's call (D-76) --
+// medium was, until its cost on foot was measured (F-66).
+#define SETTINGS_VIEW_DEFAULT 0
 
 // Read settings.txt from `dir` (the app's install directory). Missing
-// keys keep their defaults (medium, textured, half resolution, music and
+// keys keep their defaults (near, textured, half resolution, music and
 // effects on, gyroscope off, every key its default binding). Call once at
 // boot, AFTER input_init(): the key bindings it restores are the ones
 // input_init registered.

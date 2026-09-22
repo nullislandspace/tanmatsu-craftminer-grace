@@ -52,6 +52,7 @@
 #include "world/chunk.h"
 #include "world/chunk_render.h"
 #include "world/chunk_worker.h"
+#include "world/chunkmesh.h"
 #include "world/light.h"
 #include "world/region.h"
 #include "world/vfs_compat.h"
@@ -197,6 +198,14 @@ static bool  s_force_third;
 // ... and `replay_left`: third person, left-handed, likewise for this run only.
 static bool  s_force_left;
 
+// Test-only overrides for the replay scenes (see content_select).
+static int  s_force_view = -1;
+static bool s_force_noclouds, s_force_nolight;
+
+static int view_setting(void) {
+    return s_force_view >= 0 ? s_force_view : settings_view();
+}
+
 static bool left_handed(void) {
     return s_force_left || settings_left_handed();
 }
@@ -216,6 +225,7 @@ static double s_replay_t0;
 static bool   s_in_replay;
 static bool enter_replay(void);
 static bool run_savecheck(void);
+static bool enter_flight(void);
 // The title's clock. A test scene can move it ("title_night") to look at
 // the night sky without playing through a day.
 static int64_t   s_title_time = TITLE_TIME;
@@ -353,12 +363,41 @@ static bool content_select(char const* name) {
     }
     // "replay" -- play replays/test.cmr (or the last recording) on a
     // scratch world: the reproducible walk the perf and shots tests want.
-    if (strcmp(name, "replay") == 0 || strcmp(name, "replay_third") == 0 || strcmp(name, "replay_left") == 0) {
-        s_content     = strcmp(name, "replay") == 0 ? "replay" : strcmp(name, "replay_left") == 0 ? "replay_left" : "replay_third";
-        s_content_t0  = showtime_now();
-        s_force_third = strcmp(name, "replay") != 0;
-        s_force_left  = strcmp(name, "replay_left") == 0;
+    // Options follow as _words, for measuring one feature against another
+    // on the same walk: third, left, near / medium / far, nolight,
+    // noclouds. They last for this run only; settings.txt is untouched.
+    if (strcmp(name, "replay") == 0 || strncmp(name, "replay_", 7) == 0) {
+        static char scene[48];
+        snprintf(scene, sizeof(scene), "%s", name);
+        s_content       = scene;
+        s_content_t0    = showtime_now();
+        s_force_third   = strstr(name, "_third") != NULL || strstr(name, "_left") != NULL;
+        s_force_left    = strstr(name, "_left") != NULL;
+        s_force_view    = strstr(name, "_near") ? 0 : strstr(name, "_medium") ? 1 : strstr(name, "_far") ? 2 : -1;
+        s_force_noclouds = strstr(name, "_noclouds") != NULL;
+        chunkmesh_set_lighting(strstr(name, "_nolight") == NULL);
+        s_force_nolight = strstr(name, "_nolight") != NULL;
         return enter_replay();
+    }
+    // "flight" -- the scripted debug flight (fly_pose) over a scratch world
+    // of the old flyover's seed: the scene the frame rates of 2026-09-21
+    // were measured on (F-36, F-39), so today's build can be held against
+    // them. Near view unless told otherwise; _nolight / _noclouds as for
+    // the replays.
+    if (strcmp(name, "flight") == 0 || strncmp(name, "flight_", 7) == 0) {
+        static char scene[48];
+        snprintf(scene, sizeof(scene), "%s", name);
+        s_content        = scene;
+        s_content_t0     = showtime_now();
+        s_time_off       = s_content_t0;
+        s_flying         = true;
+        s_force_third    = false;
+        s_force_left     = false;
+        s_force_view     = strstr(name, "_medium") ? 1 : strstr(name, "_far") ? 2 : 0;
+        s_force_noclouds = strstr(name, "_noclouds") != NULL;
+        s_force_nolight  = strstr(name, "_nolight") != NULL;
+        chunkmesh_set_lighting(!s_force_nolight);
+        return enter_flight();
     }
     // "menu_<screen>" -- the title with one menu screen open over it.
     // An underscore, not a colon: the scene name is part of the shot's
@@ -579,7 +618,7 @@ static void on_init(void* user) {
     icons_load();
     chunk_render_set_textured(settings_textured());
     chunk_render_set_view(&(cm_view_t){0});
-    cm_view_t const v = cm_view_preset(settings_view());
+    cm_view_t const v = cm_view_preset(view_setting());
     chunk_render_set_view(&v);
     texcache_report();
     log_memory("textures loaded");
@@ -682,7 +721,7 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     chunk_worker_set_seed(s_meta.seed);
     // The player's own view distance: the title's is generous because
     // it is looking at one static word, not walking.
-    cm_view_t const pv = cm_view_preset(settings_view());
+    cm_view_t const pv = cm_view_preset(view_setting());
     chunk_render_set_view(&pv);
     // What was lying on the ground when they left.
     item_entity_restore(s_items.e, create ? 0 : s_items.n);
@@ -815,6 +854,29 @@ static bool run_savecheck(void) {
     return true;
 }
 
+// The debug flight on a scratch world of seed 0xC0FFEE -- what the old
+// fixed "flyover" world was -- for comparing frame rates with the builds
+// that measured on it. The camera is the scripted one (a test is running,
+// and this is not a replay).
+static bool enter_flight(void) {
+    drain_and_clear();
+    title_end();
+    worldstore_open_scratch(0xC0FFEEu, &s_meta, &s_saved);
+    s_meta.time_of_day = TITLE_TIME;  // a morning, as the old builds always were
+    chunk_worker_set_seed(0xC0FFEEu);
+    cm_view_t const pv = cm_view_preset(view_setting());
+    chunk_render_set_view(&pv);
+    item_entity_reset();
+    player_reset(&s_player);
+    phys_body_init(&s_player.body, (double)FLY_RADIUS, 40.0, 0.0);
+    s_player_ready = false;
+    s_in_replay    = false;
+    s_cam_mode     = CAM_PLAYER;
+    menu_close();
+    start_loading((double)FLY_RADIUS, 0.0, APP_PLAY, "Loading flight");
+    return true;
+}
+
 // Play a replay: its seed as a scratch world -- nothing saved, nobody's
 // world touched -- the player where the recording started, carrying what
 // they carried then.
@@ -835,7 +897,7 @@ static bool enter_replay(void) {
     worldstore_open_scratch(st.seed, &s_meta, &s_saved);
     s_meta.time_of_day = st.time_of_day;
     chunk_worker_set_seed(st.seed);
-    cm_view_t const pv = cm_view_preset(settings_view());
+    cm_view_t const pv = cm_view_preset(view_setting());
     chunk_render_set_view(&pv);
     item_entity_reset();
     player_reset(&s_player);
@@ -1084,7 +1146,7 @@ static void on_update(float dt, void* user) {
             case MENU_CMD_GRAPHICS:
                 chunk_render_set_textured(settings_textured());
                 if (s_app == APP_PLAY) {
-                    cm_view_t const v = cm_view_preset(settings_view());
+                    cm_view_t const v = cm_view_preset(view_setting());
                     chunk_render_set_view(&v);
                 }
                 break;
@@ -1409,7 +1471,7 @@ static void on_render(pax_buf_t* fb, void* user) {
     // light level is. Cheap -- a 256-entry table -- so every frame.
     s_day = daytime_at(s_app == APP_PLAY ? s_meta.time_of_day : s_title_time);
     daytime_light_lut(s_day.day, s_lut);
-    mesh_set_light_lut(s_lut);
+    mesh_set_light_lut(s_force_nolight ? NULL : s_lut);
     chunk_render_set_fog(s_day.fog_argb);
     {
         // The directional light comes from whichever of the sun and the
@@ -1450,7 +1512,7 @@ static void on_render(pax_buf_t* fb, void* user) {
     // over it wherever they overlap.
     // No clouds on the title: its letters stand at the height they fly at.
     voxel_sky_submit((float)showtime_now(), s_day.sun_dir, s_day.fog_argb, s_day.day, ox, oz,
-                     settings_clouds() && s_app == APP_PLAY);
+                     settings_clouds() && !s_force_noclouds && s_app == APP_PLAY);
     chunk_render_submit(s_cam.wx, s_cam.wz);
     // The box round the block the crosshair found, while the player is
     // the one aiming. It is an edge, so the engine draws it after every

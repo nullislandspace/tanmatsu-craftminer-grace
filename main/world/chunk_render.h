@@ -44,7 +44,7 @@ typedef struct {
 #define CM_SKY_ARGB 0xFF8EC4F0u
 
 // Near / medium / far, as the graphics menu will offer them.
-cm_view_t cm_view_preset(int level);  // 0 near, 1 medium (default), 2 far
+cm_view_t cm_view_preset(int level);  // 0 near (the default, D-76), 1 medium, 2 far
 
 // Load the block textures and build the material tables. After
 // texcache_init().
