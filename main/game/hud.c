@@ -318,17 +318,15 @@ void hud_inventory(pax_buf_t* fb, player_t const* p) {
     for (int i = 0; i < INV_SLOTS; i++) {
         // Row 0 of the DRAWING is the storage top; the hotbar is the
         // bottom row, which is where it is on screen when closed.
-        int const store_rows = INV_ROWS;
-        int const is_hotbar  = i < INV_HOTBAR;
-        int const col        = i % INV_HOTBAR;
-        int const row        = is_hotbar ? store_rows : (i / INV_HOTBAR) - 1;
+        int const col = i % INV_HOTBAR;
+        int const row = inv_screen_row(i);  // the same mapping the cursor moves by
 
         int const x = gx + col * (SLOT_W + SLOT_GAP);
         int const y = gy + row * (SLOT_W + SLOT_GAP);
 
         box(fb, x, y, SLOT_W, SLOT_W, 0xFF1A1A20u);
         bool const cur = (i == p->inv.cursor);
-        bool const sel = is_hotbar && (i == p->inv.selected);
+        bool const sel = i < INV_HOTBAR && (i == p->inv.selected);
         frame(fb, x, y, SLOT_W, SLOT_W, cur ? 3 : 1, cur ? 0xFFFFD040u : sel ? 0xFFFFFFFFu : 0xFF505058u);
 
         inv_slot_t const* sl = &p->inv.slot[i];
@@ -356,17 +354,4 @@ void hud_mine_progress(pax_buf_t* fb, float progress) {
     box(fb, x, y, w, h, 0xFF202028u);
     int const fill = (int)((float)w * (progress > 1.0f ? 1.0f : progress));
     box(fb, x, y, fill, h, 0xFFE8E8E8u);
-}
-
-void hud_title_hint(pax_buf_t* fb) {
-    if (fb == NULL) return;
-    hud_begin(fb);
-    char const* const msg = "Press Enter to play     Esc to leave";
-    pax_vec2f const   sz  = rendertext_size(NULL, 20.0f, msg);
-    float const       x   = ((float)DISPLAY_LOG_W - sz.x) * 0.5f;
-    float const       y   = (float)DISPLAY_LOG_H - 52.0f;
-    // A shadow, because the sky behind it is bright and the ground is
-    // not, and the line crosses both as the camera drifts.
-    rendertext_draw(fb, 0xFF000000u, NULL, 20.0f, x + 2.0f, y + 2.0f, msg);
-    rendertext_draw(fb, 0xFFFFFFFFu, NULL, 20.0f, x, y, msg);
 }

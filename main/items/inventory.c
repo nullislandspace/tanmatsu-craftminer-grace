@@ -96,12 +96,15 @@ void inv_swap(inventory_t* inv, int a, int b) {
 }
 
 void inv_move_cursor(inventory_t* inv, int dx, int dy) {
-    int x = inv->cursor % INV_HOTBAR, y = inv->cursor / INV_HOTBAR;
-    x += dx;
-    y += dy;
+    // In SCREEN rows, then back to a slot. Moving in slot order instead
+    // walked the rows upside down: up from the hotbar went nowhere and
+    // the bottom storage row was reached over the top edge.
+    int x   = inv->cursor % INV_HOTBAR + dx;
+    int row = inv_screen_row(inv->cursor) + dy;
     if (x < 0) x = 0;
     if (x >= INV_HOTBAR) x = INV_HOTBAR - 1;
-    if (y < 0) y = 0;
-    if (y > INV_ROWS) y = INV_ROWS;
-    inv->cursor = y * INV_HOTBAR + x;
+    if (row < 0) row = 0;
+    if (row > INV_ROWS) row = INV_ROWS;
+    int const slot_row = row == INV_ROWS ? 0 : row + 1;
+    inv->cursor        = slot_row * INV_HOTBAR + x;
 }

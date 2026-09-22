@@ -18,6 +18,7 @@
 
 #include <math.h>
 #include <string.h>
+#include <time.h>
 #include "bsp/device.h"
 #include "common/texcache.h"
 #include "esp_heap_caps.h"
@@ -38,6 +39,9 @@
 #include "testkit/devtest.h"
 #include "testkit/profile.h"
 #include "testkit/showtime.h"
+#include "ui/icons.h"
+#include "ui/menu.h"
+#include "ui/settings.h"
 #include "ui/title.h"
 #include "world/chunk.h"
 #include "world/chunk_render.h"
@@ -95,7 +99,9 @@ _Static_assert(RENDER_NEAR_CLIP_Z < (double)(PHYS_PLAYER_W * 0.5f),
 #define JOB_UPSCALE 1u
 
 static se_ppa_layer_t s_half;
-static bool           s_quarter = true;
+// Whether the half-size layer exists. Whether it is USED is the
+// player's choice (settings_half_res); this is whether it can be.
+static bool           s_half_ok = true;
 
 // --- The camera ---------------------------------------------------------
 //
@@ -154,7 +160,7 @@ static app_state_t s_app = APP_TITLE;
 static double      s_title_t0;
 
 static bool enter_title(void);
-static bool enter_world(char const* slug, uint32_t seed);
+static bool enter_world(int slot, bool create, char const* name, uint32_t seed);
 static void save_world(char const* why);
 static void pregenerate(double wx, double wz, char const* why);
 
@@ -281,6 +287,20 @@ static struct {
 
 static bool content_select(char const* name) {
     if (name == NULL) return false;
+    // "menu_<screen>" -- the title with one menu screen open over it.
+    // An underscore, not a colon: the scene name is part of the shot's
+    // file name, and FAT refuses a colon.
+    if (strncmp(name, "menu_", 5) == 0) {
+        if (s_app != APP_TITLE) {
+            save_world("a test asked for a menu");
+            enter_title();
+        }
+        if (!menu_show(name + 5)) return false;
+        s_content    = "title";
+        s_content_t0 = showtime_now();
+        s_title_t0   = s_content_t0;
+        return true;
+    }
     for (size_t i = 0; i < sizeof(SCENES) / sizeof(SCENES[0]); i++) {
         if (strcmp(name, SCENES[i].name) != 0) continue;
         s_content    = SCENES[i].name;
@@ -445,11 +465,11 @@ static void on_init(void* user) {
             ESP_LOGI(TAG, "quarter-resolution layer: %dx%d", DISPLAY_LOG_W / 2, DISPLAY_LOG_H / 2);
         } else {
             ESP_LOGW(TAG, "no quarter-resolution layer; drawing at full resolution");
-            s_quarter = false;
+            s_half_ok = false;
         }
     } else {
         ESP_LOGW(TAG, "PPA unavailable; drawing at full resolution");
-        s_quarter = false;
+        s_half_ok = false;
     }
 
     // Textures, then the material tables that map blocks onto them.
@@ -460,24 +480,37 @@ static void on_init(void* user) {
         ESP_LOGE(TAG, "chunk_render_init failed");
         return;
     }
-    // Near, not medium: medium submitted about 4400 triangles a frame,
-    // past the engine's 4096 flat cap, where the overflow is dropped
-    // silently. The graphics menu will offer the others (D-06).
+    // The player's graphics and audio choices. The view distance itself
+    // is applied on entering a world: the title has a view of its own.
+    // Bindings registered first: the settings file restores them.
+    input_init();
+    settings_load(graceloader_get_install_basepath());
+    // The launcher's key-cap PNGs, for the Controls menu (synthracer's
+    // icons.c). Missing ones fall back to a text label.
+    icons_load();
+    chunk_render_set_textured(settings_textured());
     chunk_render_set_view(&(cm_view_t){0});
-    cm_view_t const v = cm_view_preset(0);
+    cm_view_t const v = cm_view_preset(settings_view());
     chunk_render_set_view(&v);
     texcache_report();
     log_memory("textures loaded");
 
-    // A world to fly over. Step 5 gives this a menu; for now it is one
-    // fixed world, created if it is not there and opened if it is, so
-    // the second run exercises loading rather than generation.
+    // The worlds on the card.
     if (!worldstore_init(graceloader_get_install_basepath())) {
         ESP_LOGE(TAG, "worldstore_init failed");
         return;
     }
-    // Bindings first: everything below reads them.
-    input_init();
+    // THE TESTWORLD. Builds before save slots kept one fixed world in
+    // worlds/flyover, and people have been playing in it. It moves into
+    // the first slot, renamed, the first time this build starts -- and
+    // after that there is no flyover to find, so this is a no-op on
+    // every later start and on every card that never had it.
+    int const adopted = worldstore_adopt_legacy("flyover", "Testworld");
+    if (adopted >= 0) {
+        ESP_LOGI(TAG, "the world from before save slots is now slot %d, \"Testworld\"", adopted + 1);
+    } else if (adopted == -2) {
+        ESP_LOGE(TAG, "found the pre-slots world but could not move it; it is untouched in worlds/flyover");
+    }
 
     if (!chunk_worker_start(0)) {
         ESP_LOGE(TAG, "chunk_worker_start failed");
@@ -534,46 +567,72 @@ static bool enter_title(void) {
     s_title_t0 = showtime_now();
     s_app      = APP_TITLE;
     s_cam_mode = CAM_PLAYER;
+    menu_open_title();
     ESP_LOGI(TAG, "title");
     return true;
 }
 
-static bool enter_world(char const* slug, uint32_t seed) {
+// Open the world in `slot` -- or, with `create`, make one there first.
+static bool enter_world(int slot, bool create, char const* name, uint32_t seed) {
     drain_and_clear();
     title_end();
 
-    if (!worldstore_open(slug, &s_meta, &s_saved)) {
-        if (!worldstore_create(slug, seed, &s_meta, &s_saved)) {
-            ESP_LOGE(TAG, "could not open or create world '%s'", slug);
-            enter_title();
-            return false;
-        }
-        ESP_LOGI(TAG, "world '%s' created, seed %u", slug, (unsigned)s_meta.seed);
-    } else {
-        ESP_LOGI(TAG, "world '%s' opened, seed %u", slug, (unsigned)s_meta.seed);
+    char slug[CM_WORLD_SLUG_MAX];
+    worldstore_slot_slug(slot, slug, sizeof(slug));
+    bool const ok = create ? worldstore_create_in(slot, name, seed, &s_meta, &s_saved)
+                           : worldstore_open(slug, &s_meta, &s_saved);
+    if (!ok) {
+        ESP_LOGE(TAG, "could not %s the world in slot %d", create ? "create" : "open", slot + 1);
+        enter_title();
+        menu_status(create ? "Could not create the world" : "Could not open that world");
+        return false;
     }
+    ESP_LOGI(TAG, "world \"%s\" (slot %d) %s, seed %u", s_meta.name, slot + 1, create ? "created" : "opened",
+             (unsigned)s_meta.seed);
 
     chunk_worker_set_seed(s_meta.seed);
     // The ground under the player before the player is on it (D-26).
     // The rest streams in behind them while they are already walking,
     // which is what the freeze below covers.
     pregenerate(s_saved.x, s_saved.z, "the spawn");
-    // Back to the player's view distance: the title's is generous
-    // because it is looking at one static word, not walking.
-    cm_view_t const pv = cm_view_preset(0);
+    // The player's own view distance: the title's is generous because
+    // it is looking at one static word, not walking.
+    cm_view_t const pv = cm_view_preset(settings_view());
     chunk_render_set_view(&pv);
     item_entity_reset();
-    player_spawn(&s_player, s_saved.x, s_saved.z, s_saved.yaw);
-    s_player.pitch  = s_saved.pitch;
+
+    // WHO THEY WERE. Health, hunger and what they carry come back from
+    // the save; a player with nothing saved gets the starting kit.
+    player_reset(&s_player);
     s_player.health = s_saved.health;
     s_player.hunger = s_saved.hunger;
-    s_player_ready  = false;
+    if (s_saved.has_inv) {
+        memcpy(s_player.inv.slot, s_saved.inv, sizeof(s_player.inv.slot));
+        s_player.inv.selected = (int)s_saved.inv_selected;
+    }
+    s_player.inv.open = false;
+
+    // WHERE THEY WERE, exactly, if they were anywhere. Settled on the
+    // first frame their chunk is resident (on_update), because until
+    // then there is nothing to test the position against.
+    phys_body_init(&s_player.body, s_saved.x, s_saved.y, s_saved.z);
+    s_player.yaw        = s_saved.yaw;
+    s_player.pitch      = s_saved.placed ? s_saved.pitch : 0.0f;
+    s_player.prev_x     = s_saved.x;
+    s_player.prev_y     = s_saved.y;
+    s_player.prev_z     = s_saved.z;
+    s_player.prev_yaw   = s_player.yaw;
+    s_player.prev_pitch = s_player.pitch;
+    s_player_ready      = false;
     tick_reset(&s_tick, showtime_now());
     // Frozen until the chunk under them is resident: nobody falls
     // through terrain that has not arrived yet (D-26).
     tick_freeze(&s_tick, true);
-    s_app = APP_PLAY;
-    ESP_LOGI(TAG, "entering at %.1f, %.1f (F to fly, Esc to leave)", s_saved.x, s_saved.z);
+    s_app      = APP_PLAY;
+    s_cam_mode = CAM_PLAYER;
+    menu_close();
+    ESP_LOGI(TAG, "entering at %.1f, %.1f, %.1f (%s)", s_saved.x, s_saved.y, s_saved.z,
+             s_saved.placed ? "where they left" : "a new player");
     return true;
 }
 
@@ -583,13 +642,23 @@ static bool enter_world(char const* slug, uint32_t seed) {
 static void save_world(char const* why) {
     if (s_app != APP_PLAY) return;
 
-    s_saved.x     = s_player.body.x;
-    s_saved.y     = s_player.body.y;
-    s_saved.z     = s_player.body.z;
-    s_saved.yaw   = s_player.yaw;
-    s_saved.pitch = s_player.pitch;
+    if (s_player_ready) {
+        s_saved.x     = s_player.body.x;
+        s_saved.y     = s_player.body.y;
+        s_saved.z     = s_player.body.z;
+        s_saved.yaw   = s_player.yaw;
+        s_saved.pitch = s_player.pitch;
+    }
     s_saved.health = s_player.health;
     s_saved.hunger = s_player.hunger;
+    // Only once they have stood somewhere real: saving during the
+    // entering freeze must not turn the spawn guess into a position.
+    s_saved.placed = s_saved.placed || s_player_ready;
+    s_saved.has_inv = true;
+    memcpy(s_saved.inv, s_player.inv.slot, sizeof(s_saved.inv));
+    s_saved.inv_selected = s_player.inv.selected;
+    int64_t const now    = (int64_t)time(NULL);
+    if (now > 0) s_meta.last_played = now;
 
     int chunks = 0;
     for (int i = 0; i < CH_SLOT_COUNT; i++) {
@@ -603,6 +672,7 @@ static void save_world(char const* why) {
 
     bool const ok = worldstore_save(&s_meta, &s_saved);
     ESP_LOGI(TAG, "saved (%s): %d chunk(s), level.cmw %s", why, chunks, ok ? "written" : "FAILED");
+    menu_status(ok ? "Saved" : "SAVING FAILED");
 }
 
 // Generate every chunk the view will want, NOW, before anything is
@@ -682,6 +752,39 @@ static void on_update(float dt, void* user) {
         if (want_sync != chunk_worker_synchronous()) chunk_worker_set_synchronous(want_sync);
     }
 
+    // The menus. Whatever changes the world or the game's running state
+    // comes back as a command and is acted on here, in one place.
+    if (menu_active()) {
+        menu_cmd_t const cmd = menu_update();
+        switch (cmd.kind) {
+            case MENU_CMD_PLAY: enter_world(cmd.slot, false, NULL, 0); break;
+            case MENU_CMD_CREATE: enter_world(cmd.slot, true, cmd.name, cmd.seed); break;
+            case MENU_CMD_RESUME:
+                menu_close();
+                // Owed nothing for the time spent in the menu.
+                tick_reset(&s_tick, showtime_now());
+                break;
+            case MENU_CMD_SAVE: save_world("from the pause menu"); break;
+            case MENU_CMD_SAVE_QUIT:
+                save_world("quitting to the title");
+                enter_title();
+                break;
+            case MENU_CMD_LEAVE:
+                ESP_LOGI(TAG, "leaving for the launcher");
+                audio_mixer_shutdown();  // a speaker left running across the restart squeals
+                bsp_device_restart_to_launcher();
+                break;
+            case MENU_CMD_GRAPHICS:
+                chunk_render_set_textured(settings_textured());
+                if (s_app == APP_PLAY) {
+                    cm_view_t const v = cm_view_preset(settings_view());
+                    chunk_render_set_view(&v);
+                }
+                break;
+            default: break;
+        }
+    }
+
     // The title has its own camera and its own world. It streams like
     // any other, which is the point: it is a real view of the game.
     if (s_app == APP_TITLE) {
@@ -737,10 +840,19 @@ static void on_update(float dt, void* user) {
         s_cam.yaw   = s_free.yaw;
         s_cam.pitch = s_free.pitch;
         s_ticks_last_frame = 0;
+    } else if (menu_active()) {
+        // Paused. The world holds still and the camera with it; chunks
+        // keep streaming below, so nothing is missing on resume.
+        s_ticks_last_frame = 0;
     } else {
         // THE SIMULATION. A fixed number of whole 20 Hz ticks, from the
         // show clock so the testkit can drive it; the frame then draws
         // between the last two (D-02).
+        // Turning the badge, added up over the frame; the ticks below
+        // hand it to the look along with the cursor keys. Only while the
+        // player is actually looking round -- not reading the inventory,
+        // not frozen waiting for ground.
+        input_gyro_frame(dt, settings_gyro() && s_player_ready && !s_player.inv.open);
         int const n = tick_due(&s_tick, showtime_now());
         for (int i = 0; i < n; i++) {
             cm_actions_t const mask = input_sample();
@@ -768,14 +880,18 @@ static void on_update(float dt, void* user) {
     // through it (D-26). Frozen until the chunk they are standing in is
     // resident, which on entering a world is the first thing that
     // arrives.
-    if (mode == CAM_PLAYER) {
+    if (mode == CAM_PLAYER && !menu_active()) {
         bool const standing = chunk_find(chunk_of((int32_t)floor(s_player.body.x)),
                                          chunk_of((int32_t)floor(s_player.body.z))) != NULL;
         tick_freeze(&s_tick, !standing);
         if (standing && !s_player_ready) {
-            // First solid ground: stand the player on it rather than
-            // wherever the spawn guess put them.
-            player_spawn(&s_player, s_player.body.x, s_player.body.z, s_player.yaw);
+            // The terrain is here, so the position can be settled: put
+            // a returning player back exactly where they left, and a new
+            // one -- or one whose spot is now inside something -- on the
+            // ground at their column.
+            bool const exact = s_saved.placed && player_place(&s_player, s_saved.x, s_saved.y, s_saved.z,
+                                                              s_saved.yaw, s_saved.pitch);
+            if (!exact) player_spawn(&s_player, s_saved.x, s_saved.z, s_player.yaw);
             s_player_ready = true;
             ESP_LOGI(TAG, "player standing at %.1f, %.1f, %.1f", s_player.body.x, s_player.body.y, s_player.body.z);
         }
@@ -800,8 +916,38 @@ static void on_update(float dt, void* user) {
 // tick (input.h), because a key being held is a state and not an event.
 static void on_input(bsp_input_event_t const* ev, void* user) {
     (void)user;
+    // A menu that is showing has the keyboard, all of it.
+    if (menu_active()) {
+        menu_event(ev);
+        return;
+    }
     if (ev->type != INPUT_EVENT_TYPE_SCANCODE) return;
-    switch (ev->args_scancode.scancode) {
+    uint16_t const sc = ev->args_scancode.scancode;
+    if ((sc & BSP_INPUT_SCANCODE_RELEASE_MODIFIER) != 0) return;
+    if (s_app != APP_PLAY) return;
+
+    // PAUSE: the bound key, and Esc whatever it is bound to -- a player
+    // who rebinds Pause must not lose the way out. The inventory closes
+    // first, the way it does everywhere else. Opening the menu SAVES:
+    // on a handheld, pausing is what people do before switching it off.
+    if (sc == input_key(CM_PAUSE) || sc == BSP_INPUT_SCANCODE_ESC) {
+        if (s_player.inv.open) {
+            s_player.inv.open = false;
+            return;
+        }
+        if (s_cam_mode == CAM_FREE) {
+            s_cam_mode = CAM_PLAYER;
+            tick_reset(&s_tick, showtime_now());
+        }
+        save_world("pausing");
+        menu_open_pause();
+        return;
+    }
+
+    // The debug keys stand aside for a key a player has bound to
+    // something: binding Jump to F must not also start the flying camera.
+    if (input_key_bound(sc)) return;
+    switch (sc) {
         case BSP_INPUT_SCANCODE_F:
             s_cam_mode   = (s_cam_mode == CAM_PLAYER) ? CAM_FREE : CAM_PLAYER;
             s_free_ready = false;  // re-place the free camera where the player is
@@ -810,29 +956,6 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
             // movement owed from however long they were flying.
             tick_reset(&s_tick, showtime_now());
             ESP_LOGI(TAG, "camera: %s", s_cam_mode == CAM_PLAYER ? "player" : "free flight");
-            break;
-
-        case BSP_INPUT_SCANCODE_ENTER:
-        case BSP_INPUT_SCANCODE_ESCAPED_KPENTER:
-            // On the title: play. The world list is step 5.4; until it
-            // exists this opens one fixed world, which is what the
-            // build did before there was a title at all.
-            if (s_app == APP_TITLE) enter_world("flyover", 0xC0FFEEu);
-            break;
-
-        case BSP_INPUT_SCANCODE_ESC:
-            // In a world, Esc leaves it for the title, SAVING FIRST --
-            // which is the whole reason the key had to come back from
-            // the engine (D-46). On the title, it leaves for the
-            // launcher. The pause menu (5.3) goes between these.
-            if (s_app == APP_PLAY) {
-                save_world("leaving");
-                enter_title();
-                break;
-            }
-            ESP_LOGI(TAG, "leaving for the launcher");
-            audio_mixer_shutdown();  // a speaker left running across the restart squeals
-            bsp_device_restart_to_launcher();
             break;
 
         case BSP_INPUT_SCANCODE_P:
@@ -844,25 +967,6 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
             s_flying = !s_flying;
             ESP_LOGI(TAG, "scripted flight %s", s_flying ? "on" : "off");
             break;
-
-        case BSP_INPUT_SCANCODE_T:
-            chunk_render_set_textured(!chunk_render_textured());
-            ESP_LOGI(TAG, "shading: %s", chunk_render_textured() ? "textured" : "flat");
-            break;
-
-        case BSP_INPUT_SCANCODE_V: {
-            // 0 near, 1 medium, 2 far -- and back round. Told apart by
-            // the draw distance, which is what the presets differ in.
-            static int level  = 0;
-            level             = (level + 1) % 3;
-            cm_view_t const v = cm_view_preset(level);
-            chunk_render_set_view(&v);
-            ESP_LOGI(TAG, "view distance: %s (%d blocks, %d chunks resident)",
-                     level == 0   ? "near"
-                     : level == 1 ? "medium"
-                                  : "far",
-                     (int)v.draw_dist, v.load_radius);
-        } break;
 
         default:
             break;
@@ -894,16 +998,24 @@ static void on_render(pax_buf_t* fb, void* user) {
     chunk_render_rel(ox, oz, s_cam.wx, (double)s_cam.wy, s_cam.wz, &rx, &ry, &rz);
     render_set_camera_6dof(rx, ry, rz, s_cam.yaw, s_cam.pitch, 0.0f);
 
-    pax_buf_t* const target = s_quarter ? &s_half.buf : fb;
-    scene_set_render_scale(s_quarter ? 2 : 1);
+    bool const       half   = s_half_ok && settings_half_res();
+    pax_buf_t* const target = half ? &s_half.buf : fb;
+    scene_set_render_scale(half ? 2 : 1);
 
     // The sky. The engine clears `fb`, but the scene is drawing into the
     // half-size layer, so that is what needs filling -- whatever it does
     // not cover is what shows through after the upscale.
     prof_begin(PROF_FILL);
-    if (s_quarter) {
+    if (half) {
         se_ppa_fill(target, 0, 0, DISPLAY_LOG_H / 2, CM_SKY_ARGB);
         se_ppa_wait_job(0);
+    } else {
+        // Full resolution draws straight into the framebuffer, which
+        // the empty on_backdrop left as it was: the sky goes in here.
+        // A CPU clear, not a PPA fill: the CPU draws into this buffer
+        // next, and a DMA fill under its cache is a coherence problem
+        // this path is not worth having.
+        pax_background(fb, CM_SKY_ARGB);
     }
     prof_end(PROF_FILL);
 
@@ -931,7 +1043,7 @@ static void on_render(pax_buf_t* fb, void* user) {
     int64_t const rast_us = esp_timer_get_time() - t0;
     prof_end(PROF_RASTER);
 
-    if (s_quarter) {
+    if (half) {
         prof_begin(PROF_WAIT);
         // The CPU's pixels have to reach PSRAM before the PPA's DMA
         // reads them: the layer is small enough to sit in cache.
@@ -954,7 +1066,11 @@ static void on_render(pax_buf_t* fb, void* user) {
     // overlay as well as the world.
     if (s_app == APP_TITLE) {
         prof_begin(PROF_HUD);
-        hud_title_hint(fb);
+        menu_draw(fb);
+        prof_end(PROF_HUD);
+    } else if (menu_active()) {
+        prof_begin(PROF_HUD);
+        menu_draw(fb);
         prof_end(PROF_HUD);
     } else if (s_cam_effective != CAM_FREE) {
         prof_begin(PROF_HUD);

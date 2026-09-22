@@ -29,8 +29,35 @@ void player_spawn(player_t* p, double x, double z, float yaw) {
     p->aim_valid   = false;
     p->mining      = false;
     p->mine_ticks  = 0;
-    p->health      = PL_HEALTH_MAX;
-    p->hunger      = PL_HUNGER_MAX;
+}
+
+bool player_place(player_t* p, double x, double y, double z, float yaw, float pitch) {
+    // A fresh body for the test, so it has the player's dimensions even
+    // on a player that has never been initialised.
+    phys_body_t probe;
+    phys_body_init(&probe, x, y, z);
+    if (!phys_fits(&probe, x, y, z)) return false;
+    p->body = probe;
+    p->yaw        = yaw;
+    p->pitch      = pitch;
+    p->prev_x     = x;
+    p->prev_y     = y;
+    p->prev_z     = z;
+    p->prev_yaw   = yaw;
+    p->prev_pitch = pitch;
+    p->in_air_last = false;
+    p->aim_valid   = false;
+    p->mining      = false;
+    p->mine_ticks  = 0;
+    return true;
+}
+
+void player_reset(player_t* p) {
+    p->health     = PL_HEALTH_MAX;
+    p->hunger     = PL_HUNGER_MAX;
+    p->aim_valid  = false;
+    p->mining     = false;
+    p->mine_ticks = 0;
 
     inv_clear(&p->inv);
     // A starting kit, until crafting exists (step 8). Tools so that

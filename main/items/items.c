@@ -4,6 +4,8 @@
 
 #include "items/items.h"
 
+#include <string.h>
+
 // The items that are not blocks. Indexed by id - BLK_COUNT.
 static item_def_t const ITEMS[ITEM_COUNT - BLK_COUNT] = {
     [ITEM_COAL - BLK_COUNT]  = {"coal", ITEM_STACK_MAX, TOOL_NONE, 0, 0, 0xFF2A2A2Eu},
@@ -53,6 +55,15 @@ item_def_t item_def(uint16_t id) {
     }
     if (id >= BLK_COUNT && id < ITEM_COUNT) return ITEMS[id - BLK_COUNT];
     return (item_def_t){.name = "", .stack_max = 1, .argb = 0};
+}
+
+uint16_t item_by_name(char const* name) {
+    if (name == NULL || *name == '\0') return 0;
+    for (uint16_t id = 1; id < ITEM_COUNT; id++) {
+        if (id == BLK_BARRIER) continue;  // never carried
+        if (strcmp(item_def(id).name, name) == 0) return id;
+    }
+    return 0;
 }
 
 int item_break_ticks(uint8_t block, uint16_t tool_item) {

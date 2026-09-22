@@ -54,10 +54,61 @@ Engine settings (list caps and the like) are compile definitions that must reach
 ## Playing it
 
 It opens on the engine's splash, then the title: **CraftMiner** written in real
-blocks in a real world, over a meadow the generator made. Press **Enter** to
-play.
+blocks in a real world, over a meadow the generator made, with **Play /
+Settings / Quit** underneath.
 
-In a world you walk. The camera is the player unless you press **F**.
+### Menus
+
+Cursor keys choose, **Enter** selects, **Esc** goes back.
+
+```
+Play        eight save slots, each empty or holding a named world
+  a world     Play / Rename / Delete (asks first)
+  empty       New world: name, seed (a number, any text, or blank for random), Create
+Settings    Controls / Graphics / Audio / Display
+Quit        back to the launcher
+```
+
+In a world, **Esc** (or whatever Pause is bound to) opens the pause menu —
+**Resume / Save / Settings / Save and quit to title** — and **saves as it
+opens**, since pausing is what people do before switching a handheld off.
+
+* **Controls** — **Gyroscope** (off by default): look round by physically
+  turning the badge; the cursor keys still work, so you choose when to move
+  the badge and when to press keys. Below it, every action can be rebound: pick it, press the new key. A key
+  another action already had moves to that action's old key, so no two share
+  one. *Reset to defaults* puts them all back. Esc always pauses, whatever Pause
+  is bound to, so there is no way to lock yourself out.
+* **Graphics** — view distance (near / **medium**, the default / far), textures
+  on or off, half or full resolution.
+* **Audio** — the device volume, plus music and sound-effect switches that are
+  remembered for when the game has sounds (it has none yet).
+* **Display** — screen, keyboard and LED brightness.
+
+Volume and brightness are the device's own settings, shared with the launcher
+and every other app (`se_hw`, the launcher's `system` NVS namespace). Everything
+else — graphics, audio switches, gyroscope, every key binding — is one text
+file on the SD card, `/sd/apps/at.cavac.craftminer/settings.txt`, next to
+`worlds/`. Copy that directory and you have backed up everything. The file is
+plain `key=value` lines; delete one to get its default back.
+
+### What a save keeps
+
+Where you were — exactly, so a cave is still a cave when you come back —
+which way you faced, health, hunger, and **everything you carry**, down to each
+tool's wear. Items are stored by name, so the inventory survives items being
+added or renumbered. Edited terrain is saved with it. A world is written when
+you pause, save, quit to the title, or when a chunk you edited leaves memory;
+never on a timer.
+
+**The Testworld.** Builds before save slots kept a single world. The first
+time this build starts it moves that world into slot 1 and calls it
+*Testworld*, terrain and player intact. On a card that never had one there is
+nothing to move.
+
+### Keys in a world
+
+The camera is the player unless you press **F**. The defaults:
 
 | key | |
 |---|---|
@@ -70,18 +121,12 @@ In a world you walk. The camera is the player unless you press **F**.
 | `G` | drop what you are holding |
 | `Tab` | inventory — cursor keys move, `F1`–`F6` put a stack on the hotbar |
 | `F1`–`F6` | hotbar slot |
-| `F` | switch to the debug camera and back |
-| `Esc` | save and return to the title (this becomes the pause menu, step 5.3) |
+| `Esc` | pause menu |
+| `F` | switch to the debug camera and back (not if you have bound F to something) |
 
 The crosshair marks where the pick ray goes — which is **not** the centre of the
 screen, because the engine's horizon row is 256 of 480. The block it finds gets
 a wireframe box round it.
-
-Every one of those is remappable through `se_bindings` and persisted to NVS;
-the menu to do it with is step 6.1.
-
-There is one world so far, opened by Enter. Choosing and naming worlds is step
-5.1's other half; until then, leaving saves and returning re-opens the same one.
 
 **Breaking a tree fells it.** That is deliberate and it is the project's one
 declared departure from Minecraft: a log the world grew takes the whole tree
@@ -90,10 +135,9 @@ block's state byte. See `main/game/interact.h`.
 
 ## Flying it by hand
 
-There is no player yet, so the build hands you a camera instead. Free flight is
-on **whenever no test is running** — start a `perf` or `shots` test and the
-camera switches to the scripted path, because a reproducible frame cannot depend
-on which keys are held.
+**F** in a world swaps the player for a free camera and back. During a `perf` or
+`shots` test the camera follows a scripted path instead, because a reproducible
+frame cannot depend on which keys are held.
 
 | key | |
 |---|---|
@@ -101,13 +145,10 @@ on which keys are held.
 | `Space` / `L-Shift` | up / down |
 | cursor keys | look |
 | `L-Ctrl` | three times the speed |
-| `T` | textured ⇄ flat mean colours |
-| `V` | view distance: near → medium → far |
 | `P` | pause the scripted flight |
-| `F1` | back to the launcher |
 
-It hangs above sea level until the chunk beneath it arrives, then drops onto the
-ground.
+Textures and view distance, which used to be the `T` and `V` keys, are in
+Settings → Graphics.
 
 ## Where the frame time goes
 

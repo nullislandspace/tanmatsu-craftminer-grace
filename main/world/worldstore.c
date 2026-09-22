@@ -10,7 +10,10 @@
 //      int64  created, last_played
 //      int32  play_secs
 //      int32  spawn_x/y/z
-//      compound "player"      every field a named tag; see load_player
+//      compound "player"      every field a named tag; see read_player
+//        compound "inventory" int32 selected, then one compound per
+//                             non-empty slot, named by its index:
+//                             string item (the NAME), int32 count, wear
 //      compound "palette"     block NAME -> the id it was saved as
 //    end
 //
@@ -21,6 +24,7 @@
 #include "world/worldstore.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
@@ -117,6 +121,8 @@ void player_state_defaults(player_state_t* p, world_meta_t const* meta) {
     p->hunger      = 20;
     p->has_bed     = false;
     p->time_of_day = 0;
+    p->placed      = false;
+    p->has_inv     = false;
 }
 
 // --- The palette ------------------------------------------------------
@@ -181,6 +187,82 @@ static void read_palette(NbtReader* r) {
 // Writer and reader are deliberately symmetrical and deliberately
 // tolerant: add a field to both and every existing save still loads.
 
+// The inventory, by item NAME. Empty slots are not written at all, so
+// a slot count that grows later reads old saves without a second
+// thought, and one that shrinks drops only what no longer fits.
+static void write_inventory(NbtWriter* w, player_state_t const* p) {
+    nbt_write_compound(w, "inventory");
+    nbt_write_int32(w, "selected", p->inv_selected);
+    for (int i = 0; i < INV_SLOTS; i++) {
+        inv_slot_t const* s = &p->inv[i];
+        if (s->item == 0 || s->count == 0) continue;
+        char key[8];
+        snprintf(key, sizeof(key), "%d", i);
+        nbt_write_compound(w, key);
+        nbt_write_string(w, "item", item_def(s->item).name);
+        nbt_write_int32(w, "count", s->count);
+        nbt_write_int32(w, "wear", s->wear);
+        nbt_write_end(w);
+    }
+    nbt_write_end(w);
+}
+
+static void read_slot(NbtReader* r, inv_slot_t* out) {
+    char     name[NAME_BUF];
+    uint16_t item  = 0;
+    int32_t  count = 0, wear = 0;
+    for (;;) {
+        int const type = nbt_read_tag(r, name, sizeof(name));
+        if (type == NBT_END || type < 0 || r->error) break;
+        if (type == NBT_STRING && strcmp(name, "item") == 0) {
+            char buf[NAME_BUF];
+            nbt_read_string(r, buf, sizeof(buf));
+            // A name this build does not know is dropped: there is
+            // nothing honest to turn it into.
+            item = item_by_name(buf);
+        } else if (type == NBT_INT32) {
+            int32_t const v = nbt_read_int32(r);
+            if (strcmp(name, "count") == 0) count = v;
+            else if (strcmp(name, "wear") == 0) wear = v;
+        } else {
+            nbt_skip_payload(r, type);
+        }
+    }
+    if (item == 0 || count <= 0) return;
+    int const cap = item_def(item).stack_max;
+    out->item     = item;
+    out->count    = (uint8_t)(count > cap ? cap : count);
+    out->wear     = (uint16_t)(wear < 0 ? 0 : wear > 65535 ? 65535 : wear);
+}
+
+static void read_inventory(NbtReader* r, player_state_t* p) {
+    memset(p->inv, 0, sizeof(p->inv));
+    p->inv_selected = 0;
+    p->has_inv      = true;
+    char name[NAME_BUF];
+    for (;;) {
+        int const type = nbt_read_tag(r, name, sizeof(name));
+        if (type == NBT_END || type < 0 || r->error) break;
+        if (type == NBT_INT32 && strcmp(name, "selected") == 0) {
+            int32_t const v = nbt_read_int32(r);
+            p->inv_selected = (v >= 0 && v < INV_HOTBAR) ? v : 0;
+        } else if (type == NBT_COMPOUND) {
+            // The slot's index is its name; anything past this build's
+            // slot count is read and discarded.
+            char* end = NULL;
+            long const i = strtol(name, &end, 10);
+            if (end != name && *end == '\0' && i >= 0 && i < INV_SLOTS) {
+                read_slot(r, &p->inv[i]);
+            } else {
+                inv_slot_t discard = {0};
+                read_slot(r, &discard);
+            }
+        } else {
+            nbt_skip_payload(r, type);
+        }
+    }
+}
+
 static void write_player(NbtWriter* w, player_state_t const* p) {
     nbt_write_compound(w, "player");
     nbt_write_double(w, "x", p->x);
@@ -195,11 +277,14 @@ static void write_player(NbtWriter* w, player_state_t const* p) {
     nbt_write_int32(w, "bed_y", p->bed_y);
     nbt_write_int32(w, "bed_z", p->bed_z);
     nbt_write_int64(w, "time_of_day", p->time_of_day);
+    nbt_write_int32(w, "placed", p->placed ? 1 : 0);
+    if (p->has_inv) write_inventory(w, p);
     nbt_write_end(w);
 }
 
 static void read_player(NbtReader* r, player_state_t* p) {
     char name[NAME_BUF];
+    bool saw_placed = false;
     for (;;) {
         int const type = nbt_read_tag(r, name, sizeof(name));
         if (type == NBT_END || type < 0 || r->error) break;
@@ -219,6 +304,12 @@ static void read_player(NbtReader* r, player_state_t* p) {
             else if (strcmp(name, "bed_x") == 0) p->bed_x = v;
             else if (strcmp(name, "bed_y") == 0) p->bed_y = v;
             else if (strcmp(name, "bed_z") == 0) p->bed_z = v;
+            else if (strcmp(name, "placed") == 0) {
+                p->placed  = v != 0;
+                saw_placed = true;
+            }
+        } else if (type == NBT_COMPOUND && strcmp(name, "inventory") == 0) {
+            read_inventory(r, p);
         } else if (type == NBT_INT64) {
             int64_t const v = nbt_read_int64(r);
             if (strcmp(name, "time_of_day") == 0) p->time_of_day = v;
@@ -227,6 +318,11 @@ static void read_player(NbtReader* r, player_state_t* p) {
             nbt_skip_payload(r, type);
         }
     }
+    // A save from before "placed" existed. Those builds wrote the
+    // player only on creation (the default, at the spawn column's
+    // centre) and on leaving (where they really were), so anything but
+    // the untouched default is a real position.
+    if (!saw_placed) p->placed = !(p->x == 0.5 && p->z == 0.5);
 }
 
 // --- level.cmw --------------------------------------------------------
@@ -268,7 +364,10 @@ static bool write_level(char const* slug, world_meta_t const* m, player_state_t 
 }
 
 // `p` may be NULL when only the metadata is wanted (the world list).
-static bool read_level(char const* slug, world_meta_t* m, player_state_t* p) {
+// The palette is read into the store's remap ONLY for `palette`: the
+// list and the slot peek must not disturb the remap of a world that is
+// open while they run.
+static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, bool palette) {
     char path[192];
     level_path(path, sizeof(path), slug);
     FILE* f = fopen(path, "rb");
@@ -296,7 +395,7 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p) {
     snprintf(m->slug, sizeof(m->slug), "%s", slug);
     snprintf(m->name, sizeof(m->name), "%s", slug);
     m->format = 0;
-    remap_identity();
+    if (palette) remap_identity();
     if (p != NULL) player_state_defaults(p, NULL);
 
     char name[NAME_BUF];
@@ -316,7 +415,7 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p) {
             } else {
                 nbt_skip_payload(&r, type);
             }
-        } else if (type == NBT_COMPOUND && strcmp(name, "palette") == 0) {
+        } else if (type == NBT_COMPOUND && strcmp(name, "palette") == 0 && palette) {
             read_palette(&r);
         } else if (type == NBT_INT32) {
             int32_t const v = nbt_read_int32(&r);
@@ -380,7 +479,7 @@ int worldstore_list(world_meta_t* out, int max) {
         if (strlen(entry) >= CM_WORLD_SLUG_MAX) continue;
         // A directory with no readable level.cmw is not a world -- the
         // index is an optimisation, the directories are the truth.
-        if (read_level(entry, &out[n], NULL)) n++;
+        if (read_level(entry, &out[n], NULL, false)) n++;
     }
     cm_dir_close(d);
 
@@ -404,12 +503,10 @@ static void open_paths(char const* slug) {
     s_unknown_cells = 0;
 }
 
-bool worldstore_create(char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player) {
-    if (name == NULL || meta == NULL || player == NULL) return false;
-
+// Make a world in the directory `slug`, which the caller has chosen.
+static bool create_at(char const* slug, char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player) {
     memset(meta, 0, sizeof(*meta));
-    slugify(name, meta->slug, sizeof(meta->slug));
-    slug_unique(meta->slug, sizeof(meta->slug));
+    snprintf(meta->slug, sizeof(meta->slug), "%s", slug);
     snprintf(meta->name, sizeof(meta->name), "%s", name);
     meta->seed        = seed;
     meta->created     = (int64_t)time(NULL);
@@ -437,9 +534,95 @@ bool worldstore_create(char const* name, uint32_t seed, world_meta_t* meta, play
     return true;
 }
 
+bool worldstore_create(char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player) {
+    if (name == NULL || meta == NULL || player == NULL) return false;
+    char slug[CM_WORLD_SLUG_MAX];
+    slugify(name, slug, sizeof(slug));
+    slug_unique(slug, sizeof(slug));
+    return create_at(slug, name, seed, meta, player);
+}
+
+// --- Save slots -------------------------------------------------------
+
+void worldstore_slot_slug(int slot, char* out, int cap) {
+    snprintf(out, (size_t)cap, "slot%d", slot + 1);
+}
+
+bool worldstore_slot_peek(int slot, world_meta_t* meta) {
+    if (slot < 0 || slot >= CM_SLOTS || meta == NULL) return false;
+    char slug[CM_WORLD_SLUG_MAX];
+    worldstore_slot_slug(slot, slug, sizeof(slug));
+    return read_level(slug, meta, NULL, false);
+}
+
+bool worldstore_create_in(int slot, char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player) {
+    if (slot < 0 || slot >= CM_SLOTS || name == NULL || meta == NULL || player == NULL) return false;
+    char slug[CM_WORLD_SLUG_MAX];
+    worldstore_slot_slug(slot, slug, sizeof(slug));
+    // Refuse to create over a world: the menu only offers empty slots,
+    // and this is the line that makes sure it stays that way.
+    if (slug_exists(slug)) return false;
+    return create_at(slug, name, seed, meta, player);
+}
+
+bool worldstore_rename(char const* slug, char const* name) {
+    if (slug == NULL || name == NULL || *name == '\0') return false;
+
+    // Reading the whole level (palette included) replaces the remap, so
+    // keep the open world's and put it back afterwards.
+    uint8_t    remap[256];
+    bool const needed = s_remap_needed;
+    memcpy(remap, s_remap, sizeof(remap));
+
+    world_meta_t   m;
+    player_state_t p;
+    bool           ok = read_level(slug, &m, &p, true);
+    if (ok) {
+        snprintf(m.name, sizeof(m.name), "%s", name);
+        ok = write_level(slug, &m, &p);
+    }
+
+    memcpy(s_remap, remap, sizeof(remap));
+    s_remap_needed = needed;
+    return ok;
+}
+
+int worldstore_adopt_legacy(char const* legacy_slug, char const* name) {
+    if (legacy_slug == NULL || !slug_exists(legacy_slug)) return -1;
+
+    int slot = -1;
+    char slug[CM_WORLD_SLUG_MAX];
+    for (int i = 0; i < CM_SLOTS && slot < 0; i++) {
+        worldstore_slot_slug(i, slug, sizeof(slug));
+        // Free means no directory at all, not merely no level.cmw: a
+        // half-deleted slot must not have a world renamed on top of it.
+        char dir[192];
+        world_dir(dir, sizeof(dir), slug);
+        cm_dir_t* d = cm_dir_open(dir);
+        if (d == NULL) {
+            slot = i;
+        } else {
+            cm_dir_close(d);
+        }
+    }
+    if (slot < 0) return -2;
+
+    // One rename moves the whole directory, regions and all -- nothing
+    // is copied, so nothing can be half-copied.
+    char from[192], to[192];
+    world_dir(from, sizeof(from), legacy_slug);
+    world_dir(to, sizeof(to), slug);
+    if (!cm_rename(from, to)) return -2;
+
+    // The name is cosmetic; a world that moved but kept its old name is
+    // still the player's world, so this failing does not undo the move.
+    worldstore_rename(slug, name);
+    return slot;
+}
+
 bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* player) {
     if (slug == NULL || meta == NULL || player == NULL) return false;
-    if (!read_level(slug, meta, player)) return false;
+    if (!read_level(slug, meta, player, true)) return false;
     open_paths(slug);
     return true;
 }
@@ -498,6 +681,10 @@ bool worldstore_delete(char const* slug) {
     char level[192];
     level_path(level, sizeof(level), slug);
     cm_remove(level);
+    // The directories last, now they are empty. A slot counts as free
+    // only once its directory is gone (worldstore_adopt_legacy).
+    cm_remove(region);
+    cm_remove(dir);
 
     if (s_open && strcmp(s_open_slug, slug) == 0) worldstore_close();
     return !slug_exists(slug);

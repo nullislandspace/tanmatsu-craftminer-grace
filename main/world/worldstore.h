@@ -39,6 +39,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "items/inventory.h"
 #include "world/chunk.h"
 
 #define CM_WORLD_NAME_MAX 32
@@ -52,6 +53,13 @@
 #define CM_LEVEL_MAJOR  '1'
 #define CM_LEVEL_FORMAT 1
 #define CM_WORLDS_MAX     32
+
+// SAVE SLOTS. A world lives in one of CM_SLOTS numbered slots, in the
+// directory "slot<n>" (n from 1), and carries the name the player gave
+// it in level.cmw. The slot is where it is; the name is what it is
+// called -- so renaming a world never moves a file, and a name can be
+// anything the keyboard can type.
+#define CM_SLOTS 8
 
 // What the world-select screen shows without opening a world.
 typedef struct {
@@ -70,11 +78,25 @@ typedef struct {
 typedef struct {
     double  x, y, z;
     float   yaw, pitch;
+    // The position is one the player actually stood at, not a guess.
+    // A new world only knows its spawn column, so the player is stood
+    // on the ground there; a saved player is put back EXACTLY where they
+    // were, cave or cliff ledge, because the surface above them is not
+    // where they left.
+    bool    placed;
     int32_t health;
     int32_t hunger;
     int32_t bed_x, bed_y, bed_z;
     bool    has_bed;
     int64_t time_of_day;  // ticks since the world's dawn
+
+    // What they were carrying. Stored by item NAME, so an inventory
+    // survives items being added or renumbered (D-31's rule, applied to
+    // items). `has_inv` false means nothing was saved -- a new player,
+    // who gets the starting kit.
+    bool       has_inv;
+    inv_slot_t inv[INV_SLOTS];
+    int32_t    inv_selected;
 } player_state_t;
 
 // Sensible values for a player who has never played.
@@ -93,6 +115,31 @@ int worldstore_list(world_meta_t* out, int max);
 // Make a new world. `name` is what the player typed; the slug is derived
 // from it and made unique. Writes level.cmw and leaves the world OPEN.
 bool worldstore_create(char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player);
+
+// --- Save slots ---------------------------------------------------------
+
+// The directory slot `slot` (0-based) lives in: "slot1" for slot 0.
+void worldstore_slot_slug(int slot, char* out, int cap);
+
+// What is in a slot, without opening it. True, with `meta` filled in,
+// if the slot holds a readable world.
+bool worldstore_slot_peek(int slot, world_meta_t* meta);
+
+// Make a new world in an EMPTY slot. Leaves it open, like
+// worldstore_create. False if the slot is taken.
+bool worldstore_create_in(int slot, char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player);
+
+// Give a world a new name. Only level.cmw changes. Safe with another
+// world open: that world's state is left alone.
+bool worldstore_rename(char const* slug, char const* name);
+
+// Adopt a world saved before there were slots: if <worlds>/<legacy_slug>
+// holds one, move it into the first free slot and call it `name`.
+// Returns the slot it went to, -1 if there was nothing to adopt (the
+// usual case, and the only one on a fresh install), -2 if there was
+// something and it could not be moved -- in which case it is left
+// exactly where it was.
+int worldstore_adopt_legacy(char const* legacy_slug, char const* name);
 
 // Open an existing world: reads level.cmw, builds the block remap.
 bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* player);

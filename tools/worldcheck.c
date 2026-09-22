@@ -34,6 +34,7 @@
 #include "world/chunk_worker.h"
 #include "world/chunkmesh.h"
 #include "world/worldstore.h"
+#include "se_nbt.h"
 #include "game/physics.h"
 #include "game/raycast.h"
 #include "game/interact.h"
@@ -1210,6 +1211,158 @@ static void check_worldstore(void) {
     CHECK(!worldstore_open(m3.slug, &m3, &p3), "a deleted world still opens");
 }
 
+// A level.cmw exactly as the builds before save slots wrote it: no
+// "placed", no inventory. The Testworld people already have on their
+// cards looks like this, so this is the file the adoption must handle.
+static void write_legacy_level(char const* slug, double x, double y, double z) {
+    char dir[192], path[224];
+    snprintf(dir, sizeof(dir), "%s/worlds/%s/region", STORE_BASE, slug);
+    CHECK(cm_mkdir_p(dir), "could not make the legacy world's directory");
+    snprintf(path, sizeof(path), "%s/worlds/%s/level.cmw", STORE_BASE, slug);
+    FILE* f = fopen(path, "wb");
+    CHECK(f != NULL, "could not write the legacy level.cmw");
+    if (f == NULL) return;
+    fwrite("CMW1", 1, 4, f);
+    NbtWriter w;
+    nbt_write_open(&w, f);
+    nbt_write_compound(&w, "level");
+    nbt_write_int32(&w, "format", 1);
+    nbt_write_string(&w, "name", slug);
+    nbt_write_int32(&w, "seed", (int32_t)0xC0FFEEu);
+    nbt_write_int64(&w, "created", 1);
+    nbt_write_int64(&w, "last_played", 1);
+    nbt_write_int32(&w, "play_secs", 0);
+    nbt_write_int32(&w, "spawn_x", 0);
+    nbt_write_int32(&w, "spawn_y", CH_SEA_LEVEL + 2);
+    nbt_write_int32(&w, "spawn_z", 0);
+    nbt_write_compound(&w, "player");
+    nbt_write_double(&w, "x", x);
+    nbt_write_double(&w, "y", y);
+    nbt_write_double(&w, "z", z);
+    nbt_write_double(&w, "yaw", 0.5);
+    nbt_write_double(&w, "pitch", 0.0);
+    nbt_write_int32(&w, "health", 20);
+    nbt_write_int32(&w, "hunger", 20);
+    nbt_write_end(&w);
+    nbt_write_compound(&w, "palette");
+    for (int i = 0; i < BLK_COUNT; i++) nbt_write_int32(&w, BLOCKS[i].name, i);
+    nbt_write_end(&w);
+    nbt_write_end(&w);
+    fclose(f);
+}
+
+static void clear_store(void) {
+    world_meta_t old[CM_WORLDS_MAX];
+    int const    prior = worldstore_list(old, CM_WORLDS_MAX);
+    for (int i = 0; i < prior; i++) worldstore_delete(old[i].slug);
+}
+
+static void check_slots(void) {
+    printf("save slots\n");
+    CHECK(worldstore_init(STORE_BASE), "worldstore_init failed");
+    clear_store();
+
+    world_meta_t   meta, peek;
+    player_state_t player;
+    for (int i = 0; i < CM_SLOTS; i++) CHECK(!worldstore_slot_peek(i, &peek), "slot %d is not empty", i + 1);
+
+    // Nothing to adopt on a fresh card: the common case, and it must be
+    // a quiet no-op.
+    CHECK(worldstore_adopt_legacy("flyover", "Testworld") == -1, "adopted a world from an empty card");
+
+    // Creating fills exactly the slot asked for, and refuses a taken one.
+    CHECK(worldstore_create_in(2, "My World", 99u, &meta, &player), "worldstore_create_in failed");
+    CHECK(strcmp(meta.slug, "slot3") == 0, "slot 3 went into \"%s\"", meta.slug);
+    CHECK(worldstore_slot_peek(2, &peek) && strcmp(peek.name, "My World") == 0, "slot 3 does not show its world");
+    CHECK(!worldstore_create_in(2, "Other", 1u, &meta, &player), "created a world over an existing one");
+    CHECK(worldstore_slot_peek(2, &peek) && peek.seed == 99u, "the refused create damaged slot 3");
+
+    // The inventory and the exact position round trip, by name.
+    CHECK(!player.has_inv && !player.placed, "a new player claims a saved inventory or position");
+    player.has_inv = true;
+    memset(player.inv, 0, sizeof(player.inv));
+    player.inv[0]       = (inv_slot_t){ITEM_PICK_STONE, 1, 17};
+    player.inv[4]       = (inv_slot_t){BLK_COBBLE, 37, 0};
+    player.inv[INV_SLOTS - 1] = (inv_slot_t){BLK_TORCH, 5, 0};
+    player.inv_selected = 4;
+    player.placed       = true;
+    player.x            = 12.25;
+    player.y            = 11.0;  // in a cave, far below the surface
+    player.z            = -3.75;
+    CHECK(worldstore_save(&meta, &player), "saving the slot world failed");
+    worldstore_close();
+
+    player_state_t back;
+    CHECK(worldstore_open("slot3", &meta, &back), "reopening slot 3 failed");
+    CHECK(back.placed && back.y == 11.0 && back.x == 12.25 && back.z == -3.75, "the exact position did not survive");
+    CHECK(back.has_inv, "the inventory did not come back");
+    CHECK(back.inv_selected == 4, "the selected slot did not survive (%d)", (int)back.inv_selected);
+    CHECK(back.inv[0].item == ITEM_PICK_STONE && back.inv[0].count == 1 && back.inv[0].wear == 17,
+          "the worn pickaxe did not survive");
+    CHECK(back.inv[4].item == BLK_COBBLE && back.inv[4].count == 37, "the cobblestone did not survive");
+    CHECK(back.inv[INV_SLOTS - 1].item == BLK_TORCH && back.inv[INV_SLOTS - 1].count == 5,
+          "the last slot did not survive");
+    int filled = 0;
+    for (int i = 0; i < INV_SLOTS; i++) filled += back.inv[i].item != 0;
+    CHECK(filled == 3, "expected 3 filled slots back, got %d", filled);
+
+    // Renaming touches the name only.
+    CHECK(worldstore_rename("slot3", "Renamed"), "rename failed");
+    CHECK(worldstore_open("slot3", &meta, &back), "reopening after the rename failed");
+    CHECK(strcmp(meta.name, "Renamed") == 0 && meta.seed == 99u, "rename lost the seed or the name");
+    CHECK(back.inv[4].count == 37 && back.y == 11.0, "rename lost the player");
+    worldstore_close();
+
+    // THE TESTWORLD. A pre-slots world, with a chunk in it, goes into
+    // the first free slot under its new name, with its terrain and its
+    // player intact -- and a second start finds nothing more to do.
+    write_legacy_level("flyover", 40.5, 30.0, -7.5);
+    CHECK(worldstore_open("flyover", &meta, &back), "the legacy world does not open as it is");
+    chunk_t c;
+    fill_chunk(&c, g_ia, g_sa, 2, 3, meta.seed);
+    g_ia[CH_IDX(5, 40, 5)] = BLK_GLASS;
+    g_sa[CH_IDX(5, 40, 5)] = ST_PLACED;
+    CHECK(world_chunk_save(&c), "could not save a chunk into the legacy world");
+    worldstore_close();
+
+    int const slot = worldstore_adopt_legacy("flyover", "Testworld");
+    printf("  the legacy world went to slot %d\n", slot + 1);
+    CHECK(slot == 0, "the legacy world went to slot %d, not the first free one", slot + 1);
+    CHECK(worldstore_slot_peek(0, &peek) && strcmp(peek.name, "Testworld") == 0, "slot 1 is not called Testworld");
+    CHECK(peek.seed == 0xC0FFEEu, "the Testworld lost its seed");
+    CHECK(!worldstore_open("flyover", &meta, &back), "the legacy world is still where it was");
+    CHECK(worldstore_open("slot1", &meta, &back), "the adopted world does not open");
+    CHECK(back.placed && back.x == 40.5 && back.y == 30.0, "a legacy player who had played was not put back exactly");
+    CHECK(!back.has_inv, "a legacy player got an inventory they never saved");
+    chunk_t cb;
+    memset(&cb, 0, sizeof(cb));
+    cb.id = g_ib;
+    cb.st = g_sb;
+    cb.cx = 2;
+    cb.cz = 3;
+    CHECK(world_chunk_load(&cb) == 1, "the adopted world lost its terrain");
+    CHECK(g_ib[CH_IDX(5, 40, 5)] == BLK_GLASS && (g_sb[CH_IDX(5, 40, 5)] & ST_PLACED) != 0,
+          "the player's block did not come with the world");
+    worldstore_close();
+    CHECK(worldstore_adopt_legacy("flyover", "Testworld") == -1, "the adoption is not idempotent");
+    CHECK(worldstore_slot_peek(2, &peek) && strcmp(peek.name, "Renamed") == 0, "the adoption disturbed slot 3");
+
+    // A legacy player who never left through Esc still has the default
+    // at the spawn column's centre: that is a guess, not a position.
+    write_legacy_level("flyover", 0.5, (double)CH_SEA_LEVEL + 2.0, 0.5);
+    CHECK(worldstore_open("flyover", &meta, &back), "the second legacy world does not open");
+    CHECK(!back.placed, "the untouched default position was taken as a real one");
+    worldstore_close();
+    CHECK(worldstore_adopt_legacy("flyover", "Testworld") == 1, "with slot 1 taken, the next free slot is 2");
+
+    // Deleting frees the slot, directory and all.
+    CHECK(worldstore_delete("slot3"), "deleting slot 3 failed");
+    CHECK(!worldstore_slot_peek(2, &peek), "slot 3 still shows a world");
+    CHECK(worldstore_create_in(2, "Again", 5u, &meta, &player), "the freed slot could not be reused");
+    worldstore_close();
+    clear_store();
+}
+
 // The remap is what lets block ids be added, reordered or removed
 // without breaking existing worlds. Two things have to hold: the
 // palette really is written into level.cmw (so a future build can read
@@ -1866,6 +2019,37 @@ static void check_items(void) {
     CHECK(inv_held(&inv)->count == 4, "placing took %d, expected 1", 5 - inv_held(&inv)->count);
 }
 
+// The Tab screen draws the hotbar at the BOTTOM and the storage rows
+// above it, the reverse of slot order. The cursor has to move the way
+// the screen looks, which it did not: up from the hotbar went nowhere.
+static void check_inv_cursor(void) {
+    printf("the inventory cursor\n");
+    inventory_t inv;
+    inv_clear(&inv);
+    inv.cursor = 2;  // a hotbar slot
+    CHECK(inv_screen_row(inv.cursor) == INV_ROWS, "the hotbar is not the bottom row on screen");
+    inv_move_cursor(&inv, 0, -1);
+    CHECK(inv_screen_row(inv.cursor) == INV_ROWS - 1 && inv.cursor % INV_HOTBAR == 2,
+          "up from the hotbar went to slot %d, not the storage row just above", inv.cursor);
+    for (int i = 0; i < INV_ROWS + 3; i++) inv_move_cursor(&inv, 0, -1);
+    CHECK(inv_screen_row(inv.cursor) == 0, "up did not stop at the top row");
+    for (int i = 0; i < INV_ROWS + 3; i++) inv_move_cursor(&inv, 0, 1);
+    CHECK(inv.cursor == 2, "down did not come back to the hotbar slot it started from (%d)", inv.cursor);
+    // Every slot is reachable, and each is visited once walking the grid.
+    int seen[INV_SLOTS] = {0};
+    for (int r = 0; r <= INV_ROWS; r++) {
+        for (int c = 0; c < INV_HOTBAR; c++) {
+            inv.cursor = 0;
+            for (int i = 0; i < INV_ROWS; i++) inv_move_cursor(&inv, 0, -1);  // to the top row
+            inv_move_cursor(&inv, -INV_HOTBAR, 0);
+            inv_move_cursor(&inv, c, r);
+            CHECK(inv_screen_row(inv.cursor) == r, "walking to row %d landed on row %d", r, inv_screen_row(inv.cursor));
+            seen[inv.cursor]++;
+        }
+    }
+    for (int i = 0; i < INV_SLOTS; i++) CHECK(seen[i] == 1, "slot %d was reached %d times", i, seen[i]);
+}
+
 static void check_drops(void) {
     printf("drops and despawn\n");
     CHECK(flat_world(8) != NULL, "the test world would not become resident");
@@ -1985,6 +2169,7 @@ int main(void) {
     check_sections();
     check_worldstore();
     check_palette();
+    check_slots();
     check_streaming();
     if (!chunk_store_init()) {
         printf("  FAIL: chunk_store_init() for the player checks\n");
@@ -1994,6 +2179,7 @@ int main(void) {
     check_raycast();
     check_felling();
     check_items();
+    check_inv_cursor();
     check_drops();
     chunk_store_shutdown();
     if (s_fail) {

@@ -60,6 +60,11 @@ static inline uint8_t item_block(uint16_t id) {
     return item_is_block(id) ? (uint8_t)id : BLK_AIR;
 }
 
+// The item called `name`, or 0 if this build has no such item. How a
+// saved inventory survives items being added or renumbered: it stores
+// names, the way level.cmw's palette does for blocks (D-31).
+uint16_t item_by_name(char const* name);
+
 // How many ticks `block` takes to break while holding `tool_item`.
 //
 // The right tool class divides the time by its level plus one, and a

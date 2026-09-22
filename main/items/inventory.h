@@ -66,7 +66,17 @@ int inv_count(inventory_t const* inv, uint16_t item);
 // contents are never dropped on the floor to make room.
 void inv_swap(inventory_t* inv, int a, int b);
 
-// Move the Tab screen's cursor by (dx, dy) over the INV_HOTBAR-wide
-// grid, clamped. Row 0 is the hotbar, so walking up from it reaches
-// the storage rows -- the same layout the screen draws.
+// Move the Tab screen's cursor by (dx, dy) as the grid is DRAWN, clamped
+// at the edges: dy < 0 is up the screen. The screen puts the storage
+// rows on top and the hotbar at the bottom, where it sits when the
+// screen is closed -- which is the reverse of slot order, since the
+// hotbar is slots 0..5. So up from the hotbar is the lowest storage row,
+// not nothing. inv_screen_row() is that mapping, and the screen draws
+// with the same function.
 void inv_move_cursor(inventory_t* inv, int dx, int dy);
+
+// The on-screen row of slot `i`: 0 is the top storage row, INV_ROWS the
+// hotbar.
+static inline int inv_screen_row(int i) {
+    return i < INV_HOTBAR ? INV_ROWS : i / INV_HOTBAR - 1;
+}

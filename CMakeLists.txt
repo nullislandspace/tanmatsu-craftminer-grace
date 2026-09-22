@@ -53,6 +53,10 @@ set(APP_SOURCES
 
     # Screens.
     main/ui/title.c
+    main/ui/menu.c
+    main/ui/keybind_ui.c
+    main/ui/icons.c
+    main/ui/settings.c
 
     # Textures by name, cached.
     main/common/texcache.c

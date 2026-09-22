@@ -85,8 +85,21 @@ typedef struct {
 // How far through breaking the aimed block, 0..1. Zero when not mining.
 float player_mine_progress(player_t const* p);
 
-// Put the player at (x, z), standing on whatever is there.
+// A player who has never played: full health and hunger, the starting
+// kit, nothing in progress. Position is left alone -- that is
+// player_spawn's or player_place's job.
+void player_reset(player_t* p);
+
+// Put the player at (x, z), standing on whatever is there. Only moves
+// them: health, hunger and the inventory are untouched.
 void player_spawn(player_t* p, double x, double z, float yaw);
+
+// Put the player back EXACTLY where they were -- a cave, a ledge, a
+// tower they built. Returns false, and moves nothing, if the body would
+// not fit there (a chunk that changed, a save from a build with
+// different terrain); the caller then stands them on the ground with
+// player_spawn instead.
+bool player_place(player_t* p, double x, double y, double z, float yaw, float pitch);
 
 // Advance one simulation tick. `mask` is the tick's input, `pressed`
 // the actions that went down since the last tick (so a held key places

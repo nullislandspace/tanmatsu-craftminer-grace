@@ -71,10 +71,42 @@ cm_actions_t input_sample(void);
 // holding a key must not fire them sixty times.
 cm_actions_t input_pressed(void);
 
+// Looking by turning the badge. Called once a FRAME with the frame's
+// length while the player is the one looking (not paused, no inventory,
+// not the free camera): it reads the gyroscope and adds up how far the
+// badge turned, and the next input_look() hands that over. `on` false
+// (the setting is off) reads nothing and discards anything owed. The
+// cursor keys keep working alongside: the two deltas add.
+void input_gyro_frame(float dt, bool on);
+
 // The look delta for this tick, in radians. The abstraction a mouse
 // will one day feed instead of the cursor keys; `mask` is the tick's
 // own sample, so a replay looks exactly where the recording did.
 void input_look(cm_actions_t mask, float* dyaw, float* dpitch);
 
-// A human label for a scancode, for the controls menu (step 6.1).
+// The action's name, for the controls menu ("Forward", "Jump", ...).
 char const* input_action_label(cm_action_t a);
+
+// The action's stable short id ("fwd", "jump"): what settings.txt keys
+// its binding by. Never changes once shipped.
+char const* input_action_id(cm_action_t a);
+
+// The scancode an action is bound to NOW, and the one it shipped with.
+uint16_t input_key(cm_action_t a);
+uint16_t input_default_key(cm_action_t a);
+
+// Bind `a` to `sc`, saved to settings.txt. If another action already had `sc`, it
+// takes `a`'s old key instead -- a SWAP, so two actions never share a
+// key and no action is ever left with none.
+void input_bind(cm_action_t a, uint16_t sc);
+
+// Every action back to its default, saved to settings.txt.
+void input_reset_defaults(void);
+
+// Is `sc` bound to any action? The debug keys (main.c) stand aside for
+// one that is, so rebinding onto F never also toggles the flying camera.
+bool input_key_bound(uint16_t sc);
+
+// A keycap label for a scancode: "W", "Space", "Up", "F3". Written
+// into `buf`, which is also returned.
+char const* input_key_name(uint16_t sc, char* buf, int cap);

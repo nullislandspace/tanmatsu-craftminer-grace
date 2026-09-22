@@ -100,16 +100,17 @@ main/
 *   chunkmesh.{c,h}       one vertical section into a mesh               (pure)
 *   region.{c,h}          region file: header, dual directory, compaction
 *   vfs_compat.{c,h}      the FatFs calls graceloader does not export (D-27)
-*   worldstore.{c,h}      world dir, level.cmw, FatFs enumeration
+*   worldstore.{c,h}      save slots, level.cmw (player + inventory), FatFs
+                          enumeration, adopting the pre-slots Testworld (D-60)
 *   chunk_worker.{c,h}    the core-1 task, queues, the ownership contract
 *   chunk_render.{c,h}    per-section LOD cache, frustum cull, submission
   game/
 *   tick.{c,h}            fixed step; replay record/play is step 5.8
 *   physics.{c,h}         swept AABB against voxels                      (pure)
 *   raycast.{c,h}         DDA block pick                                 (pure)
-*   player.{c,h}          movement, mining, spawn; health/hunger are shown only
+*   player.{c,h}          movement, mining, spawn/place/reset; health/hunger shown only
 *   interact.{c,h}        break/place, drops, TREE FELLING               (pure)
-*   input.{c,h}           se_bindings + the look abstraction
+*   input.{c,h}           se_bindings, the look abstraction, key names, swap-binding
 *   hud.{c,h}             crosshair, block outline, hotbar, bars
 *   flycam.{c,h}          the debug camera, on F
 *   membench.{c,h}        what the memory costs, at boot (F-40)
@@ -122,12 +123,11 @@ main/
     recipes.{c,h}         RECIPE TABLE + resolver                        (pure)
   ui/
 *   title.{c,h}           "CraftMiner" in blocks, on a scratch world (D-58)
-    screens.{c,h}         worlds / new / pause / settings (the title is above)
-    keybind_ui.{c,h}      ADAPTED from synthracer
-    worldlist_ui.{c,h}    world select / create / delete
-    textentry.{c,h}       on-screen name and seed entry
-  settings/
-    gfx_settings.{c,h}    textures, render scale, view distance (NVS)
+*   menu.{c,h}            every menu: title strip, then se_ui panels for slots,
+                          new world, typing, settings, controls, pause
+*   keybind_ui.{c,h}      PORTED from synthracer: a binding as a key cap or label
+*   icons.{c,h}           PORTED from synthracer: the launcher's key-cap PNGs
+*   settings.{c,h}        settings.txt on the SD card: graphics, audio, gyro, bindings (D-67)
 * testkit/                wired into CMakeLists; PROF_HUD added (F-46)
 tools/
 * worldcheck.c            host test of every pure module
@@ -805,20 +805,24 @@ frame time than the fell.
 | 4.3 | `hud.c`: crosshair, hotbar, health, hunger | done | 2026-09-21: hotbar with counts and a wear bar, ten hearts, ten drumsticks, and a mining progress bar. **Tools are drawn as shapes, not colours** (D-54) — three stone tools as flat squares are three identical grey squares. Drawn through `se_direct565.h`, not PAX: that is the difference between **13.4 ms a frame and 0.8** (F-46). Health and hunger are displayed but nothing moves them yet; the systems are block 12. |
 | | **Accept:** the item registry, stacking, durability and drops are host-tested; breaking yields what the block table says and only to a tool that qualifies | **done** | 2026-09-21: in `make check`. Tool speed by class, harvest qualification, partial-stack filling, a full inventory refusing the overflow, two differently-worn tools staying two, a wooden pickaxe lasting exactly its durability, drops appearing and being collected only after `ITEM_PICKUP_DELAY`, despawn at exactly 12000 ticks, felling dropping every block it takes, and a full entity pool refusing rather than corrupting. |
 | **5** | **First playable — worlds on the SD card** | | |
-| 5.1 | `screens.c`: title -> world list -> new world (name + seed, or rolled) -> play | **part done** | 2026-09-21: the **title** is done and is the showreel's idea rebuilt on a streamed world (D-58) — "CraftMiner" in real blocks, "Craft" in grass and "Miner" in cobblestone, over a chosen meadow, popping in column by column. Enter plays, Esc leaves. The **world list and the new-world screen are not written**: Enter opens one fixed world, as before. |
-| 5.2 | Save policy: chunk unload, pause-menu Save, quit. Never per tick | **part done** | 2026-09-21: `save_world()` writes the player and every edited resident chunk, and Esc saves before returning to the title. Eviction already saved. Nothing saves on a tick. The pause menu's explicit Save is 5.3. |
+| 5.1 | `screens.c`: title -> world list -> new world (name + seed, or rolled) -> play | done | 2026-09-21: the **title** is the showreel's idea rebuilt on a streamed world (D-58). 2026-09-22: **Play / Settings / Quit** along the bottom of it, under the word; Play opens the **eight save slots** (D-60), a used slot offers Play / Rename / Delete, an empty one the new-world form — name, and a seed that is a number, any text (hashed), or blank for random. All in `ui/menu.c`, drawn with the engine's list menu, which has no scrolling of its own, so long lists window round the cursor. |
+| 5.2 | Save policy: chunk unload, pause-menu Save, quit. Never per tick | done | 2026-09-21: `save_world()` writes the player and every edited resident chunk; eviction already saved. 2026-09-22: saves on **opening the pause menu** (D-61), on its Save row, and on Save and quit. Nothing saves on a tick or a timer. |
+| 5.10 | **Player position and inventory in the save** | done | 2026-09-22, asked for by the user. The inventory is stored **by item name** (D-62) — each slot's item, count and wear, plus the selected slot. The position is restored **exactly** (`player_place`), falling back to standing on the ground only if the body would not fit there; before this a returning player was always put on the surface, whatever cave they had left from. A `placed` flag tells a real position from a new world's spawn guess, with a rule for saves from before the flag (F-51). Host-tested: a worn pickaxe, a partial stack and the last slot round-trip; a position 11 blocks down comes back as 11. |
+| 5.11 | **Adopt the pre-slots Testworld** | done | 2026-09-22, asked for by the user: people are already playing. The one world earlier builds kept, `worlds/flyover`, is moved by **one directory rename** into the first free slot and renamed *Testworld*. Nothing is copied, so nothing can be half-copied; a card that never had it is left alone, and a second start finds nothing to do. Host-tested against a hand-written level.cmw in the old format, with a chunk in it: terrain, the placed block, the player's exact position and the seed all survive. **Not yet run on the badge** — it was unreachable when this was written. |
 | 5.7 | **Entities in the save**: write and read `SECTION_ENTITIES` | todo | Carried in from 4.1. The section is reserved in `chunk_codec.h` and nothing writes it, so every drop on the ground is lost on reload. `item_entity_t` is already the shape it will be written in, and the age field is elapsed ticks (D-51) precisely so that a world reopened weeks later behaves. |
 | 5.8 | **Replay record/play**, and synchronous chunks for the `shots` test | **part done** | 2026-09-21: the synchronous half is done (D-59) — a `shots` run switches the worker inline and settles the world, so a shot photographs the world instead of the sky, and three captures of one instant now hash identically. **Replay record/play is still not written.** Carried in from 3.3, was blocked on F-45. A `shots` run SETS the clock rather than running it, so the chunks never stream and every screenshot is empty sky — the fix is the synchronous mode D-15 put there for exactly this. Until both exist, block 3's device accept line cannot be met and shot hashes cover the overlay but not the world. |
 | 5.9 | Move `time_of_day` from the player record to the world (D-52) | todo | A world has one time of day however many players it has had, and the day/night cycle reads it. Cheap because both records are tagged and skippable (D-30). |
 | 5.5 | **Pre-generate and save the spawn area on world creation**, behind a "Creating world" progress bar (D-25) | **part done** | 2026-09-21: `pregenerate()` exists and runs for both the title and the spawn (D-57). The progress bar does not — it happens behind a screen that is not yet showing anything, which is fine for 2.8 s and will not be for a new world's larger area. |
 | 5.6 | **The entering sequence** (D-26): physics frozen, 3x3 synchronous, play, then stream the rest | **part done** | 2026-09-21: the tick is frozen until the chunk under the player is resident, and the spawn area is pre-generated before play starts. The "carry on streaming the rest while walking" half already worked. |
-| 5.3 | Pause menu; `f1_exits = false`; quitting saves first | todo | |
-| 5.4 | `worldlist_ui.c` with index + FatFs rebuild; delete a world | todo | |
+| 5.3 | Pause menu; `f1_exits = false`; quitting saves first | done | 2026-09-22: Resume / Save / Settings / Save and quit to title. Opened by the Pause binding **or Esc, always** (D-63); Esc closes the inventory first if it is open. |
+| 5.4 | `worldlist_ui.c` with index + FatFs rebuild; delete a world | done | 2026-09-22: the slot list reads each slot's level.cmw when it opens (eight file opens, not per frame). Delete asks first with **No** under the cursor, and removes the directories as well as the files, so the slot is really free. `worlds.idx` is still unneeded (1.4). |
 | | **Accept:** a scripted device test creates a world, edits 200 blocks across 3 chunks, saves, reloads, and reports whether every edit survived. **-> hand to the user** | | |
 | **6** | **Settings** | | |
-| 6.1 | Controls menu, the synthracer pattern, all actions rebindable | todo | |
-| 6.2 | Graphics menu: textures, render scale, view distance; NVS | todo | |
-| 6.3 | Audio and display via `se_hw.h` | todo | |
+| 6.1 | Controls menu, the synthracer pattern, all actions rebindable | done | 2026-09-22: all 21 actions, plus Reset to defaults. Binding a key another action has **swaps** them, so no two actions share a key and none is left with none. The capture is the engine's `se_ui_capture_key`, fixed to take the cursor keys (F-50), and the key column is synthracer's `keybind_ui.c` with its key-cap icons (`ui/icons.c`), both ported with provenance headers. The main menu is a strip under the title (the user kept it); every other screen is an `se_ui` panel. The polled fallback for keyboards that send arrows as navigation events now follows the binding rather than the action, and the debug keys stand aside for any key a player has bound (D-64). |
+| 6.4 | **Gyroscope look** | done | 2026-09-22, asked for by the user: a Controls checkbox, off by default. The **rate** gyroscope is added up frame by frame and handed to the look beside the cursor keys, one real degree per view degree, so both work at once (D-65). A resting gyroscope's offset is tracked rather than turned into a slow spin. Yaw sign as the diagram in `graceloader_imu.h` predicts; the **pitch sign had to be flipped**, reported by the user on the badge. |
+| 6.2 | Graphics menu: textures, render scale, view distance; NVS | done | 2026-09-22: view distance (**default medium**, the user's call; near before), textures, half / full resolution, in NVS under `craftminer`. Replaces the T and V debug keys. Full resolution clears its own sky now, which it never had to while it was only the no-PPA fallback. |
+| 6.3 | Audio and display via `se_hw.h` | done | 2026-09-22: device volume and the three brightnesses through `se_hw` (shared with the launcher); music and effects switches stored and wired to the mixer's gates, and labelled as waiting for block 14, since the game makes no sound yet. |
+| | **Accept:** every menu reached on the badge, a key rebound and used, a world created, played, saved, reopened with its inventory; the Testworld adopted | **in progress** | 2026-09-22: the Testworld adoption **ran on the user's card** — `worlds/flyover` became `slot1`, named *Testworld*, all five region files with it (a copy of the original is kept off the badge). The title strip renders (screenshot). The user is testing the rest by hand: the gyroscope works after one sign flip (F-55), and the inventory cursor bug (F-54) was found that way. `make check` covers slots, the inventory round trip and the adoption. |
 | **7** | **Far Lands** | | |
 | 7.1 | `farlands.c` density and ramp; the density lattice for far lands and caves alike | todo | |
 | | **Accept:** the far-lands host section; `shots scene=farlands` for a look | | |
@@ -1380,8 +1384,96 @@ frame time than the fell.
   `scene_drop_stats()` now counts it and the app warns; **anything non-zero is
   a hole**.
 
+- **F-50** 2026-09-22, step 6.1: **the engine's key capture could not bind the
+  arrow keys.** `se_ui_capture_key` refused every escaped scancode (>= 0xE000)
+  and mapped only F1-F12 from navigation events -- and the cursor keys are
+  CraftMiner's default look keys, so once rebound they could never be bound
+  back. First worked round with a capture of the game's own; **the user asked
+  for the engine to be fixed instead** and synthracer's menu code to be used
+  as it is. Fixed in the engine (2.1, `src/se_run.c`, `se_bindable_scancode`):
+  escaped grey keys bind as their scancodes, and navigation-only cursor, Home,
+  End and Page keys map onto the same scancodes, so a key binds to one value
+  whichever keyboard pressed it.
+- **F-51** 2026-09-22, step 5.10: **saves from before `placed` need a rule, and
+  there is a sound one.** Those builds wrote the player on creation (x and z at
+  the spawn column's centre, 0.5, 0.5) and on leaving (where they really were),
+  and at no other time. So a save whose position is anything but that default
+  is a real position. The one wrong answer this can give is a player who left
+  standing on exactly (0.5, 0.5) — who then lands on the ground at the same
+  column, which is where they were anyway, give or take a cave.
+- **F-52** 2026-09-22, found while writing 5.11: **re-saving level.cmw rewrites
+  the palette as today's, but untouched chunks keep yesterday's ids.** The
+  palette is written from the current registry on every save, while a chunk on
+  the card is only re-encoded when it is edited. The day a block id moves, the
+  next save relabels every unedited chunk with the new numbering. Harmless
+  until then — no id has ever moved — but D-31's promise does not hold across
+  two saves. The fix is for a chunk to carry the palette generation it was
+  written with, or for a renumbering to rewrite every region. Not fixed here;
+  recorded so it is fixed before the first renumbering, not after.
+- **F-54** 2026-09-22, reported by the user: **the inventory cursor walked the
+  rows upside down.** The Tab screen draws the hotbar at the bottom and the
+  storage rows above it, but the cursor moved in slot order, where the hotbar
+  (slots 0-5) comes first: up from the hotbar went nowhere, and the bottom
+  storage row was reached by going down from the top edge. Now the cursor moves
+  in screen rows through `inv_screen_row()`, which the screen also draws with,
+  so the two cannot disagree again. Host-tested: up from the hotbar lands on
+  the row above it, both edges clamp, and walking the grid reaches every slot
+  exactly once. Block 4's tests covered stacking and swapping but never
+  movement, which is how it shipped.
+- **F-55** 2026-09-22, reported by the user: **the gyroscope's pitch sign was
+  wrong; its yaw sign was right.** Both came from the axis diagram in
+  `graceloader_imu.h`. Turning left and right worked first time; tipping the
+  badge looked the wrong way up. Flipped (`GYRO_PITCH_SIGN`), not investigated
+  further -- whether the diagram or my reading of it is wrong is worth
+  checking before the next app trusts it for pitch.
+- **F-53** 2026-09-22: **`strtoll` is not exported by the graceloader.** It
+  linked, and `make verify` caught it before the badge did. The seed parser
+  does its own decimal.
+
 ### Decisions (D-n), each with date and who decided
 
+- **D-60** 2026-09-22, **the user**: **named worlds in save slots, and the
+  Testworld moves into slot 1.** Eight slots, directories `slot1`..`slot8`, the
+  name in level.cmw — so a name can be anything the keyboard types and renaming
+  never moves a file. The pre-slots world goes into the first free slot as
+  *Testworld*, by a single directory rename, the first time the new build
+  starts.
+- **D-61** 2026-09-22, Claude: **opening the pause menu saves.** On a handheld
+  the way people stop is to switch it off, and pausing first is the habit. This
+  is still "only when needed" in Part N's sense: it happens once per pause,
+  never on a tick or a timer. It costs a short stall while edited chunks are
+  written.
+- **D-62** 2026-09-22, Claude: **the inventory is saved by item name**, the rule
+  D-31 applies to blocks, and for the same reason. A name the build no longer
+  has drops that stack rather than turning it into something else.
+- **D-63** 2026-09-22, Claude: **Esc always pauses**, whatever Pause is bound
+  to. Rebinding Pause must not be able to remove the way out of the game, and
+  Esc is also the menus' Back, so it is the key everyone will try.
+- **D-65** 2026-09-22, **the user** (the feature), Claude (the sensor): **look
+  by turning the badge, with the keys still live.** The RATE gyroscope, not the
+  accelerometer synthracer steers with: tilt is an absolute angle, right for a
+  steering wheel, and cannot say which way you face. Integrated per frame,
+  consumed per tick with the key delta. Not in the replay mask, so a replay of a
+  gyro session will not look where the player looked -- replay is unwritten
+  (5.8), and when it is written the gyro delta has to be recorded with it.
+- **D-67** 2026-09-22, **the user**: **the game's settings live on the SD card**,
+  so a player backs up everything with one copy of the app directory.
+  `settings.txt` beside `worlds/`: plain `key=value`, unknown keys ignored,
+  missing ones defaulted, written to `settings.tmp` and renamed into place. Key
+  bindings included, keyed by each action's stable short id; for that the
+  engine's `se_bindings` gained a mode with no NVS at all (a NULL namespace,
+  engine 2.1), which leaves games that pass a namespace, synthracer among them,
+  exactly as they were. Volume and brightness stay the launcher's. The NVS
+  values written by the builds of the same day are not migrated: they existed
+  for hours, on one badge.
+- **D-66** 2026-09-22, **the user**: **medium is the default view distance.**
+  Near was chosen when medium measured about 4400 flat triangles, past the 4096
+  cap (the comment that said so went with the settings rewrite). Sectioning and
+  culling have changed that number since; the GEOMETRY DROPPED log line is what
+  will say if it has not changed enough.
+- **D-64** 2026-09-22, Claude: **debug keys yield to bindings.** F (free
+  camera) and P (pause the scripted flight) act only on a key no action is
+  bound to. T and V are gone: their jobs are in Settings -> Graphics.
 - **D-57** 2026-09-21, **the user**: **generate every chunk before the intro
   runs.** The streamer asks for four chunks a frame so that walking never
   stalls, but "never stalls" and "is complete" are different promises and an
@@ -1730,6 +1822,29 @@ a `shots` PNG pulls the framebuffer off the badge, which is how the crosshair's
 position and the HUD were checked rather than assumed. What it cannot yet show
 is the world: a `shots` run SETS the clock instead of running it, so the chunks
 never stream and every shot is empty sky (F-45, step 5.8).
+
+### Where it stands after the menus (2026-09-22)
+
+People are already playing the pre-alpha, so this round was about their
+saves and their hands: named worlds in eight slots, with the one world
+earlier builds kept moved into slot 1 as *Testworld*; the player's exact
+position and inventory in the save; a full menu tree -- the title's strip,
+then `se_ui` panels for worlds, the new-world form, settings, controls,
+graphics, audio, display and pause; every key rebindable; looking by turning
+the badge; and all of the game's settings in one `settings.txt` on the SD card,
+so one copy of the app directory backs up everything.
+
+Three engine changes came with it, all in 2.1 and all leaving existing games
+as they were: the key capture takes the cursor keys (F-50), list menus scroll
+(`visible_rows`), and a game may persist its bindings itself (a NULL NVS
+namespace). The user's rule from this round: **use the donor's code and fix
+the engine, rather than working round either** -- synthracer's `keybind_ui`
+and `icons` are ported as they were.
+
+Not done in this round, and still owed from block 5: entities in the save
+(5.7), replay (5.8), the world's time of day (5.9), a progress bar for
+creating a world (5.5). F-52 (the palette is rewritten on every save while
+untouched chunks keep their old ids) must be fixed before any block id moves.
 
 ## Critical files
 
