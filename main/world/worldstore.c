@@ -12,6 +12,8 @@
 //      int32  spawn_x/y/z
 //      int64  time_of_day     the world's clock (D-52); older saves kept
 //                             it in the player compound instead
+//      int32  farlands_x      the Far Lands edge (D-78); absent before
+//                             them, and then read as FARLANDS_X_DEFAULT
 //      compound "player"      every field a named tag; see read_player
 //        compound "inventory" int32 selected, then one compound per
 //                             non-empty slot, named by its index:
@@ -435,6 +437,7 @@ static bool write_level(char const* slug, world_meta_t const* m, player_state_t 
     nbt_write_int32(&w, "spawn_y", m->spawn_y);
     nbt_write_int32(&w, "spawn_z", m->spawn_z);
     nbt_write_int64(&w, "time_of_day", m->time_of_day);
+    nbt_write_int32(&w, "farlands_x", m->farlands_x);
     write_player(&w, p);
     write_palette(&w);
     write_items(&w, items);
@@ -478,6 +481,7 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
     snprintf(m->slug, sizeof(m->slug), "%s", slug);
     snprintf(m->name, sizeof(m->name), "%s", slug);
     m->format = 0;
+    m->farlands_x = FARLANDS_X_DEFAULT;
     if (palette) remap_identity();
     if (items != NULL) items->n = 0;
     if (p != NULL) player_state_defaults(p, NULL);
@@ -511,6 +515,7 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
             else if (strcmp(name, "spawn_x") == 0) m->spawn_x = v;
             else if (strcmp(name, "spawn_y") == 0) m->spawn_y = v;
             else if (strcmp(name, "spawn_z") == 0) m->spawn_z = v;
+            else if (strcmp(name, "farlands_x") == 0) m->farlands_x = v;
         } else if (type == NBT_INT64) {
             int64_t const v = nbt_read_int64(&r);
             if (strcmp(name, "created") == 0) m->created = v;
@@ -613,6 +618,7 @@ static bool create_at(char const* slug, char const* name, uint32_t seed, world_m
     meta->spawn_x = 0;
     meta->spawn_y = CH_SEA_LEVEL + 2;
     meta->spawn_z = 0;
+    meta->farlands_x = FARLANDS_X_DEFAULT;
 
     char dir[192];
     world_dir(dir, sizeof(dir), meta->slug);
@@ -750,6 +756,7 @@ bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* 
     snprintf(meta->name, sizeof(meta->name), "%s", "(scratch)");
     meta->seed   = seed;
     meta->format = CM_LEVEL_FORMAT;
+    meta->farlands_x = FARLANDS_X_DEFAULT;
     if (player != NULL) player_state_defaults(player, meta);
 
     // The identity palette: nothing was written by an older build, so

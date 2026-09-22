@@ -248,7 +248,23 @@ static double fly_time(void) {
 
 // Where the scripted camera is, in WORLD coordinates. The render origin
 // turns this into the small numbers the scene sees.
+// The "farlands" scene flies this instead: from 64 blocks east of the
+// Far Lands edge towards it at walking pace, looking west at the wall,
+// and stops 12 blocks short.
+static bool s_fl_scene;
+#define FL_SCENE_START 64.0
+#define FL_SCENE_STOP  12.0
+#define FL_SCENE_SPEED 4.3  // blocks a second: walking (PL_WALK at 20 Hz)
+
 static void fly_pose(double t, double* wx, double* wz, float* yaw) {
+    if (s_fl_scene) {
+        double d = FL_SCENE_START - FL_SCENE_SPEED * t;
+        if (d < FL_SCENE_STOP) d = FL_SCENE_STOP;
+        *wx  = (double)FARLANDS_X_DEFAULT + d;  // a scratch world: the default edge
+        *wz  = 40.5;
+        *yaw = (float)(-M_PI / 2.0);  // forward (sin yaw, cos yaw) = (-1, 0): west
+        return;
+    }
     double const a = (double)FLY_SPEED * t / (double)FLY_RADIUS;
     *wx            = cos(a) * (double)FLY_RADIUS;
     *wz            = sin(a) * (double)FLY_RADIUS;
@@ -355,6 +371,7 @@ static struct {
 
 static bool content_select(char const* name) {
     if (name == NULL) return false;
+    s_fl_scene = false;
     // "savecheck" -- block 5's acceptance: 200 edits through a save.
     if (strcmp(name, "savecheck") == 0) {
         s_content    = "savecheck";
@@ -384,8 +401,11 @@ static bool content_select(char const* name) {
     // were measured on (F-36, F-39), so today's build can be held against
     // them. Near view unless told otherwise; _nolight / _noclouds as for
     // the replays.
-    if (strcmp(name, "flight") == 0 || strncmp(name, "flight_", 7) == 0) {
+    // "farlands" -- walk up to the Far Lands wall (fly_pose), same options.
+    if (strcmp(name, "flight") == 0 || strncmp(name, "flight_", 7) == 0 || strcmp(name, "farlands") == 0 ||
+        strncmp(name, "farlands_", 9) == 0) {
         static char scene[48];
+        s_fl_scene = strncmp(name, "farlands", 8) == 0;
         snprintf(scene, sizeof(scene), "%s", name);
         s_content        = scene;
         s_content_t0     = showtime_now();
@@ -496,6 +516,15 @@ static void frame_stats(void) {
              "(flat %d/%d, textured %d/%d)",
              drawn, sections, resident, missing, tested, passed, flat_n, SE_SCENE_TRI_CAP, tex_n,
              SE_SCENE_TEXTURED_TRI_CAP);
+
+    int     gen_n[2];
+    int64_t gen_us[2];
+    chunk_worker_gen_stats(&gen_n[0], &gen_us[0], &gen_n[1], &gen_us[1]);
+    if (gen_n[0] + gen_n[1] > 0) {
+        ESP_LOGI(TAG, "generated: %d ordinary chunks at %.1f ms, %d Far Lands at %.1f ms", gen_n[0],
+                 gen_n[0] ? (double)gen_us[0] / 1000.0 / gen_n[0] : 0.0, gen_n[1],
+                 gen_n[1] ? (double)gen_us[1] / 1000.0 / gen_n[1] : 0.0);
+    }
 
     // A full list drops in submission order, so anything here is a hole
     // in the picture -- a corner of the world, a chunk, half a title.
@@ -684,7 +713,7 @@ static bool enter_title(void) {
     drain_and_clear();
     worldstore_close();
     if (!title_begin()) return false;
-    chunk_worker_set_seed(title_seed());
+    chunk_worker_set_world(title_seed(), FARLANDS_X_DEFAULT);
     cm_view_t const tv = title_view();
     chunk_render_set_view(&tv);
 
@@ -718,7 +747,7 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     ESP_LOGI(TAG, "world \"%s\" (slot %d) %s, seed %u", s_meta.name, slot + 1, create ? "created" : "opened",
              (unsigned)s_meta.seed);
 
-    chunk_worker_set_seed(s_meta.seed);
+    chunk_worker_set_world(s_meta.seed, s_meta.farlands_x);
     // The player's own view distance: the title's is generous because
     // it is looking at one static word, not walking.
     cm_view_t const pv = cm_view_preset(view_setting());
@@ -802,7 +831,7 @@ static bool run_savecheck(void) {
         devtest_content_failed("could not create the savecheck world");
         return true;
     }
-    chunk_worker_set_seed(m.seed);
+    chunk_worker_set_world(m.seed, m.farlands_x);
     chunk_worker_set_synchronous(true);
     settle_world(8.0, 8.0);
 
@@ -834,7 +863,7 @@ static bool run_savecheck(void) {
     worldstore_close();
     int survived = 0;
     if (worldstore_open("savecheck", &m, &p, NULL)) {
-        chunk_worker_set_seed(m.seed);
+        chunk_worker_set_world(m.seed, m.farlands_x);
         settle_world(8.0, 8.0);
         for (int i = 0; i < SAVECHECK_EDITS; i++) {
             if (world_block(e[i].x, e[i].y, e[i].z) == e[i].b && world_state(e[i].x, e[i].y, e[i].z) == e[i].st)
@@ -863,17 +892,20 @@ static bool enter_flight(void) {
     title_end();
     worldstore_open_scratch(0xC0FFEEu, &s_meta, &s_saved);
     s_meta.time_of_day = TITLE_TIME;  // a morning, as the old builds always were
-    chunk_worker_set_seed(0xC0FFEEu);
+    chunk_worker_set_world(0xC0FFEEu, s_meta.farlands_x);
     cm_view_t const pv = cm_view_preset(view_setting());
     chunk_render_set_view(&pv);
     item_entity_reset();
     player_reset(&s_player);
-    phys_body_init(&s_player.body, (double)FLY_RADIUS, 40.0, 0.0);
+    double wx, wz;
+    float  yaw;
+    fly_pose(0.0, &wx, &wz, &yaw);
+    phys_body_init(&s_player.body, wx, 40.0, wz);
     s_player_ready = false;
     s_in_replay    = false;
     s_cam_mode     = CAM_PLAYER;
     menu_close();
-    start_loading((double)FLY_RADIUS, 0.0, APP_PLAY, "Loading flight");
+    start_loading(wx, wz, APP_PLAY, s_fl_scene ? "Loading the Far Lands" : "Loading flight");
     return true;
 }
 
@@ -896,7 +928,7 @@ static bool enter_replay(void) {
     title_end();
     worldstore_open_scratch(st.seed, &s_meta, &s_saved);
     s_meta.time_of_day = st.time_of_day;
-    chunk_worker_set_seed(st.seed);
+    chunk_worker_set_world(st.seed, s_meta.farlands_x);
     cm_view_t const pv = cm_view_preset(view_setting());
     chunk_render_set_view(&pv);
     item_entity_reset();
@@ -1188,7 +1220,7 @@ static void on_update(float dt, void* user) {
         float yaw;
         fly_pose(fly_time(), &s_cam.wx, &s_cam.wz, &yaw);
         s_cam.yaw        = yaw;
-        s_cam.pitch      = FLY_PITCH;
+        s_cam.pitch      = s_fl_scene ? -0.12f : FLY_PITCH;  // the wall wants looking up at
         // Follows the ground, so the flight stays over the terrain
         // rather than through it.
         int const ground = world_ground((int32_t)floor(s_cam.wx), (int32_t)floor(s_cam.wz));

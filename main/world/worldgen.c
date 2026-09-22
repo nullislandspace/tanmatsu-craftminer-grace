@@ -14,6 +14,10 @@
 //    ores      coal pockets in the stone.
 //    plants    flowers and tall grass on the grass.
 //    trees     the cross-chunk pass described in worldgen.h.
+//    signs     "Kurt was here" and friends, along the Far Lands edge.
+//
+//  West of the world's Far Lands edge none of this runs: those chunks are
+//  Beta 1.7.3's, overflowed (farlands.h).
 // =====================================================================
 
 #include "world/worldgen.h"
@@ -22,6 +26,7 @@
 #include <string.h>
 
 #include "common/rng.h"
+#include "world/farlands.h"
 
 // Seed salts. Every field gets its own, so two of them can never line
 // up and print the same pattern into the world.
@@ -32,6 +37,7 @@
 #define S_TREE   0x5555u
 #define S_PLANT  0x6666u
 #define S_DETAIL 0x7777u
+#define S_SIGN   0x8888u
 
 // Height band. Sea level is CH_SEA_LEVEL (24) of 64, so there is room
 // for caves beneath and for building above.
@@ -208,13 +214,39 @@ static void decorate_plants(chunk_t* c, uint32_t seed) {
     }
 }
 
-void worldgen_chunk(chunk_t* c, uint32_t seed) {
+// Signs along the Far Lands edge (Part X): in the last ordinary chunk
+// before the wall, about one chunk in four gets one, a block or three from
+// the edge, standing on the ground and facing east -- the way anyone
+// walking up to the wall comes. Which text it shows follows from where it
+// stands (voxel_sign_text).
+#define SIGN_CHANCE 0.25f
+
+static void place_edge_sign(chunk_t* c, uint32_t seed, int32_t edge_x) {
+    if (edge_x == FARLANDS_NONE || c->cx * CH_W != edge_x) return;
+    if (cm_rand2(c->cx, c->cz, seed ^ S_SIGN) > SIGN_CHANCE) return;
+    int const lx = (int)(cm_rand2(c->cx + 1, c->cz, seed ^ S_SIGN) * 3.0f);
+    int const lz = (int)(cm_rand2(c->cx, c->cz + 1, seed ^ S_SIGN) * (float)CH_D);
+    uint8_t*  col = &c->id[CH_IDX(lx, 0, lz)];
+    int       y   = CH_H - 2;
+    while (y > 0 && !block_solid(col[y])) y--;
+    // On dry ground, with room above: not in the sea, not under a tree.
+    if (y <= CH_SEA_LEVEL || col[y] == BLK_LEAVES || col[y] == BLK_LOG) return;
+    if (col[y + 1] != BLK_AIR && !block_replaceable(col[y + 1])) return;
+    col[y + 1] = BLK_SIGN;
+}
+
+void worldgen_chunk(chunk_t* c, uint32_t seed, int32_t farlands_x) {
     if (c == NULL) return;
 
     memset(c->st, 0, CH_CELLS);
-    for (int lz = 0; lz < CH_D; lz++) {
-        for (int lx = 0; lx < CH_W; lx++) {
-            fill_column(c, lx, lz, c->cx * CH_W + lx, c->cz * CH_D + lz, seed);
+    bool const far = farlands_chunk_is(c->cx, farlands_x);
+    if (far) {
+        farlands_generate(c, seed, farlands_x);
+    } else {
+        for (int lz = 0; lz < CH_D; lz++) {
+            for (int lx = 0; lx < CH_W; lx++) {
+                fill_column(c, lx, lz, c->cx * CH_W + lx, c->cz * CH_D + lz, seed);
+            }
         }
     }
 
@@ -231,11 +263,18 @@ void worldgen_chunk(chunk_t* c, uint32_t seed) {
             // trees are not on a visible lattice.
             int32_t const wx = gx * TREE_GRID + (int32_t)(cm_rand2(gx, gz, seed ^ 0xA1u) * TREE_GRID);
             int32_t const wz = gz * TREE_GRID + (int32_t)(cm_rand2(gx, gz, seed ^ 0xB2u) * TREE_GRID);
+            // Ordinary trees grow on ordinary ground only. One rooted
+            // just east of the edge still leans its canopy over the wall,
+            // so a Far Lands chunk runs this too.
+            if (farlands_x != FARLANDS_NONE && wx < farlands_x) continue;
             place_tree(c, wx, wz, seed);
         }
     }
 
-    decorate_plants(c, seed);
+    if (!far) {
+        decorate_plants(c, seed);
+        place_edge_sign(c, seed, farlands_x);
+    }
 
     c->flags |= CF_GENERATED;
     chunk_resummarise(c);

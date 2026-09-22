@@ -12,6 +12,7 @@
 
 #ifndef CM_HOST
 #include "esp_log.h"
+#include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
@@ -53,6 +54,19 @@ typedef struct {
 } result_t;
 
 static uint32_t s_seed;
+static int32_t  s_farlands_x = FARLANDS_X_DEFAULT;
+// Generation time, ordinary chunks [0] and Far Lands [1], since boot.
+// Written by the worker, read by the stats log: a torn read costs one
+// log line a wrong average, nothing more.
+static int64_t  s_gen_us[2];
+static int32_t  s_gen_n[2];
+
+void chunk_worker_gen_stats(int* n_ord, int64_t* us_ord, int* n_far, int64_t* us_far) {
+    *n_ord  = s_gen_n[0];
+    *us_ord = s_gen_us[0];
+    *n_far  = s_gen_n[1];
+    *us_far = s_gen_us[1];
+}
 static bool     s_sync = true;  // until the task starts, everything is inline
 static bool     s_running;
 static uint8_t* s_scratch;  // the worker's own mesher box (F-08)
@@ -93,7 +107,15 @@ static bool do_load(int32_t cx, int32_t cz) {
     if (r < 0) return false;
 
     // Not on the card: this is the first time anyone has been here.
-    worldgen_chunk(c, s_seed);
+#ifndef CM_HOST
+    int64_t const t0 = esp_timer_get_time();
+#endif
+    worldgen_chunk(c, s_seed, s_farlands_x);
+#ifndef CM_HOST
+    int const kind = farlands_chunk_is(cx, s_farlands_x) ? 1 : 0;
+    s_gen_us[kind] += esp_timer_get_time() - t0;
+    s_gen_n[kind]++;
+#endif
     light_chunk_local(c);
     // Freshly generated and not yet written, so it has to be saved
     // before the slot can be reused.
@@ -378,8 +400,9 @@ void chunk_worker_stop(void) {
     s_sync    = true;
 }
 
-void chunk_worker_set_seed(uint32_t seed) {
-    s_seed = seed;
+void chunk_worker_set_world(uint32_t seed, int32_t farlands_x) {
+    s_seed       = seed;
+    s_farlands_x = farlands_x;
 }
 
 void chunk_worker_set_synchronous(bool on) {

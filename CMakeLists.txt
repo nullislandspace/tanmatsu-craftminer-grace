@@ -28,6 +28,7 @@ set(APP_SOURCES
     main/world/chunk.c
     main/world/light.c
     main/world/worldgen.c
+    main/world/farlands.c
     main/world/chunk_codec.c
     main/world/region.c
     main/world/vfs_compat.c

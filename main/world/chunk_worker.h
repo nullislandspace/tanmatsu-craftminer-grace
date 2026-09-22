@@ -43,9 +43,14 @@
 bool chunk_worker_start(uint32_t seed);
 void chunk_worker_stop(void);
 
-// The seed the generator uses from now on. Changing worlds without
-// restarting the task: drain, clear the store, then set this.
-void chunk_worker_set_seed(uint32_t seed);
+// The world the generator makes from now on: its seed and its Far Lands
+// edge (world_meta_t). Changing worlds without restarting the task:
+// drain, clear the store, then set this.
+void chunk_worker_set_world(uint32_t seed, int32_t farlands_x);
+
+// How many chunks the worker has generated since boot, and the time it
+// took, ordinary and Far Lands apart (the badge only; 0 on the host).
+void chunk_worker_gen_stats(int* n_ord, int64_t* us_ord, int* n_far, int64_t* us_far);
 
 // Run everything inline instead of on the task. Safe to change between
 // frames; a mode change waits for the queue to drain.

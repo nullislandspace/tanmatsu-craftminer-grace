@@ -9,7 +9,7 @@
 //  (claudeplans/craftminer.md, Part H):
 //    registries   now      the block table's invariants
 //    worldgen     step 1   determinism, cross-chunk equivalence
-//    far lands    step 7   the wall, the tunnels, the ramp, the asymmetry
+//    far lands    step 7   Java's maths, the wall, the tunnels, the cliff, the asymmetry
 //    codec        step 1   RLE and region round trips, torn-write recovery
 //    physics      step 3   swept AABB, no tunnelling, step-up
 //    raycast      step 3   DDA against a brute-force march
@@ -31,6 +31,8 @@
 #include "world/region.h"
 #include "world/vfs_compat.h"
 #include "world/worldgen.h"
+#include "world/farlands.h"
+#include <time.h>
 #include "world/chunk_worker.h"
 #include "world/chunkmesh.h"
 #include "world/light.h"
@@ -411,7 +413,190 @@ static void gen_into(chunk_t* c, uint8_t* id, uint8_t* st, int32_t cx, int32_t c
     c->st = st;
     c->cx = cx;
     c->cz = cz;
-    worldgen_chunk(c, seed);
+    worldgen_chunk(c, seed, FARLANDS_X_DEFAULT);
+}
+
+// ---------------------------------------------------------------------
+//  The Far Lands (Part X, D-78)
+//
+//  Beta 1.7.3's generator, overflowed. What is checked: that the Java it
+//  depends on behaves like Java; that the fast path makes the same blocks
+//  as the unabridged port; that the Far Lands look like the Edge Far
+//  Lands (a wall to the top, tunnels running west, flooded below the
+//  sea); that the change at the edge is sudden; and that nothing east,
+//  north or south of it changed -- the guard against a sign bug turning
+//  the whole world into Far Lands.
+// ---------------------------------------------------------------------
+
+#define FL_SEED 0xC0FFEEu
+
+static bool is_rock(uint8_t b) {
+    return b == BLK_STONE || b == BLK_BEDROCK || b == BLK_GRAVEL || b == BLK_COAL_ORE;
+}
+
+static void check_farlands(void) {
+    printf("far lands\n");
+
+    // Java, where C would differ.
+    CHECK(java_d2i(3.0e9) == INT32_MAX && java_d2i(-3.0e9) == INT32_MIN, "java_d2i does not saturate");
+    CHECK(java_d2i(-1.7) == -1 && java_d2i(1.7) == 1 && java_d2i(2147483646.9) == 2147483646,
+          "java_d2i does not truncate toward zero");
+    CHECK(java_d2i(NAN) == 0, "java_d2i(NaN) is not 0");
+    java_random_t jr;
+    java_random_seed(&jr, 42);
+    CHECK(java_random_next_int(&jr) == -1170105035, "java.util.Random(42).nextInt() is not -1170105035");
+    java_random_seed(&jr, 0);
+    double const d0 = java_random_next_double(&jr);
+    CHECK(fabs(d0 - 0.730967787376657) < 1e-15, "java.util.Random(0).nextDouble() is %.17g, not 0.730967787376657", d0);
+
+    // Where the edge is.
+    CHECK(farlands_chunk_is(-129, -2048) && !farlands_chunk_is(-128, -2048), "the edge at -2048 is not between chunks -129 and -128");
+    CHECK(!farlands_chunk_is(-100000, FARLANDS_NONE), "a world without Far Lands has some");
+    CHECK(farlands_beta_cx(-129, -2048) == -784428 && farlands_beta_cx(-1, 0) == -784428,
+          "the first Far Lands chunk is not Beta chunk -784428");
+    CHECK(farlands_beta_y(0) == 0 && farlands_beta_y(CH_SEA_LEVEL) == 63 && farlands_beta_y(CH_SEA_LEVEL + 1) == 64 &&
+              farlands_beta_y(CH_H - 1) == 127,
+          "Beta's rows do not map onto ours end to end (%d %d %d %d)", farlands_beta_y(0), farlands_beta_y(CH_SEA_LEVEL),
+          farlands_beta_y(CH_SEA_LEVEL + 1), farlands_beta_y(CH_H - 1));
+    for (int y = 1; y < CH_H; y++) CHECK(farlands_beta_y(y) > farlands_beta_y(y - 1), "Beta row mapping not rising at %d", y);
+
+    // The fast path against the unabridged port, block for block.
+    static uint8_t fast[16 * 16 * 128], full[16 * 16 * 128];
+    long           diff = 0, cells = 0;
+    clock_t        t_fast = 0, t_full = 0;
+    for (int32_t bx = -784431; bx <= -784428; bx++) {
+        for (int32_t bz = -2; bz <= 1; bz++) {
+            clock_t t = clock();
+            CHECK(farlands_beta_column(bx, bz, FL_SEED, false, fast), "no Far Lands tables");
+            t_fast += clock() - t;
+            t = clock();
+            farlands_beta_column(bx, bz, FL_SEED, true, full);
+            t_full += clock() - t;
+            for (size_t i = 0; i < sizeof(fast); i++) diff += fast[i] != full[i];
+            cells += (long)sizeof(fast);
+        }
+    }
+    printf("  fast path against the full port: %ld of %ld cells differ; %.1f ms against %.1f ms a chunk (host)\n", diff,
+           cells, 1000.0 * (double)t_fast / CLOCKS_PER_SEC / 16.0, 1000.0 * (double)t_full / CLOCKS_PER_SEC / 16.0);
+    CHECK(diff == 0, "the fast path makes %ld blocks the full port does not", diff);
+
+    // What the Far Lands are made of, over a block of chunks at the edge.
+    static uint8_t id[CH_CELLS], st[CH_CELLS];
+    chunk_t        c;
+    long           n_rock = 0, n_air = 0, n_water = 0, n_soil = 0, n_sand = 0, n_other = 0;
+    int            cols = 0, tall = 0, floor_ok = 0;
+    long           same_x = 0, pairs_x = 0, same_z = 0, pairs_z = 0;
+    for (int32_t cx = -132; cx <= -129; cx++) {
+        for (int32_t cz = -4; cz <= 3; cz++) {
+            gen_into(&c, id, st, cx, cz, FL_SEED);
+            for (int z = 0; z < CH_D; z++) {
+                for (int x = 0; x < CH_W; x++) {
+                    int top = -1;
+                    for (int y = 0; y < CH_H; y++) {
+                        uint8_t const b = id[CH_IDX(x, y, z)];
+                        if (is_rock(b)) n_rock++;
+                        else if (b == BLK_AIR) n_air++;
+                        else if (b == BLK_WATER) n_water++;
+                        else if (b == BLK_DIRT || b == BLK_GRASS) n_soil++;
+                        else if (b == BLK_SAND) n_sand++;
+                        else n_other++;
+                        if (b != BLK_AIR && b != BLK_WATER) top = y;
+                        // Tunnels: is a cell the same kind (open or not)
+                        // as its neighbour along x, and along z?
+                        bool const open = b == BLK_AIR || b == BLK_WATER;
+                        if (x + 1 < CH_W) {
+                            uint8_t const nb = id[CH_IDX(x + 1, y, z)];
+                            same_x += open == (nb == BLK_AIR || nb == BLK_WATER);
+                            pairs_x++;
+                        }
+                        if (z + 1 < CH_D) {
+                            uint8_t const nb = id[CH_IDX(x, y, z + 1)];
+                            same_z += open == (nb == BLK_AIR || nb == BLK_WATER);
+                            pairs_z++;
+                        }
+                    }
+                    cols++;
+                    tall += top >= CH_H - 8;
+                    floor_ok += id[CH_IDX(x, 0, z)] == BLK_BEDROCK;
+                }
+            }
+        }
+    }
+    long const all = n_rock + n_air + n_water + n_soil + n_sand + n_other;
+    printf("  composition: %.0f%% rock, %.0f%% air, %.0f%% water, %.0f%% dirt and grass, %.0f%% sand, %.0f%% other\n",
+           100.0 * n_rock / all, 100.0 * n_air / all, 100.0 * n_water / all, 100.0 * n_soil / all, 100.0 * n_sand / all,
+           100.0 * n_other / all);
+    printf("  %d of %d columns reach within 8 of the top; bedrock under %d\n", tall, cols, floor_ok);
+    printf("  neighbours alike: %.1f%% along x (west), %.1f%% along z\n", 100.0 * same_x / pairs_x, 100.0 * same_z / pairs_z);
+    CHECK(floor_ok == cols, "%d of %d Far Lands columns have no bedrock floor", cols - floor_ok, cols);
+    // Measured when this was written: 67% of columns reach within 8 of
+    // the top (the top is full of holes, as Beta's was), 98.7% of
+    // neighbours alike along x and 87% along z, and 42% rock, 30% air,
+    // 19% water, 9% dirt and grass -- against the wiki's 36 / 25 / 23 /
+    // 10 for Beta's own Edge Far Lands.
+    CHECK(tall * 2 >= cols, "only %d of %d Far Lands columns reach the top: that is no wall", tall, cols);
+    CHECK(same_x * 100 >= pairs_x * 97, "the Far Lands change along x (%.1f%% alike): the tunnels do not run west",
+          100.0 * same_x / pairs_x);
+    CHECK(same_z * 100 <= pairs_z * 95, "the Far Lands hardly change along z either (%.1f%% alike)", 100.0 * same_z / pairs_z);
+    CHECK(n_water * 10 >= all, "the Far Lands are not flooded below the sea (%.0f%% water)", 100.0 * n_water / all);
+    CHECK(n_air * 10 >= all, "the Far Lands have no tunnels (%.0f%% air)", 100.0 * n_air / all);
+
+    // Sudden: the last ordinary chunk is ordinary, the first Far Lands
+    // chunk is the wall. Chunk -127 is untouched by the edge in every
+    // cell; -128 may differ only where a sign stands or where a tree
+    // rooted west of the edge would have leaned in.
+    static uint8_t id2[CH_CELLS], st2[CH_CELLS];
+    chunk_t        c2;
+    memset(&c2, 0, sizeof(c2));
+    c2.id = id2, c2.st = st2, c2.cx = -127, c2.cz = 0;
+    worldgen_chunk(&c2, FL_SEED, FARLANDS_NONE);
+    gen_into(&c, id, st, -127, 0, FL_SEED);
+    CHECK(memcmp(id, id2, CH_CELLS) == 0, "the chunk east of the edge's chunk changed with the Far Lands");
+    int tops_east = 0, tops_west = 0;
+    gen_into(&c, id, st, -128, 0, FL_SEED);
+    for (int z = 0; z < CH_D; z++) tops_east += worldgen_height(-2048, z, FL_SEED);
+    gen_into(&c, id, st, -129, 0, FL_SEED);
+    for (int z = 0; z < CH_D; z++) {
+        int y = CH_H - 1;
+        while (y > 0 && (id[CH_IDX(CH_W - 1, y, z)] == BLK_AIR || id[CH_IDX(CH_W - 1, y, z)] == BLK_WATER)) y--;
+        tops_west += y;
+    }
+    printf("  at the edge: ground %.1f high on the ordinary side, the wall %.1f on the other\n", tops_east / 16.0,
+           tops_west / 16.0);
+    CHECK(tops_west - tops_east >= 16 * 15, "no cliff at the edge: ground %.1f against %.1f", tops_east / 16.0,
+          tops_west / 16.0);
+
+    // The asymmetry guard: east, north and south of the origin, and far
+    // out, the Far Lands world is the ordinary world.
+    struct {
+        int32_t cx, cz;
+    } const ORDINARY[] = {{128, 0}, {0, 128}, {0, -128}, {6250, 0}, {0, 6250}, {0, -6250}, {-127, 6250}};
+    for (size_t i = 0; i < sizeof(ORDINARY) / sizeof(ORDINARY[0]); i++) {
+        gen_into(&c, id, st, ORDINARY[i].cx, ORDINARY[i].cz, FL_SEED);
+        memset(&c2, 0, sizeof(c2));
+        c2.id = id2, c2.st = st2, c2.cx = ORDINARY[i].cx, c2.cz = ORDINARY[i].cz;
+        worldgen_chunk(&c2, FL_SEED, FARLANDS_NONE);
+        CHECK(memcmp(id, id2, CH_CELLS) == 0, "chunk (%d,%d) is not ordinary terrain", ORDINARY[i].cx, ORDINARY[i].cz);
+    }
+
+    // Signs along the edge: in the edge's chunk only, on the ground,
+    // about one chunk in four.
+    int signs = 0, misplaced = 0;
+    for (int32_t cz = -64; cz < 64; cz++) {
+        for (int32_t cx = -128; cx <= -127; cx++) {
+            gen_into(&c, id, st, cx, cz, FL_SEED);
+            for (int i = 0; i < CH_CELLS; i++) {
+                if (id[i] != BLK_SIGN) continue;
+                int const y = i % CH_H;
+                if (cx != -128 || !block_solid(id[i - 1])) misplaced++;
+                else signs++;
+                (void)y;
+            }
+        }
+    }
+    printf("  %d signs along 2048 blocks of edge\n", signs);
+    CHECK(misplaced == 0, "%d signs away from the edge or not standing on the ground", misplaced);
+    CHECK(signs >= 10 && signs <= 40, "%d signs in 128 chunks of edge, expected about a quarter", signs);
 }
 
 static void check_worldgen(void) {
@@ -559,7 +744,7 @@ static void fill_chunk(chunk_t* c, uint8_t* id, uint8_t* st, int32_t cx, int32_t
     c->st = st;
     c->cx = cx;
     c->cz = cz;
-    worldgen_chunk(c, seed);
+    worldgen_chunk(c, seed, FARLANDS_X_DEFAULT);
 }
 
 static void check_codec(void) {
@@ -1692,6 +1877,33 @@ static void check_streaming(void) {
         printf("\n");
         CHECK(by_sect[top] > 0, "every section of the origin 3x3 meshed to nothing");
     }
+
+    // The Far Lands wall looked like the most face-dense terrain there
+    // could be: a full-height chunk of holes. Its meshes must fit mesh_t
+    // with room to spare (F-13), at every level of detail. (Measured: it
+    // is the other way round. The tunnels do not change along x, so
+    // nearly every face runs the chunk's whole width and the greedy
+    // mesher takes it in one rectangle -- a couple of hundred triangles
+    // a chunk.)
+    if (!s_fail) {
+        int32_t const fx = FARLANDS_X_DEFAULT / CH_W - 2;  // two chunks into the wall
+        for (int32_t cz = -1; cz <= 1; cz++)
+            for (int32_t cx = fx - 1; cx <= fx + 1; cx++) chunk_worker_request_load(cx, cz);
+        int most = 0, tris = 0;
+        for (int lod = 0; lod < LOD_COUNT; lod++) {
+            for (int sect = 0; sect < CH_SECT_N; sect++) {
+                mesh_t m;
+                CHECK(chunkmesh_build(fx, 0, lod, sect, scratch, &m), "a Far Lands chunk failed to mesh (lod %d, section %d)",
+                      lod, sect);
+                if (m.vn > most) most = m.vn;
+                if (lod == LOD_FANCY) tris += m.tn;
+                CHECK(m.vn <= 40000, "a Far Lands section meshed to %d vertices (lod %d), close to mesh_t's 65535 (F-13)",
+                      m.vn, lod);
+                mesh_free(&m);
+            }
+        }
+        printf("  a Far Lands chunk: %d triangles in full detail, at most %d vertices a section\n", tris, most);
+    }
     free(scratch);
 
     // Edits must survive the round trip through the worker's save path.
@@ -2392,6 +2604,7 @@ int main(void) {
     check_chunk_store();
     chunk_store_shutdown();
     check_worldgen();
+    check_farlands();
     check_codec();
     check_region();
     check_region_damage();

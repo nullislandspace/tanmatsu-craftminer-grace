@@ -42,6 +42,7 @@
 #include "items/inventory.h"
 #include "items/item_entity.h"
 #include "world/chunk.h"
+#include "world/farlands.h"
 
 #define CM_WORLD_NAME_MAX 32
 #define CM_WORLD_SLUG_MAX 24
@@ -76,6 +77,12 @@ typedef struct {
     // many players it has had (D-52). Elapsed ticks, advanced only while
     // the world is being played (D-51).
     int64_t  time_of_day;
+    // Where this world's Far Lands begin: every column west of this x
+    // (farlands.h). Given at creation from FARLANDS_X_DEFAULT and kept
+    // for ever after, so a later default reaches new worlds only and
+    // never cuts a seam through an old one (D-78). A save from before
+    // the Far Lands reads as the default of the build that opens it.
+    int32_t  farlands_x;
 } world_meta_t;
 
 // Everything about the player that outlives a session. Add fields

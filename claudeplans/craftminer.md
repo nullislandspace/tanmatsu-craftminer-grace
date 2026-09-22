@@ -779,6 +779,11 @@ and 64):
 - **Per chunk, not per column.** A chunk is either ordinary or Far Lands
   (the edge is chunk-aligned), so `worldgen_chunk` picks one generator;
   trees from the ordinary side may still lean over the edge.
+- **Left out of the port** (for now): biomes -- every column is grass over
+  dirt, and the temperature and humidity the density reads are constants,
+  which in the Far Lands only touch the height falloff the overflow drowns;
+  ice; and Beta's decoration pass -- its caves, ores, lakes, trees and
+  flowers. Beta's sandstone becomes sand.
 - Not reproduced: Beta's falling-sand lag, and the precision jitter (that
   needs millions of blocks, and D-01's floating origin prevents it anyway).
   Only the Edge Far Lands exist here -- one edge, west -- so no Corner Far
@@ -787,16 +792,21 @@ and 64):
 ### Costs, and what to measure
 
 - **Generation.** 5 x 17 x 5 = 425 density samples a chunk, each about
-  40 octave evaluations (16 + 16 + 8) plus the 2D depth noise -- some
-  17000 3D Perlin octaves a chunk, on the core-1 worker. Estimated 5-20 ms
-  a chunk; **measure on the badge** (ordinary chunks are far cheaper).
-- **Meshes.** A wall face is full of holes: many faces a chunk. F-13's
-  65535-vertex mesh cap and the 40000 assertion in worldcheck apply.
-- **The frame.** Looking straight at the wall may be the heaviest view in
-  the game: every chunk face-on, full height. Check the geometry lists do
-  not overflow (F-63's 6144 flat, 4096 textured) at Far, and the frame rate.
-- **Light.** Sky light floods into every tunnel mouth: the per-chunk light
-  flood (F-61) works harder here.
+  40 octave evaluations (16 + 16 + 8) plus the 2D depth noise, and the
+  surface pass's three noises over 256 columns. In doubles, which the
+  badge does in software. **The fast path** takes low and high from their
+  first octave only and skips the falloff's two noises: in the Far Lands
+  the first octave is worth ~10^49 and the rest at most 2^15, so they
+  cannot change a block -- and worldcheck proves it, block for block
+  against the full port. **Measured on the badge (F-68): 134 ms a Far
+  Lands chunk, against 33 ms for an ordinary one.** On the core-1 worker,
+  so it costs loading time, not frame rate.
+- **Meshes.** Expected to be heavy (a wall of holes) and measured to be
+  light: the tunnels do not change along x, so nearly every face spans a
+  chunk's width and the greedy mesher merges it whole -- about 200
+  triangles a chunk. F-13's 40000-vertex assertion covers it in worldcheck.
+- **The frame.** Walking up to the wall at Medium: 11.0 fps, no geometry
+  dropped (F-68).
 
 ### Host tests (worldcheck)
 
@@ -939,9 +949,9 @@ frame time than the fell.
 | | **Accept:** every menu reached on the badge, a key rebound and used, a world created, played, saved, reopened with its inventory; the Testworld adopted | **in progress** | 2026-09-22: the Testworld adoption **ran on the user's card** — `worlds/flyover` became `slot1`, named *Testworld*, all five region files with it (a copy of the original is kept off the badge). The title strip renders (screenshot). The user is testing the rest by hand: the gyroscope works after one sign flip (F-55), and the inventory cursor bug (F-54) was found that way. `make check` covers slots, the inventory round trip and the adoption. |
 | **7** | **Far Lands** | | |
 | 7.0 | **Bedrock, gravel, and generated signs** (D-79) | done | 2026-09-22, asked for by the user for the Far Lands: bedrock (unbreakable) and gravel (shovel, drops itself) as blocks 17 and 18; a sign, block 19, a post with a board facing east (`K_SIGN`), not solid, breakable with nothing dropped. Its text -- "Kurt / was here", "Wolfie / was here", "Far Lands / or Bust!" -- is one of three 64x32 textures drawn by `make_textures.py` with its own 5x7 pixel font (so the PNGs do not depend on PIL's fonts), chosen by a hash of where the sign stands (`voxel_sign_text`). Existing textures regenerate byte-identical. |
-| 7.1 | `farlands.c`: Beta 1.7.3's density generator, ported, fed coordinates past its overflow; the edge at x = -2048, sudden, stored per world (Part X, D-78) | todo | 2026-09-22: redesigned by the user -- near spawn and a sudden cliff, as close to Beta's Edge Far Lands as possible, instead of a ramp at -100000. |
-| 7.2 | Signs along the edge: "Kurt was here", "Wolfie was here" | todo | 2026-09-22, asked for by the user; signs themselves are 7.0. |
-| | **Accept:** the far-lands host section; `shots scene=farlands` for a look; generation and frame cost measured at the wall | | |
+| 7.1 | `farlands.c`: Beta 1.7.3's density generator, ported, fed coordinates past its overflow; the edge at x = -2048, sudden, stored per world (Part X, D-78) | done | 2026-09-22: redesigned by the user -- near spawn and a sudden cliff, as close to Beta's Edge Far Lands as possible, instead of a ramp at -100000. Built the same day (F-68): java.util.Random and Java's saturating cast ported, NoiseGeneratorPerlin / Octaves and ChunkProviderGenerate's density, terrain and surface passes in doubles; Beta chunk -784428 onwards is our chunk -129 onwards. `farlands_x` in level.cmw; `chunk_worker_set_world(seed, farlands_x)` replaces set_seed. Composition 42% rock / 30% air / 19% water / 9% dirt and grass against the wiki's 36 / 25 / 23 / 10; tunnels run west (98.7% of neighbours alike along x, 87% along z); ground 27 high at the edge, the wall 61 one block on. A `farlands` test scene walks up to the wall. 134 ms a chunk on the badge. |
+| 7.2 | Signs along the edge: "Kurt was here", "Wolfie was here" | done | 2026-09-22, asked for by the user; signs themselves are 7.0. One chunk in four of the last ordinary chunk column gets a sign, 0-2 blocks from the edge, on dry ground, facing east: 26 along 2048 blocks of edge in worldcheck's seed. |
+| | **Accept:** the far-lands host section; `shots scene=farlands` for a look; generation and frame cost measured at the wall | **done** | 2026-09-22: worldcheck's "far lands" section passes; shots of the wall from 30 and 12 blocks on the badge; 134 ms a chunk, 11 fps at Medium walking up to it. Left for the user: a look at it in play. |
 | **8+** | **The game** | | |
 | 8 | Crafting: grid, recipe table, crafting table, furnace | todo | |
 | 9 | Farming: tilled soil, wheat, carrots, seeds, saplings, growth on the tick | todo | |
@@ -1633,6 +1643,26 @@ frame time than the fell.
   (F-40), not undoing features. Lesson recorded with it: a frame rate belongs
   to a scene, and two numbers from two scenes compare nothing -- the same
   mistake as F-36, the other way round.
+- **F-68** 2026-09-22, building the Far Lands (7.1): **porting Beta's generator
+  and overflowing it reproduces the Edge Far Lands without being told what
+  they look like.** Over 32 chunks at the edge: 42% rock, 30% air, 19% water,
+  9% dirt and grass -- the wiki gives 36 / 25 / 23 / 10 for Beta's own, and
+  ours has half the height and a lower sea, so the match is closer than it
+  had any right to be. Neighbouring blocks agree 98.7% of the time along x
+  and 87% along z: the tunnels run west. Things that were not what the
+  design expected: (1) the mesh is LIGHT, not heavy -- unchanging along x
+  means every face spans the chunk and merges whole, ~200 triangles a
+  chunk; (2) the fast path (first octave of low and high, no falloff) makes
+  the same blocks as the full port in all 524288 cells compared, a third of
+  the host time; (3) on the badge, with doubles in software, a Far Lands
+  chunk still takes 134 ms against 33 ms for an ordinary one. That is
+  worker time, so loading is slower out there, not the frame rate: walking
+  up to the wall at Medium ran at 11.0 fps with nothing dropped. Not yet
+  profiled; by operation count the noises outside the overflow (the
+  selector, 3400 octave samples, and the surface pass, 3072) should be
+  most of it, against 850 for the overflowed octave. Floats there would
+  cut it, at the price of the block-for-block proof, which would have to
+  become a bound.
 - **F-67** 2026-09-22, the user asked whether a pixel's cost was the pixel or
   the z-buffer, then to move the z-buffer into internal SRAM. **Moving it cut
   the cost per pixel by about 30%, far more than F-40's memory benchmark

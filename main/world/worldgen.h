@@ -28,7 +28,11 @@
 // The chunk must already carry cx / cz (chunk_claim sets them). Marks
 // CF_GENERATED and refreshes the column summaries; leaves cstate alone
 // (the caller owns the state machine).
-void worldgen_chunk(chunk_t* c, uint32_t seed);
+//
+// `farlands_x` is the world's Far Lands edge (world_meta_t.farlands_x,
+// farlands.h): chunks wholly west of it are Far Lands. FARLANDS_NONE for
+// a world without them.
+void worldgen_chunk(chunk_t* c, uint32_t seed, int32_t farlands_x);
 
 // The surface height at a column: the y of the first air above the
 // solid ground, before caves and decorations. Exposed because spawn

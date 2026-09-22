@@ -26,6 +26,7 @@ PURE=(
     main/world/light.c      main/world/light.h
     main/common/rng.c       main/common/rng.h
     main/world/worldgen.c   main/world/worldgen.h
+    main/world/farlands.c   main/world/farlands.h
     main/world/chunk_codec.c main/world/chunk_codec.h
     main/world/region.c     main/world/region.h
     main/common/tags.c      main/common/tags.h
