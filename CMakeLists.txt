@@ -182,13 +182,18 @@ add_compile_definitions(RENDER_NEAR_CLIP_Z=0.1f)
 # The geometry lists (F-63). Lighting splits merged faces and the medium
 # view draws more of them, and past a cap the engine DROPS triangles --
 # nearby terrain vanished, and you saw "through the ground" at a step.
-#   flat 6144      in internal SRAM, 240 KB: paid for by the line list
+#   flat 6144      240 KB, in PSRAM since the depth plane took its
+#                  internal SRAM (below); peak seen 4897 (far view)
 #   lines 256      CraftMiner draws a dozen (the block outline); the
 #                  default 4096 was 112 KB of internal SRAM for nothing
 #   textured 4096  in PSRAM (it never fitted internal), 272 KB
 add_compile_definitions(SE_SCENE_TRI_CAP=6144)
 add_compile_definitions(SE_SCENE_LINE_CAP=256)
 add_compile_definitions(SE_SCENE_TEXTURED_TRI_CAP=4096)
+# The quarter-resolution depth plane in internal SRAM, 188 KB (F-67):
+# every covered pixel reads it, so it is the one buffer here touched at
+# random; the lists it displaces are written and read in order.
+add_compile_definitions(SE_SCENE_DEPTH16_INTERNAL=1)
 add_compile_definitions(SE_BINDINGS_MAX=24)
 
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/synthengine3D/CMakeLists.txt)

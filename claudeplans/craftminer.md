@@ -851,6 +851,7 @@ frame time than the fell.
 | 23 | **Permanent block ids; slots that say why they cannot be opened** | done | 2026-09-22, the user's call after F-52 was explained (D-74, D-75). Every block numbered explicitly; `tools/ids.txt` lists every block id and name and every item name ever shipped, and `make check` fails on a renumbered, renamed, removed or unlisted one -- each of the three cases tried and caught. Replays now store their inventory by item name (format 2). The slot list tells a world from a newer build ("from a newer version"), an older format ("needs upgrading") and a damaged one apart from an empty slot; nothing can be created over any of them. The upgrader itself is left until there is a format change for it to do. |
 | 24 | **Lighting's triangle cost, and the frame rate** | done | 2026-09-22, the user asked why the frame rate had fallen so far. Measured, not guessed: on the same scripted flight as 2026-09-21, today's build is as fast as yesterday's (14.5 vs 14.6 fps with lighting and clouds off, 14.1 with everything on) -- **no regression** (F-66). What had changed is the scene and the setting: walking at eye height puts close-up textured ground over the whole screen (rasterize 46 -> 72 ms), and the user plays at Far. Light in the merge key rounded in the near meshes, sky to every 4th level and torch to every 2nd (F-65): 25% fewer near triangles with torches about, +4% fps on the walk. Default view back to near (D-76). The `flight` and `replay_*` test scenes make these comparisons repeatable. |
 | 22 | **N: step the clock** | done | 2026-09-22, asked for by the user: a debug key moving the world's clock a quarter of a day, for looking at night without waiting. |
+| 25 | **The depth plane in internal SRAM, and a key sort** | done | 2026-09-22, the user's call (D-77). Engine option `SE_SCENE_DEPTH16_INTERNAL`: at quarter resolution a plain 16-bit depth plane (188 KB) in internal SRAM, cleared each frame (0.29 ms), instead of the stamped PSRAM plane; the flat list it displaced went to PSRAM. Depth order is now a radix sort of 32-bit keys in internal SRAM plus one gather, not a qsort of the records. Same scenes as F-66: flight 13.97 -> 16.30 fps, near walk 10.22 -> 12.36, Far walk 7.08 -> 7.99 (F-67). |
 
 ---
 
@@ -1523,9 +1524,43 @@ frame time than the fell.
   (F-40), not undoing features. Lesson recorded with it: a frame rate belongs
   to a scene, and two numbers from two scenes compare nothing -- the same
   mistake as F-36, the other way round.
+- **F-67** 2026-09-22, the user asked whether a pixel's cost was the pixel or
+  the z-buffer, then to move the z-buffer into internal SRAM. **Moving it cut
+  the cost per pixel by about 30%, far more than F-40's memory benchmark
+  predicted** (which put all of memory at ~20 of 62-72 cycles): flat 178 ->
+  122 ns/px, textured 190-210 -> 140-155. The depth test was already the first
+  thing a pixel does -- a pixel that loses never pays the divide, the texel
+  fetch or the framebuffer write -- so that part needed no change. The plane
+  cannot fit at full resolution (750 KB) and did not fit beside the 240 KB flat
+  list either (133 KB free, largest block 62 KB), and the list cannot shrink:
+  its peak is 4897 (far). So the list went to PSRAM, which it reads in order.
+  That cost prep time where the list is SORTED: qsort moving 40-byte records in
+  PSRAM took the Far walk's prep from 12.4 to 17.3 ms and ate a third of its
+  gain. The sort is now keys in internal SRAM (16-bit depth over 16-bit index,
+  two 8-bit radix passes) and one gather into a second buffer that swaps with
+  the first: prep 10.5 ms, under the 12.4 it was before. Costs 48 KB internal
+  for the keys, 512 KB PSRAM for the gather buffers; internal SRAM free went
+  133 -> 161 KB. Same scenes as F-66, 25 s each:
+
+  | Scene | fps before | depth internal | + key sort |
+  |---|---|---|---|
+  | flight | 13.97 | 16.30 | -- |
+  | walk, near | 10.22 | 12.36 | -- |
+  | walk, far | 7.08 | 7.59 | 7.99 |
+
+  Rasterize on the Far walk 66.2 -> 49.1 ms. What is left is still the
+  per-span setup of very short spans (5-7 px flat, 10-13 textured) and about
+  4x overdraw on the walk -- the next levers, not memory. Not visually
+  checked (the user's call): neither change can move a pixel, the sort only
+  changes which triangle the depth test meets first.
 
 ### Decisions (D-n), each with date and who decided
 
+- **D-77** 2026-09-22, **the user**: **the quarter-resolution depth plane
+  lives in internal SRAM**, and the flat triangle list gives up its internal
+  SRAM for it (the list's cap stays at 6144, which F-63 needed). An engine
+  option, off by default, so other games keep their layout; CraftMiner turns
+  it on in CMakeLists.txt. Full resolution keeps the PSRAM plane (F-67).
 - **D-76** 2026-09-22, **the user**: **near is the default view distance
   again**, replacing D-66, once the walk measured medium at 7.9 fps against
   near's 9.6. It only changes what a player gets before choosing: a
