@@ -29,7 +29,7 @@ found wild and tamed with steak. Mobs: zombies, skeletons, spiders — **no
 creepers, and no mob griefing**. Beds set spawn. Death **keeps the inventory**
 and respawns at spawn with half health. Health + hunger + tool durability.
 Multiple seeded worlds on the SD card, written **only when needed**. Far Lands
-west of x = -100000. Core 1 for background work. Every key remappable in a menu.
+west of spawn, a short walk away (D-78). Core 1 for background work. Every key remappable in a menu.
 
 **User decisions (D-05..D-08 below).** F1-F6 are hotbar slots, so the engine's
 F1-exits is off and leaving goes through a pause menu that saves first. Textures
@@ -95,7 +95,7 @@ main/
   world/
 *   blocks.{c,h}          BLOCK REGISTRY                                 (pure)
 *   worldgen.{c,h}        pure (seed, cx, cz) -> id/state planes         (pure)
-    farlands.{c,h}        the far-lands density field and its ramp       (pure)
+    farlands.{c,h}        Beta 1.7.3's density generator, overflowed     (pure)
 *   chunk.{c,h}           chunk_t, the ring store, world_block/set/state
 *   light.{c,h}           sky + block light: floods on arrival and on change (pure)
 *   chunk_codec.{c,h}     RLE over a chunk's two planes                  (pure)
@@ -190,7 +190,7 @@ row.
 | Chunk XZ | **16 x 16** | Keeps `VOX_CHUNK == 16`, so the donor `fill_fine`/`fill_coarse` and the mesher's greedy mask sizing are unchanged. |
 | Chunk Y | **64**, one column, no vertical chunking (D-11) | The showreel's 32 is too shallow for mining plus build room plus a bedrock-to-sky Far Lands wall. 64 keeps the **single-column** layout, which is what lets a column stay contiguous for the mesher. Vertical chunking would save memory but break that for no gameplay gain at this scale. |
 | Sea level | **24** | ~20 blocks of stone and caves below, ~40 above. |
-| Coordinates | x, z `int32_t`; y `0..63` | x = -100000 fits trivially. |
+| Coordinates | x, z `int32_t`; y `0..63` | The Far Lands edge (x = -2048) fits trivially. |
 
 Two parallel 1-byte planes, column-major exactly as the donor mesher expects:
 
@@ -685,50 +685,157 @@ geometry that should never have been submitted.
 
 ## Part X: the Far Lands
 
-Beta 1.7.3's Far Lands came from noise coordinates exceeding the generator's
-precision: the vertical density gradient saturated and the result was a
-full-height wall riddled with horizontal tunnels, with stretched floating shelves
-above. Here it is deliberate, **west only**, and ramped.
+**Redesigned 2026-09-22 by the user (D-78).** The first design -- a
+west-only zone at x = -100000 behind a 4096-block ramp, with the look
+imitated by hand (a biased wall, y quantised every 12 blocks, an 8:1 smear)
+-- is dropped. What replaces it:
 
-```c
-#define FARLANDS_X    (-100000)
-#define FARLANDS_RAMP   4096      /* about five minutes of walking */
+- **Near.** The edge is at **x = -2048**: about 8 minutes' walk west of
+  spawn at walking speed (`PL_WALK` 0.215 blocks a tick, 20 ticks a second,
+  4.3 blocks a second), and on a chunk boundary. Every column **west of**
+  it (x < -2048, chunk x -129 and beyond) is Far Lands; chunk -128 is the
+  last ordinary one.
+- **Changeable later, per world.** The edge is a field of the world,
+  `farlands_x` in level.cmw, written when a world is first created or
+  opened by a build that knows it, from `FARLANDS_X_DEFAULT`. Changing the
+  default changes NEW worlds only: an existing world keeps its edge, so its
+  generated chunks and its ungenerated ones always agree and no seam is
+  ever cut through a world someone is playing (D-78). It must be a multiple
+  of 16. A world first opened before this existed has no such chunks west
+  of it unless its player walked there; any that were generated stay as
+  they are, ordinary terrain inside the Far Lands, like any saved chunk.
+- **Sudden.** No ramp. East of the edge is ordinary terrain; from the edge
+  on, every chunk is Far Lands. A cliff of jumbled terrain, as Kurt found it.
+- **The real thing.** As close as possible to the Edge Far Lands of
+  **Minecraft Beta 1.7.3** (the version of KurtJMac's *Far Lands or Bust*).
 
-static inline float farlands_mix(int32_t x) {         /* x ONLY -- never z, never +x */
-    if (x > FARLANDS_X) return 0.0f;
-    return smoothstep(0.0f, 1.0f, (float)(FARLANDS_X - x) / (float)FARLANDS_RAMP);
-}
-```
+### Why they looked like that (minecraft.wiki, "Far Lands (Java Edition)")
 
-Generation is a **density field**, so the blend is a blend of densities, not a
-switch — which is what makes it an approach rather than a cliff edge:
+Beta's terrain is a 3D density field: two 16-octave Perlin noises ("low"
+and "high") blended by an 8-octave "selector" noise, minus a height
+falloff, sampled every 4 blocks across and 8 up (5 x 17 x 5 samples a
+chunk) and interpolated in between. Positive is solid.
 
-- **the wall**: a solid bias held from bedrock to sky, with the height falloff
-  dropped entirely;
-- **"precision loss"**: y advances only every `FL_YQ` (12) blocks, so the same 2D
-  pattern repeats vertically — the horizontal tunnels;
-- **the smear**: features elongated about 8:1 along x — the stretched look;
-- **above the wall top**: thin shelves at quantised heights where a sparse noise
-  crosses a high threshold.
+Each Perlin octave casts its coordinate to a 32-bit int. The finest octave
+of low and high advances 171.103 a block, which passes 2^31 at 12,550,824:
+beyond it, Java's cast **saturates** at 2^31-1, so the "fraction" left over
+is no longer 0..1 but enormous (about 10^11 one block in on the positive
+side, 10^49 on the negative), and the smoothing polynomial EXTRAPOLATES it.
+That octave's output then "completely dwarfs all other terms that would
+normally give the terrain its shape" -- the height falloff included -- so:
 
-`d = normal*(1-m) + far*m`, solid where `d > 0`. Materials are unchanged — stone,
-with a dirt/grass skin where a solid cell has air above — so it reads as *the
-same world gone wrong*, which is the joke.
+- **the wall** runs from the bottom of the world to the top (Beta: y 127);
+- **the holes** are long tunnels **perpendicular to the edge**: the
+  overflowed axis always hits the same noise values, so the pattern does
+  not change along it ("long unchanging tunnels", the "Swiss cheese wall");
+- **water**: every air cell below sea level is flooded (about 23% of the
+  Edge Far Lands is water; 36% stone, 25% air, 10% dirt and grass);
+- **surface**: grass on top, dirt under it, sand and gravel near sea
+  level; ordinary caves still carve it, "limited and small"; trees only
+  high up, where there is sky;
+- the edge starts three blocks early (12,550,821), because the 4-block
+  sample spacing interpolates the overflow outwards.
 
-**Cost, and the mitigation** (F-09): the far-lands path needs a 3D density
-evaluation per cell (16384 a chunk) instead of 256 heightmap columns, about 50x
-the work. Mitigate as Minecraft does — evaluate on a **4x4x4 lattice and
-trilinearly interpolate** (5x5x17 = 425 samples a chunk) — and use the same
-lattice for cave carving in normal terrain, so one path serves both. This is the
-biggest worldgen performance unknown; measure it on the device.
+### How we do it: run Beta's maths, broken the same way
 
-**Host tests**: `solid_fraction(x)` at -99000, -100000, -101024, -102048,
--104096, -110000 is non-decreasing and > 0.55 at -104096; at -110000 at least 90%
-of columns are solid at both y = 1 and y = 46; a z-scan at fixed (x, y) has >= 4
-solid-to-air transitions per 256 blocks; shelves exist above the wall top with
-air below; **asymmetry** — the statistic at x = +110000 and z = +/-110000 matches
-normal terrain within 5% (the guard against a sign bug far-landsing the whole
-world); determinism holds at those coordinates.
+Not an imitation. `world/farlands.{c,h}` (pure) **ports the Beta 1.7.3
+density generator** -- the octave Perlin noise with its permutation
+tables, the low / high / selector / depth noises, the 5 x 17 x 5 sampling,
+the top slide and the interpolation -- in doubles, like Java, and feeds it
+coordinates **past the overflow**:
+
+    beta_x = x - FARLANDS_X - 12550821     (x <= FARLANDS_X, so beta_x <= -12550821)
+    beta_z = z
+
+so our edge IS Beta's west edge. Two things must be done by hand, because
+C is not Java:
+
+- **the saturating cast.** A C cast of an out-of-range double to int is
+  undefined behaviour, not saturation. A `java_d2i()` that clamps to
+  INT32_MIN / INT32_MAX exactly as the JVM does is the one line the whole
+  effect depends on; the host tests pin it.
+- **overflowing int arithmetic** in the noise (Java wraps) is done in
+  uint32_t and cast back.
+
+The permutation tables are seeded with **`java.util.Random`'s 48-bit LCG**
+(a dozen lines), consuming it in Beta's order. That costs nothing and
+makes the wall a given seed produces the wall Beta produced for that seed,
+not just one like it.
+
+**Fitting it into our world** (64 high, sea level 24, where Beta was 128
+and 64):
+
+- **Height: squashed 2:1.** The 17 vertical samples are spread every 4
+  blocks instead of 8, so the whole Beta column -- wall top, tunnels and
+  all -- fits in 64. Tunnels come out half as tall; the proportions of the
+  face stay.
+- **Water**: air below OUR sea level (24) floods. Beta's sea level was
+  half-way up its world, ours is 3/8, so a little less of the face is water.
+- **Surface**: Beta's own surface pass (grass on top, dirt below, sand and
+  gravel beaches near sea level, bedrock at the bottom), run on the
+  full-height Beta column before it is fitted into ours. **Bedrock and
+  gravel** are new blocks for this (D-79); ordinary terrain does not use
+  them yet.
+- **Per chunk, not per column.** A chunk is either ordinary or Far Lands
+  (the edge is chunk-aligned), so `worldgen_chunk` picks one generator;
+  trees from the ordinary side may still lean over the edge.
+- Not reproduced: Beta's falling-sand lag, and the precision jitter (that
+  needs millions of blocks, and D-01's floating origin prevents it anyway).
+  Only the Edge Far Lands exist here -- one edge, west -- so no Corner Far
+  Lands and no Farther Lands.
+
+### Costs, and what to measure
+
+- **Generation.** 5 x 17 x 5 = 425 density samples a chunk, each about
+  40 octave evaluations (16 + 16 + 8) plus the 2D depth noise -- some
+  17000 3D Perlin octaves a chunk, on the core-1 worker. Estimated 5-20 ms
+  a chunk; **measure on the badge** (ordinary chunks are far cheaper).
+- **Meshes.** A wall face is full of holes: many faces a chunk. F-13's
+  65535-vertex mesh cap and the 40000 assertion in worldcheck apply.
+- **The frame.** Looking straight at the wall may be the heaviest view in
+  the game: every chunk face-on, full height. Check the geometry lists do
+  not overflow (F-63's 6144 flat, 4096 textured) at Far, and the frame rate.
+- **Light.** Sky light floods into every tunnel mouth: the per-chunk light
+  flood (F-61) works harder here.
+
+### Host tests (worldcheck)
+
+- `java_d2i()` saturates at both ends and truncates toward zero inside;
+  `java.util.Random` reproduces known Java outputs for a known seed.
+- **The noise overflows where Beta's did**: the finest octave's integer
+  coordinate is 2^31-1 (or INT32_MIN) at beta_x = -12550825, and ordinary
+  one block east of the overflow point.
+- **The cliff is sudden**: x = -2047 generates ordinary terrain (identical to
+  worldgen without Far Lands); x <= -2051 has at least 90% of columns solid
+  at y = 1 and near the top.
+- **Tunnels run along x**: at fixed (y, z) inside the Far Lands, solidity
+  stays the same for long runs of x; along z it changes often (>= 4 solid-air
+  transitions per 256 blocks).
+- **Composition** roughly as the wiki's (stone, air, water, grass/dirt), with
+  generous bounds -- our squash and sea level shift it.
+- **Asymmetry guard**: x = +2048 and z = +-2048 (and well beyond) are
+  ordinary terrain -- the test against a sign bug turning the whole world
+  into Far Lands.
+- Determinism, and no chunk over 40000 vertices.
+
+On the badge: `shots scene=farlands` looks at the wall; a `perf` run there
+measures generation and frame cost.
+
+### Signs at the edge
+
+A few signs stand at random along the edge, on the ordinary side, facing
+east -- towards whoever walks up to the wall -- with texts like **"Kurt
+was here"** and **"Wolfie was here"** (Wolfie: Kurt's dog in the series).
+Placed by the generator from the seed, so every world has its own and they
+are the same every time.
+
+For now signs are **generated only** (D-79): no sign item, nothing places
+or edits one. The texts are a fixed list, so each is a ready-made texture
+-- the planks with the lettering on it, drawn by `tools/make_textures.py`
+-- and a sign's text follows from the world's seed and where it stands, so
+there is nothing per sign to store. Player-written signs, when they come,
+will need their text saved with the chunk (a tagged record, a format
+addition).
 
 ---
 
@@ -831,8 +938,10 @@ frame time than the fell.
 | 6.3 | Audio and display via `se_hw.h` | done | 2026-09-22: device volume and the three brightnesses through `se_hw` (shared with the launcher); music and effects switches stored and wired to the mixer's gates, and labelled as waiting for block 14, since the game makes no sound yet. |
 | | **Accept:** every menu reached on the badge, a key rebound and used, a world created, played, saved, reopened with its inventory; the Testworld adopted | **in progress** | 2026-09-22: the Testworld adoption **ran on the user's card** — `worlds/flyover` became `slot1`, named *Testworld*, all five region files with it (a copy of the original is kept off the badge). The title strip renders (screenshot). The user is testing the rest by hand: the gyroscope works after one sign flip (F-55), and the inventory cursor bug (F-54) was found that way. `make check` covers slots, the inventory round trip and the adoption. |
 | **7** | **Far Lands** | | |
-| 7.1 | `farlands.c` density and ramp; the density lattice for far lands and caves alike | todo | |
-| | **Accept:** the far-lands host section; `shots scene=farlands` for a look | | |
+| 7.0 | **Bedrock, gravel, and generated signs** (D-79) | todo | 2026-09-22, asked for by the user for the Far Lands: bedrock (unbreakable) and gravel (shovel) as blocks 17 and 18; a sign, block 19, a post with a board facing east and its text as a texture. Generated only for now. |
+| 7.1 | `farlands.c`: Beta 1.7.3's density generator, ported, fed coordinates past its overflow; the edge at x = -2048, sudden, stored per world (Part X, D-78) | todo | 2026-09-22: redesigned by the user -- near spawn and a sudden cliff, as close to Beta's Edge Far Lands as possible, instead of a ramp at -100000. |
+| 7.2 | Signs along the edge: "Kurt was here", "Wolfie was here" | todo | 2026-09-22, asked for by the user; signs themselves are 7.0. |
+| | **Accept:** the far-lands host section; `shots scene=farlands` for a look; generation and frame cost measured at the wall | | |
 | **8+** | **The game** | | |
 | 8 | Crafting: grid, recipe table, crafting table, furnace | todo | |
 | 9 | Farming: tilled soil, wheat, carrots, seeds, saplings, growth on the tick | todo | |
@@ -1556,6 +1665,24 @@ frame time than the fell.
 
 ### Decisions (D-n), each with date and who decided
 
+- **D-78** 2026-09-22, **the user**: **the Far Lands are a short walk west,
+  sudden, and Beta 1.7.3's own.** The edge moves from x = -100000 to about
+  5-10 minutes' walk from spawn (x = -2048, about 8 minutes at walking
+  speed); the ramp goes -- a cliff of jumbled terrain, as in *Far Lands or
+  Bust*; and the look should be as close as possible to Beta 1.7.3's Edge Far
+  Lands, which Part X gets by porting Beta's generator and overflowing it
+  rather than imitating the result. Later, signs such as "Kurt was here" and
+  "Wolfie was here" at random along the edge. Replaces the first Part X.
+  Confirmed the same day: -2048 it is, **as long as it can be changed
+  later** -- hence the edge is stored per world, and a new default only
+  reaches new worlds.
+- **D-79** 2026-09-22, **the user**: **bedrock and gravel are blocks, and
+  signs exist -- generated only, for now.** Bedrock (17, unbreakable) and
+  gravel (18) come with the Far Lands, which Beta built from them. Signs
+  (19) stand where the generator puts them and cannot yet be placed,
+  written or carried; breaking one drops nothing. Their texts are a fixed
+  list drawn into textures, so a sign needs no stored text until players
+  can write their own.
 - **D-77** 2026-09-22, **the user**: **the quarter-resolution depth plane
   lives in internal SRAM**, and the flat triangle list gives up its internal
   SRAM for it (the list's cap stays at 6144, which F-63 needed). An engine
