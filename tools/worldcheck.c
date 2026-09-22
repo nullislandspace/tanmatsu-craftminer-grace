@@ -42,6 +42,7 @@
 #include "game/player.h"
 #include "game/replay.h"
 #include "items/inventory.h"
+#include "items/items.h"
 #include "items/item_entity.h"
 
 static int s_fail = 0;
@@ -127,6 +128,52 @@ static void check_blocks(void) {
 //  chunk_of / chunk_off shift and mask -- and that is worth pinning
 //  down before anything is built on top of it.
 // ---------------------------------------------------------------------
+
+// THE ID REGISTRY (D-74). Block ids and names, and item names, are what
+// saves on people's cards are made of. tools/ids.txt is the list of every
+// one ever shipped, and this is the check that the code still agrees with
+// it -- both ways, so a new block cannot slip in unlisted either.
+static void check_ids(void) {
+    printf("the id registry\n");
+    FILE* f = fopen("tools/ids.txt", "r");
+    CHECK(f != NULL, "tools/ids.txt is missing");
+    if (f == NULL) return;
+    bool block_listed[BLK_COUNT] = {false};
+    bool item_listed[ITEM_COUNT] = {false};
+    int  blocks = 0, items = 0;
+    char line[160];
+    while (fgets(line, sizeof(line), f) != NULL) {
+        if (line[0] == '#' || line[0] == '\n') continue;
+        int  id = -1;
+        char name[64];
+        if (sscanf(line, "block %d %63s", &id, name) == 2) {
+            blocks++;
+            CHECK(id >= 0 && id < BLK_COUNT, "ids.txt lists block %d (%s), which the code does not have: a block "
+                  "is never removed, only retired", id, name);
+            if (id < 0 || id >= BLK_COUNT) continue;
+            CHECK(strcmp(BLOCKS[id].name, name) == 0, "block %d is \"%s\" in the code but \"%s\" in ids.txt: ids "
+                  "and names never change once shipped", id, BLOCKS[id].name, name);
+            CHECK(!block_listed[id], "block %d is listed twice in ids.txt", id);
+            block_listed[id] = true;
+        } else if (sscanf(line, "item %63s", name) == 1) {
+            items++;
+            uint16_t const it = item_by_name(name);
+            CHECK(it >= BLK_COUNT, "ids.txt lists item \"%s\", which the code does not have: an item is never "
+                  "renamed or removed", name);
+            if (it >= BLK_COUNT && it < ITEM_COUNT) item_listed[it] = true;
+        } else {
+            CHECK(false, "ids.txt: cannot read the line \"%s\"", line);
+        }
+    }
+    fclose(f);
+    for (int b = 0; b < BLK_COUNT; b++)
+        CHECK(block_listed[b], "block %d (%s) is not in tools/ids.txt: append \"block %d %s\" to it", b,
+              BLOCKS[b].name, b, BLOCKS[b].name);
+    for (int i = BLK_COUNT; i < ITEM_COUNT; i++)
+        CHECK(item_listed[i], "item \"%s\" is not in tools/ids.txt: append \"item %s\" to it", item_def(i).name,
+              item_def(i).name);
+    printf("  %d blocks and %d items, all as shipped\n", blocks, items);
+}
 
 static void check_chunk_coords(void) {
     printf("chunk coords\n");
@@ -1390,6 +1437,33 @@ static void check_slots(void) {
     worldstore_close();
     CHECK(worldstore_adopt_legacy("flyover", "Testworld") == 1, "with slot 1 taken, the next free slot is 2");
 
+    // A world from a newer build is not an empty slot: it is told apart,
+    // and nothing may be created over it. Nor is a damaged one.
+    {
+        char dir[192], path[224];
+        snprintf(dir, sizeof(dir), "%s/worlds/slot8", STORE_BASE);
+        CHECK(cm_mkdir_p(dir), "could not make slot 8's directory");
+        snprintf(path, sizeof(path), "%s/level.cmw", dir);
+        FILE* f = fopen(path, "wb");
+        if (f != NULL) {
+            fwrite("CMW9 something a later build understands", 1, 41, f);
+            fclose(f);
+        }
+        CHECK(worldstore_slot_state(7, &peek) == SLOT_NEWER, "a world from a newer build does not read as newer");
+        CHECK(!worldstore_create_in(7, "Over it", 1u, &meta, &player), "a world was created over a newer build's");
+        f = fopen(path, "wb");
+        if (f != NULL) {
+            fwrite("CMW1 not nbt at all", 1, 19, f);
+            fclose(f);
+        }
+        CHECK(worldstore_slot_state(7, &peek) == SLOT_DAMAGED, "an unreadable level.cmw does not read as damaged");
+        CHECK(worldstore_slot_state(6, &peek) == SLOT_EMPTY, "an empty slot does not read as empty");
+        CHECK(worldstore_slot_state(0, &peek) == SLOT_WORLD && strcmp(peek.name, "Testworld") == 0,
+              "a readable world does not read as a world");
+        worldstore_delete("slot8");
+        CHECK(worldstore_slot_state(7, &peek) == SLOT_EMPTY, "deleting a damaged world did not free its slot");
+    }
+
     // Deleting frees the slot, directory and all.
     CHECK(worldstore_delete("slot3"), "deleting slot 3 failed");
     CHECK(!worldstore_slot_peek(2, &peek), "slot 3 still shows a world");
@@ -2306,6 +2380,7 @@ static void check_drops(void) {
 
 int main(void) {
     check_blocks();
+    check_ids();
     check_rng();
     check_tags();
     check_chunk_coords();

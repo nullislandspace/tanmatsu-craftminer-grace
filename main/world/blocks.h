@@ -64,34 +64,51 @@ typedef struct {
     uint16_t    drop_item;   // ITEM_NONE drops nothing
     uint8_t     drop_min, drop_max;
     uint8_t     flags;
-    uint8_t     light;       // light emitted, 0..15 (reserved for step 15)
+    uint8_t     light;       // light emitted, 0..15 (world/light.h)
     uint8_t     growth_max;  // BF_CROP: the highest growth stage
 } block_def_t;
 
-// The block ids. 0 is air; 255 is reserved. Order is free -- nothing
-// depends on it but the save format's numbers, which is why `name` is
-// there to migrate from if the order ever has to change.
+// The block ids -- AND THEY ARE PERMANENT (D-74).
+//
+// A chunk stores one byte per cell, and every chunk on every card was
+// written with these numbers. So once a block has shipped its id NEVER
+// changes, its NAME never changes (a world's palette matches blocks by
+// name when it opens), and it is never deleted: a block the game stops
+// using is RETIRED -- it keeps its row and its number, and nothing else
+// ever gets that number. New blocks go at the END, with the next free id,
+// wherever they belong in a menu.
+//
+// tools/ids.txt lists every id and name ever shipped, and `make check`
+// fails the build if this table disagrees with it: a renumbered, renamed
+// or missing block, or a new one not yet added to the list. Adding a
+// block is appending one line there, in the same commit.
+//
+// 0 is air; 255 is reserved. One byte is 255 blocks for the life of the
+// game, retired ones included; past that is a format change (a new major
+// version and a one-time upgrade of every world, D-32).
 enum {
-    BLK_AIR = 0,
-    BLK_GRASS,
-    BLK_DIRT,
-    BLK_STONE,
-    BLK_COBBLE,
-    BLK_SAND,
-    BLK_WATER,
-    BLK_LOG,
-    BLK_PLANKS,
-    BLK_LEAVES,
-    BLK_COAL_ORE,
-    BLK_GLASS,
-    BLK_TORCH,
-    BLK_FLOWER_RED,
-    BLK_FLOWER_YELLOW,
-    BLK_TALL_GRASS,
+    BLK_AIR           = 0,
+    BLK_GRASS         = 1,
+    BLK_DIRT          = 2,
+    BLK_STONE         = 3,
+    BLK_COBBLE        = 4,
+    BLK_SAND          = 5,
+    BLK_WATER         = 6,
+    BLK_LOG           = 7,
+    BLK_PLANKS        = 8,
+    BLK_LEAVES        = 9,
+    BLK_COAL_ORE      = 10,
+    BLK_GLASS         = 11,
+    BLK_TORCH         = 12,
+    BLK_FLOWER_RED    = 13,
+    BLK_FLOWER_YELLOW = 14,
+    BLK_TALL_GRASS    = 15,
     // A chunk that is not resident reads as this: solid, unbreakable,
     // never meshed. The player stops at the edge of generated terrain
-    // instead of falling through it (D-14).
-    BLK_BARRIER,
+    // instead of falling through it (D-14). Never stored in a chunk, but
+    // it has a number like any other and keeps it.
+    BLK_BARRIER = 16,
+    // New blocks here: BLK_SOMETHING = 17, and a line in tools/ids.txt.
     BLK_COUNT
 };
 

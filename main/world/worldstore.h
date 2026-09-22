@@ -142,6 +142,20 @@ void worldstore_slot_slug(int slot, char* out, int cap);
 // if the slot holds a readable world.
 bool worldstore_slot_peek(int slot, world_meta_t* meta);
 
+// What a slot holds, told apart -- because "cannot read it" is not
+// "empty". A world saved by a NEWER build (a major version this build
+// does not know, D-32) is still somebody's world: the menu must say so,
+// not offer the slot as free.
+typedef enum {
+    SLOT_EMPTY = 0,
+    SLOT_WORLD,    // readable; `meta` filled in
+    SLOT_NEWER,    // saved by a newer build: leave it alone
+    SLOT_OLDER,    // an older major format: needs the upgrader (not written yet)
+    SLOT_DAMAGED,  // a level.cmw that cannot be read
+} slot_state_t;
+
+slot_state_t worldstore_slot_state(int slot, world_meta_t* meta);
+
 // Make a new world in an EMPTY slot. Leaves it open, like
 // worldstore_create. False if the slot is taken.
 bool worldstore_create_in(int slot, char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player);

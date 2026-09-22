@@ -21,9 +21,10 @@
 //  record in a world you have edited and the replay, on fresh terrain,
 //  will walk into the difference. Record tests in a new world.
 //
-//  File, little-endian: "CMRP", u32 version, u32 ticks, the start, then
-//  per tick u32 mask, f32 yaw, f32 pitch. Pure (stdio only): the host
-//  checks round-trip it.
+//  File, little-endian: "CMRP", u32 version (2), u32 ticks, the start --
+//  its inventory by item NAME, since item numbers move when blocks are
+//  added (D-74) -- then per tick u32 mask, f32 yaw, f32 pitch. Pure
+//  (stdio only): the host checks round-trip it.
 // =====================================================================
 
 #include <stdbool.h>

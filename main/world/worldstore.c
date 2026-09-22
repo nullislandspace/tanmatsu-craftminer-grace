@@ -650,6 +650,25 @@ bool worldstore_slot_peek(int slot, world_meta_t* meta) {
     return read_level(slug, meta, NULL, false, NULL);
 }
 
+slot_state_t worldstore_slot_state(int slot, world_meta_t* meta) {
+    if (slot < 0 || slot >= CM_SLOTS || meta == NULL) return SLOT_EMPTY;
+    memset(meta, 0, sizeof(*meta));
+    char slug[CM_WORLD_SLUG_MAX], path[192];
+    worldstore_slot_slug(slot, slug, sizeof(slug));
+    level_path(path, sizeof(path), slug);
+    FILE* f = fopen(path, "rb");
+    if (f == NULL) return SLOT_EMPTY;
+    char       magic[4];
+    bool const got = fread(magic, 1, sizeof(magic), f) == sizeof(magic);
+    fclose(f);
+    // The major version is in the magic, so it can be read without
+    // trusting anything after it.
+    if (got && memcmp(magic, CM_LEVEL_MAGIC, 3) == 0 && magic[3] != CM_LEVEL_MAJOR) {
+        return magic[3] > CM_LEVEL_MAJOR ? SLOT_NEWER : SLOT_OLDER;
+    }
+    return read_level(slug, meta, NULL, false, NULL) ? SLOT_WORLD : SLOT_DAMAGED;
+}
+
 bool worldstore_create_in(int slot, char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player) {
     if (slot < 0 || slot >= CM_SLOTS || name == NULL || meta == NULL || player == NULL) return false;
     char slug[CM_WORLD_SLUG_MAX];

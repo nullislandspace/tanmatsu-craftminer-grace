@@ -8,9 +8,13 @@
 #include <string.h>
 
 #include "common/psram.h"
+#include "items/items.h"
 
 #define REPLAY_MAGIC   "CMRP"
-#define REPLAY_VERSION 1u
+// 2: the inventory by item NAME, not number. Item numbers follow the
+// last block id (items.h), so they move every time a block is added;
+// names never do (D-74). A version-1 file is refused.
+#define REPLAY_VERSION 2u
 
 typedef struct {
     uint32_t mask;
@@ -61,8 +65,10 @@ static bool write_start(FILE* f, replay_start_t const* s) {
     bool ok = put(f, &s->seed, 4) && put(f, &s->time_of_day, 8) && put(f, &s->x, 8) && put(f, &s->y, 8) &&
               put(f, &s->z, 8) && put(f, &s->yaw, 4) && put(f, &s->pitch, 4) && put(f, &s->selected, 4);
     for (int i = 0; ok && i < INV_SLOTS; i++) {
-        uint8_t const count = s->inv[i].count;
-        ok = put(f, &s->inv[i].item, 2) && put(f, &count, 1) && put(f, &s->inv[i].wear, 2);
+        char const* const name  = s->inv[i].item != 0 ? item_def(s->inv[i].item).name : "";
+        uint8_t const     len   = (uint8_t)strlen(name);
+        uint8_t const     count = s->inv[i].count;
+        ok = put(f, &len, 1) && put(f, name, len) && put(f, &count, 1) && put(f, &s->inv[i].wear, 2);
     }
     return ok;
 }
@@ -72,9 +78,14 @@ static bool read_start(FILE* f, replay_start_t* s) {
     bool ok = get(f, &s->seed, 4) && get(f, &s->time_of_day, 8) && get(f, &s->x, 8) && get(f, &s->y, 8) &&
               get(f, &s->z, 8) && get(f, &s->yaw, 4) && get(f, &s->pitch, 4) && get(f, &s->selected, 4);
     for (int i = 0; ok && i < INV_SLOTS; i++) {
-        uint8_t count = 0;
-        ok            = get(f, &s->inv[i].item, 2) && get(f, &count, 1) && get(f, &s->inv[i].wear, 2);
-        s->inv[i].count = count;
+        uint8_t len = 0, count = 0;
+        char    name[64];
+        ok = get(f, &len, 1) && len < sizeof(name) && get(f, name, len) && get(f, &count, 1) &&
+             get(f, &s->inv[i].wear, 2);
+        if (!ok) break;
+        name[len]        = '\0';
+        s->inv[i].item  = item_by_name(name);  // 0 for "" or a name this build lacks
+        s->inv[i].count = s->inv[i].item != 0 ? count : 0;
     }
     return ok;
 }

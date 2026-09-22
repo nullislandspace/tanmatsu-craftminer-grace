@@ -184,6 +184,12 @@ which this toolchain already enables) would attack the cheapest part.
 
 ## The world, and how to work on it
 
+**Block ids are permanent.** Worlds store blocks as one-byte ids, so a
+block's id and name never change once shipped, and blocks are retired, never
+removed; item names likewise. `tools/ids.txt` lists every one, and `make
+check` fails the build if the code disagrees with it -- adding a block means
+appending a line there.
+
 `claudeplans/craftminer.md` is the living plan: the design, a step-by-step
 status table, and the findings and decisions logs. Read it first — every number
 quoted below comes from a measurement recorded there.

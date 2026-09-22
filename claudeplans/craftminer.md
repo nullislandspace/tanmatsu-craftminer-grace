@@ -848,6 +848,7 @@ frame time than the fell.
 | 19 | **Torches could not be taken back** (bug) | done | 2026-09-22, reported by the user (F-56). |
 | 20 | **Terrain vanishing; "walking through" steps** (bug) | done | 2026-09-22, reported by the user as critical: at a step the view went into the ground, and looking round left holes. **Not physics** -- the same collision code walked the user's own terrain on the host for 6400 ticks without once ending inside a block, and the badge log showed the player climbing. It was the engine's geometry lists overflowing and DROPPING triangles, which the engine never reported (F-63). Caps raised, the line list shrunk to pay for it, far meshes' light rounded, the engine's drop counter fixed (D-72). The same walk now peaks at about 3000/6144 flat and 1900/4096 textured, nothing dropped -- at **7-9 fps** at the medium view. |
 | 21 | **Fred's hand**, and the handedness bug | done | 2026-09-22, reported by the user: first person held things in the right hand, third person in the left (F-64). Now a Graphics setting, right by default, and both views follow it. Checked on the badge mid-swing, both ways: right-handed the pickaxe rises by his right shoulder, left-handed by his left. |
+| 23 | **Permanent block ids; slots that say why they cannot be opened** | done | 2026-09-22, the user's call after F-52 was explained (D-74, D-75). Every block numbered explicitly; `tools/ids.txt` lists every block id and name and every item name ever shipped, and `make check` fails on a renumbered, renamed, removed or unlisted one -- each of the three cases tried and caught. Replays now store their inventory by item name (format 2). The slot list tells a world from a newer build ("from a newer version"), an older format ("needs upgrading") and a damaged one apart from an empty slot; nothing can be created over any of them. The upgrader itself is left until there is a format change for it to do. |
 | 22 | **N: step the clock** | done | 2026-09-22, asked for by the user: a debug key moving the world's clock a quarter of a day, for looking at night without waiting. |
 
 ---
@@ -1424,6 +1425,8 @@ frame time than the fell.
   two saves. The fix is for a chunk to carry the palette generation it was
   written with, or for a renumbering to rewrite every region. Not fixed here;
   recorded so it is fixed before the first renumbering, not after.
+  **Closed 2026-09-22 by D-74:** ids never move, so there is no renumbering
+  for it to go wrong in, and `make check` enforces that.
 - **F-54** 2026-09-22, reported by the user: **the inventory cursor walked the
   rows upside down.** The Tab screen draws the hotbar at the bottom and the
   storage rows above it, but the cursor moved in slot order, where the hotbar
@@ -1499,6 +1502,23 @@ frame time than the fell.
 
 ### Decisions (D-n), each with date and who decided
 
+- **D-74** 2026-09-22, **the user**: **a block id, once shipped, never
+  changes** -- nor its name, and a block is never removed, only retired. Item
+  names likewise. That makes F-52 impossible instead of fixing it, costs a
+  lifetime limit of 255 blocks (past which is a format change anyway), and is
+  enforced rather than remembered: explicit ids in `blocks.h` and a registry,
+  `tools/ids.txt`, that `make check` holds the code to in both directions.
+  Adding a block is appending a line there in the same commit. The palette
+  stays, as a safety net that now has nothing to translate.
+- **D-75** 2026-09-22, **the user** (the upgrader), Claude (the slot states):
+  **a structural change is met by a one-time upgrade of the whole world,
+  written when the first such change exists.** The major version in each
+  file's magic is the hook (D-32). Meanwhile the slot list says what an
+  unreadable slot is -- newer, older, damaged -- rather than showing it as
+  empty. When the upgrader is written it must be crash-safe: convert region by
+  region into new files, rename each over its original, record each region's
+  version, and move the world's version on last, so an interrupted upgrade
+  resumes rather than leaving a mixture.
 - **D-72** 2026-09-22, Claude: **the geometry caps are 6144 flat (internal
   SRAM), 256 lines, 4096 textured (PSRAM).** The line list was 112 KB of
   internal SRAM for the dozen lines of a block outline; shrinking it pays for

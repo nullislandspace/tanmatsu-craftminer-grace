@@ -63,7 +63,7 @@ static int      s_typed_n;
 // open per slot, which is fine a few times a session and not fine per
 // frame.
 static world_meta_t s_slot_meta[CM_SLOTS];
-static bool         s_slot_used[CM_SLOTS];
+static slot_state_t s_slot_state[CM_SLOTS];
 static int          s_slot;  // the slot the WORLD / NEW / DELETE screens are about
 
 // The new-world form.
@@ -105,7 +105,10 @@ static void go(screen_t scr) {
 
 static void refresh_slots(void) {
     for (int i = 0; i < CM_SLOTS; i++) {
-        s_slot_used[i] = worldstore_slot_peek(i, &s_slot_meta[i]);
+        s_slot_state[i] = worldstore_slot_state(i, &s_slot_meta[i]);
+        // A damaged world still gets the world screen -- to delete it --
+        // under a name that says what it is.
+        if (s_slot_state[i] == SLOT_DAMAGED) snprintf(s_slot_meta[i].name, sizeof(s_slot_meta[i].name), "(damaged)");
     }
 }
 
@@ -282,7 +285,13 @@ static menu_cmd_t update_worlds(void) {
     if (s_act & ACT_OK) {
         if (*cur == CM_SLOTS) {
             go(SCR_TITLE);
-        } else if (s_slot_used[*cur]) {
+        } else if (s_slot_state[*cur] == SLOT_NEWER) {
+            // Somebody's world, from a later build. Not ours to open, and
+            // not free either: nothing is offered.
+            menu_status("Made by a newer CraftMiner: update to play it");
+        } else if (s_slot_state[*cur] == SLOT_OLDER) {
+            menu_status("An older save format: this build cannot upgrade it yet");
+        } else if (s_slot_state[*cur] != SLOT_EMPTY) {
             s_slot               = *cur;
             s_cursor[SCR_WORLD] = 0;
             go(SCR_WORLD);
@@ -644,10 +653,14 @@ void menu_draw(pax_buf_t* fb) {
             se_menu_row_t rows[CM_SLOTS + 1];
             memset(rows, 0, sizeof(rows));
             for (int i = 0; i < CM_SLOTS; i++) {
-                if (s_slot_used[i]) {
-                    snprintf(labels[i], sizeof(labels[i]), "%d  %s", i + 1, s_slot_meta[i].name);
-                } else {
-                    snprintf(labels[i], sizeof(labels[i]), "%d  - empty -", i + 1);
+                switch (s_slot_state[i]) {
+                    case SLOT_WORLD:
+                    case SLOT_DAMAGED:
+                        snprintf(labels[i], sizeof(labels[i]), "%d  %s", i + 1, s_slot_meta[i].name);
+                        break;
+                    case SLOT_NEWER: snprintf(labels[i], sizeof(labels[i]), "%d  (from a newer version)", i + 1); break;
+                    case SLOT_OLDER: snprintf(labels[i], sizeof(labels[i]), "%d  (needs upgrading)", i + 1); break;
+                    default: snprintf(labels[i], sizeof(labels[i]), "%d  - empty -", i + 1); break;
                 }
                 rows[i].label = labels[i];
             }

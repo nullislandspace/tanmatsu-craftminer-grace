@@ -1,0 +1,45 @@
+# =====================================================================
+#  CraftMiner  --  every block id and item name ever shipped (D-74)
+# ---------------------------------------------------------------------
+#  Worlds on people's cards store BLOCKS as one-byte ids and ITEMS by
+#  name (inventories, dropped items, replays). So:
+#
+#    a block's id and name never change, and a block is never removed --
+#    it is retired, keeping its line and its number;
+#    an item's name never changes, and an item is never removed.
+#
+#  `make check` (worldcheck, "the id registry") fails the build if the
+#  code disagrees with this file in any way: an id renumbered or renamed,
+#  a line with no block or item behind it, or a block or item in the
+#  code that is not listed here. Adding one is appending a line, in the
+#  same commit -- deliberately, since after the first build that ships
+#  it, that line is forever.
+#
+#  block <id> <name>
+#  item <name>
+# =====================================================================
+block 0 air
+block 1 grass
+block 2 dirt
+block 3 stone
+block 4 cobblestone
+block 5 sand
+block 6 water
+block 7 log
+block 8 planks
+block 9 leaves
+block 10 coal_ore
+block 11 glass
+block 12 torch
+block 13 flower_red
+block 14 flower_yellow
+block 15 tall_grass
+block 16 barrier
+item coal
+item stick
+item pickaxe_wood
+item pickaxe_stone
+item axe_wood
+item axe_stone
+item shovel_wood
+item shovel_stone
