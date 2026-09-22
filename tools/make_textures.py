@@ -682,6 +682,100 @@ def cm_torch():
     return img.astype(np.uint8)
 
 
+def cm_bedrock():
+    """Beta's bedrock: dark grey, blotched near-black and pale grey at
+    random, with no pattern to it."""
+    gen = cm_gen(19)
+    lum = gen.integers(-10, 11, (B, B)).astype(float)
+    pick = gen.random((B, B))
+    lum[pick < 0.30] -= 34                            # near-black patches
+    lum[pick > 0.82] += 40                            # pale chips
+    lum = lum + 8 * pnoise(B, B, 1.0, 1.0, gen)
+    return cm_rgb(lum, (84, 84, 84))
+
+
+def cm_gravel():
+    """Pebbles in grey, brown-grey and near-white, packed tight: each
+    texel belongs to its nearest pebble (wrapping, so it tiles), darker at
+    the pebble's rim."""
+    gen = cm_gen(20)
+    n = 22
+    seeds = gen.uniform(0, B, (n, 2))
+    tints = np.array([(128, 122, 118), (104, 98, 94), (150, 142, 136), (92, 84, 80), (170, 164, 160)])
+    tint = tints[gen.integers(0, len(tints), n)]
+    ys, xs = np.mgrid[0:B, 0:B] + 0.5
+    d = []
+    for sx, sy in seeds:
+        dx = np.abs(xs - sx)
+        dy = np.abs(ys - sy)
+        dx = np.minimum(dx, B - dx)
+        dy = np.minimum(dy, B - dy)
+        d.append(np.sqrt(dx * dx + dy * dy))
+    d = np.array(d)
+    order = np.sort(d, axis=0)
+    cell = np.argmin(d, axis=0)
+    img = tint[cell].astype(float)
+    img += (gen.integers(-8, 9, (B, B)) - 3.0 * order[0])[:, :, None]
+    img[(order[1] - order[0]) < 0.6] *= 0.55          # the gaps between pebbles
+    return np.clip(img, 0, 255).astype(np.uint8)
+
+
+# A 5x7 pixel font for the sign texts, one string of 7 rows of 5 per
+# glyph ('#' ink). Written out here rather than taken from PIL, so the
+# PNGs come out the same whatever PIL is installed. Only the letters the
+# texts use.
+FONT5x7 = {
+    " ": [".....", ".....", ".....", ".....", ".....", ".....", "....."],
+    "!": ["..#..", "..#..", "..#..", "..#..", "..#..", ".....", "..#.."],
+    "B": ["####.", "#...#", "#...#", "####.", "#...#", "#...#", "####."],
+    "F": ["#####", "#....", "#....", "####.", "#....", "#....", "#...."],
+    "K": ["#...#", "#..#.", "#.#..", "##...", "#.#..", "#..#.", "#...#"],
+    "L": ["#....", "#....", "#....", "#....", "#....", "#....", "#####"],
+    "W": ["#...#", "#...#", "#...#", "#.#.#", "#.#.#", "##.##", "#...#"],
+    "a": [".....", ".....", ".###.", "....#", ".####", "#...#", ".####"],
+    "d": ["....#", "....#", ".##.#", "#..##", "#...#", "#...#", ".####"],
+    "e": [".....", ".....", ".###.", "#...#", "#####", "#....", ".###."],
+    "f": ["..##.", ".#..#", ".#...", "###..", ".#...", ".#...", ".#..."],
+    "h": ["#....", "#....", "#.##.", "##..#", "#...#", "#...#", "#...#"],
+    "i": ["..#..", ".....", ".##..", "..#..", "..#..", "..#..", ".###."],
+    "l": [".##..", "..#..", "..#..", "..#..", "..#..", "..#..", ".###."],
+    "n": [".....", ".....", "#.##.", "##..#", "#...#", "#...#", "#...#"],
+    "o": [".....", ".....", ".###.", "#...#", "#...#", "#...#", ".###."],
+    "r": [".....", ".....", "#.##.", "##..#", "#....", "#....", "#...."],
+    "s": [".....", ".....", ".####", "#....", ".###.", "....#", "####."],
+    "t": [".#...", ".#...", "###..", ".#...", ".#...", ".#..#", "..##."],
+    "u": [".....", ".....", "#...#", "#...#", "#...#", "#..##", ".##.#"],
+    "w": [".....", ".....", "#...#", "#...#", "#.#.#", "#.#.#", ".#.#."],
+}
+
+# The sign texts, in VM_SIGN_0.. order (voxel_mesh.h lists them too):
+# two lines each, at most 10 characters a line (6 texels each on 64).
+SIGN_TEXTS = [("Kurt", "was here"), ("Wolfie", "was here"), ("Far Lands", "or Bust!")]
+
+
+def cm_sign(lines):
+    """A sign's front, 64x32 across a board 1 block wide and 1/2 high:
+    the planks at four texels to one of theirs -- the same boards as the
+    planks block, so it matches the rest of the sign -- with the text
+    in dark ink, centred, two lines."""
+    planks = cm_planks()
+    img = np.repeat(np.repeat(planks, 4, axis=0), 4, axis=1)[:32, :64].astype(int)
+    img[0, :] = img[-1, :] = (70, 50, 28)             # the board's edge
+    img[:, 0] = img[:, -1] = (70, 50, 28)
+    ink = (38, 26, 14)
+    for row, text in enumerate(lines):
+        width = 6 * len(text) - 1
+        x0 = (64 - width) // 2
+        y0 = 7 + row * 11
+        for k, ch in enumerate(text):
+            glyph = FONT5x7[ch]
+            for gy in range(7):
+                for gx in range(5):
+                    if glyph[gy][gx] == "#":
+                        img[y0 + gy, x0 + 6 * k + gx] = ink
+    return img.astype(np.uint8)
+
+
 def cm_torch_flame():
     """Torch flame, 64x8 like flame(): white-yellow core -> orange ->
     red tip."""
@@ -722,6 +816,11 @@ TEXTURES = {
     "glass.png": cm_glass,
     "torch.png": cm_torch,
     "leaves_fast.png": cm_leaves_fast,
+    "bedrock.png": cm_bedrock,
+    "gravel.png": cm_gravel,
+    "sign_kurt.png": lambda: cm_sign(SIGN_TEXTS[0]),
+    "sign_wolfie.png": lambda: cm_sign(SIGN_TEXTS[1]),
+    "sign_flob.png": lambda: cm_sign(SIGN_TEXTS[2]),
 }
 
 

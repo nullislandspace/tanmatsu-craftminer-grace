@@ -119,4 +119,23 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                      .mat      = M1(VM_STONE),
                      .hardness = HARDNESS_UNBREAKABLE,
                      .flags    = BF_SOLID | BF_OPAQUE},
+
+    // The floor of the world, as in Beta: nothing breaks it. Only the
+    // Far Lands put it down so far (D-79).
+    [BLK_BEDROCK] = {.name     = "bedrock",
+                     .kind     = K_CUBE,
+                     .mat      = M1(VM_BEDROCK),
+                     .hardness = HARDNESS_UNBREAKABLE,
+                     .flags    = BF_SOLID | BF_OPAQUE},
+
+    [BLK_GRAVEL] = {.name     = "gravel", .drop_item = BLK_GRAVEL, .drop_min = 1, .drop_max = 1,
+                    .kind     = K_CUBE,
+                    .mat      = M1(VM_GRAVEL),
+                    .hardness = 18,
+                    .tool     = TOOL_SHOVEL,
+                    .flags    = BF_SOLID | BF_OPAQUE | BF_GRAVITY},
+
+    // Not solid, as in Minecraft: you walk through a sign. It drops
+    // nothing, since there is no sign item yet (D-79).
+    [BLK_SIGN] = {.name = "sign", .kind = K_SIGN, .mat = M1(VM_PLANKS), .hardness = 40, .tool = TOOL_AXE},
 };

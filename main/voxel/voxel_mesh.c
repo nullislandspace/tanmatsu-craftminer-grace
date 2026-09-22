@@ -110,6 +110,36 @@ static void emit_box(mesh_t* m, vec3_t lo, vec3_t hi, uint8_t mat) {
     emit_f(m, DIRS[5], lo.z, lo.x, hi.x, lo.y, hi.y, 1.0f, 1.0f, mat);
 }
 
+// A box lo..hi with `front` on its +x face and `mat` on the others, each
+// face's texture once across it (the sign's post and board).
+static void emit_box_mats(mesh_t* m, vec3_t lo, vec3_t hi, uint8_t mat, uint8_t front) {
+    mesh_set_dir(m, MESH_DIR_NONE);
+    emit_f(m, DIRS[0], hi.x, lo.z, hi.z, lo.y, hi.y, 1.0f, 1.0f, front);
+    emit_f(m, DIRS[1], lo.x, lo.z, hi.z, lo.y, hi.y, 1.0f, 1.0f, mat);
+    emit_f(m, DIRS[2], hi.y, lo.x, hi.x, lo.z, hi.z, 1.0f, 1.0f, mat);
+    emit_f(m, DIRS[3], lo.y, lo.x, hi.x, lo.z, hi.z, 1.0f, 1.0f, mat);
+    emit_f(m, DIRS[4], hi.z, lo.x, hi.x, lo.y, hi.y, 1.0f, 1.0f, mat);
+    emit_f(m, DIRS[5], lo.z, lo.x, hi.x, lo.y, hi.y, 1.0f, 1.0f, mat);
+}
+
+int voxel_sign_text(int32_t x, int32_t y, int32_t z) {
+    uint32_t h = (uint32_t)x * 0x9E3779B1u ^ (uint32_t)y * 0x85EBCA77u ^ (uint32_t)z * 0xC2B2AE3Du;
+    h ^= h >> 15;
+    h *= 0x2C1B3C6Du;
+    h ^= h >> 12;
+    return (int)(h % VOX_SIGN_TEXTS);
+}
+
+// A standing sign, facing east (+x): a post up to half the cell, and a
+// board across the whole cell above it, its front the text (one texture
+// across the board: 64 x 32 texels on 1 x 0.5 blocks).
+static void emit_sign(mesh_t* m, int X, int Y, int Z) {
+    float const cx = (float)X + 0.5f, cz = (float)Z + 0.5f, t = 1.0f / 16.0f;
+    uint8_t const front = (uint8_t)(VM_SIGN_0 + voxel_sign_text(X, Y, Z));
+    emit_box_mats(m, v3(cx - t, (float)Y, cz - t), v3(cx + t, (float)Y + 0.5f, cz + t), VM_PLANKS, VM_PLANKS);
+    emit_box_mats(m, v3(cx - t, (float)Y + 0.5f, (float)Z), v3(cx + t, (float)Y + 1.0f, (float)Z + 1.0f), VM_PLANKS, front);
+}
+
 // A plant: two vertical quads along the cell's diagonals, each twice
 // (one per side), the texture upright and unmirrored from both.
 static void emit_plant(mesh_t* m, int x, int y, int z, uint8_t mat) {
@@ -263,7 +293,7 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
         }
     }
     cm_free(mask);
-    // The plants (fancy meshes only) and torches, one by one (whole
+    // The plants (fancy meshes only), torches and signs, one by one (whole
     // blocks only: a coarse grid has neither).
     if (g->step != 1) return;
     for (int z = 0; z < d; z++) {
@@ -272,7 +302,8 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                 uint8_t const      b = CELL(x, y, z);
                 block_kind_t const k = block_kind(b);
                 int const          X = x + g->x0, Y = y + g->y0, Z = z + g->z0;
-                if (k == K_PLANT || k == K_TORCH) mesh_set_light(m, LIGHT(x, y, z));  // lit by its own cell
+                if (k == K_PLANT || k == K_TORCH || k == K_SIGN) mesh_set_light(m, LIGHT(x, y, z));  // lit by its own cell
+                if (k == K_SIGN) emit_sign(m, X, Y, Z);
                 if (k == K_PLANT && mode == VOX_MESH_FANCY) emit_plant(m, X, Y, Z, (uint8_t)voxel_face_mat(b, VF_SIDE));
                 if (k == K_TORCH) {
                     float const cx = (float)X + 0.5f, cz = (float)Z + 0.5f, r = 1.0f / 16.0f;

@@ -35,6 +35,9 @@ block 13 flower_red
 block 14 flower_yellow
 block 15 tall_grass
 block 16 barrier
+block 17 bedrock
+block 18 gravel
+block 19 sign
 item coal
 item stick
 item pickaxe_wood

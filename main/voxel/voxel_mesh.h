@@ -17,6 +17,8 @@
 //    plants        flowers and tall grass: two crossed quads through
 //                  the cell, each drawn from both sides.
 //    torches       a thin stick in the middle of the cell.
+//    signs         a post with a board on top, facing east (+x); the
+//                  board's front is the sign's text texture.
 //
 //  Neighbouring cube faces of one material in one plane merge into one
 //  rectangle (greedy meshing); textures repeat once per block, since the
@@ -70,8 +72,26 @@ typedef enum {
     VM_FLOWER_YELLOW,
     VM_TALL_GRASS,
     VM_LEAVES_FAST,
+    VM_BEDROCK,
+    VM_GRAVEL,
+    // A sign's front, one texture per text (tools/make_textures.py draws
+    // them): VM_SIGN_0 + voxel_sign_text().
+    VM_SIGN_0,
+    VM_SIGN_1,
+    VM_SIGN_2,
     VM_COUNT
 } vox_mat_t;
+
+// How many sign texts there are, and which one the sign standing at
+// (x, y, z) shows. Signs are generated only (D-79) and their texts are a
+// fixed list, so a sign's text needs no storage: it follows from where it
+// stands, the same every time the chunk is meshed.
+//
+//   0  "Kurt" / "was here"
+//   1  "Wolfie" / "was here"
+//   2  "Far Lands" / "or Bust!"
+#define VOX_SIGN_TEXTS 3
+int voxel_sign_text(int32_t x, int32_t y, int32_t z);
 
 typedef enum {
     VOX_MESH_FANCY,

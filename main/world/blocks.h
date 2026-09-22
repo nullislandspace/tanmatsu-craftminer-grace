@@ -28,6 +28,7 @@ typedef enum {
     K_SEE,      // a cube with cut-out texels (leaves, glass)
     K_PLANT,    // two crossed double-sided quads (flowers, crops)
     K_TORCH,    // a thin stick in the middle of the cell
+    K_SIGN,     // a post with a board on it, facing east, its text a texture
 } block_kind_t;
 
 // Behaviour flags.
@@ -108,7 +109,13 @@ enum {
     // instead of falling through it (D-14). Never stored in a chunk, but
     // it has a number like any other and keeps it.
     BLK_BARRIER = 16,
-    // New blocks here: BLK_SOMETHING = 17, and a line in tools/ids.txt.
+    BLK_BEDROCK = 17,
+    BLK_GRAVEL  = 18,
+    // Generated only, for now (D-79): nothing places or writes one, and
+    // there is no sign item. Its text follows from where it stands
+    // (voxel_mesh.h, voxel_sign_text).
+    BLK_SIGN = 19,
+    // New blocks here: BLK_SOMETHING = 20, and a line in tools/ids.txt.
     BLK_COUNT
 };
 

@@ -36,6 +36,8 @@ static uint32_t const BLOCK_ARGB[BLK_COUNT] = {
     [BLK_GLASS] = 0xFFC8D8DEu,        [BLK_TORCH] = 0xFF6E502Cu,
     [BLK_FLOWER_RED] = 0xFFD62824u,   [BLK_FLOWER_YELLOW] = 0xFFFAD428u,
     [BLK_TALL_GRASS] = 0xFF5C9634u,   [BLK_BARRIER] = 0xFF303030u,
+    [BLK_BEDROCK] = 0xFF4A4A4Au,      [BLK_GRAVEL] = 0xFF847C78u,
+    [BLK_SIGN] = 0xFFA4804Eu,
 };
 
 item_def_t item_def(uint16_t id) {

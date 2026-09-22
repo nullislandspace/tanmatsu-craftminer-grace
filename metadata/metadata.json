@@ -29,6 +29,10 @@
           "target_file": "app.so"
         },
         {
+          "source_file": "textures/bedrock.png",
+          "target_file": "textures/bedrock.png"
+        },
+        {
           "source_file": "textures/coal_ore.png",
           "target_file": "textures/coal_ore.png"
         },
@@ -61,6 +65,10 @@
           "target_file": "textures/grass_top.png"
         },
         {
+          "source_file": "textures/gravel.png",
+          "target_file": "textures/gravel.png"
+        },
+        {
           "source_file": "textures/leaves.png",
           "target_file": "textures/leaves.png"
         },
@@ -87,6 +95,18 @@
         {
           "source_file": "textures/sand.png",
           "target_file": "textures/sand.png"
+        },
+        {
+          "source_file": "textures/sign_flob.png",
+          "target_file": "textures/sign_flob.png"
+        },
+        {
+          "source_file": "textures/sign_kurt.png",
+          "target_file": "textures/sign_kurt.png"
+        },
+        {
+          "source_file": "textures/sign_wolfie.png",
+          "target_file": "textures/sign_wolfie.png"
         },
         {
           "source_file": "textures/stone.png",

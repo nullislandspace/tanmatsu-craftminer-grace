@@ -40,6 +40,11 @@ static struct {
     [VM_FLOWER_YELLOW] = {"flower_yellow.png", 0xFFFAD428u},
     [VM_TALL_GRASS]    = {"tall_grass.png", 0xFF5C9634u},
     [VM_LEAVES_FAST]   = {"leaves_fast.png", 0xFF305C20u},
+    [VM_BEDROCK]       = {"bedrock.png", 0xFF4A4A4Au},
+    [VM_GRAVEL]        = {"gravel.png", 0xFF847C78u},
+    [VM_SIGN_0]        = {"sign_kurt.png", 0xFFA4804Eu},
+    [VM_SIGN_1]        = {"sign_wolfie.png", 0xFFA4804Eu},
+    [VM_SIGN_2]        = {"sign_flob.png", 0xFFA4804Eu},
 };
 
 static mesh_mat_t s_tex_mats[VM_COUNT];
