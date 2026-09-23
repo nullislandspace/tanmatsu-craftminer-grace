@@ -269,3 +269,7 @@ bench.done = Izjaukts %d %s
 
 # --- hud ---
 hud.needs_tool = Vajag %s
+
+# --- amount ---
+amount.title = Cik %s?
+amount.hint = bultiņas vai cipari iestata   enter pārvieto   esc atceļ

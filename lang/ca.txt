@@ -269,3 +269,7 @@ bench.done = %d %s desmuntat
 
 # --- hud ---
 hud.needs_tool = Cal %s
+
+# --- amount ---
+amount.title = Quants %s?
+amount.hint = fletxes o xifres ajusten   retorn mou   esc cancel·la

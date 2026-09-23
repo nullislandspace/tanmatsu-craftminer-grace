@@ -72,6 +72,8 @@ set(APP_SOURCES
     main/ui/furnace_ui.c
     main/ui/chest_ui.c
     main/ui/bench_ui.c
+    main/ui/amount_ui.c
+    main/ui/cheat_ui.c
     main/ui/keybind_ui.c
     main/ui/icons.c
     main/ui/settings.c

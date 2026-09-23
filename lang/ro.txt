@@ -269,3 +269,7 @@ bench.done = %d %s demontat
 
 # --- hud ---
 hud.needs_tool = Necesită %s
+
+# --- amount ---
+amount.title = Câte %s?
+amount.hint = săgețile sau cifrele reglează   enter mută   esc anulează

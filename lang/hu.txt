@@ -269,3 +269,7 @@ bench.done = Szétszedve %d %s
 
 # --- hud ---
 hud.needs_tool = Kell hozzá %s
+
+# --- amount ---
+amount.title = Hány %s?
+amount.hint = nyilak vagy számjegyek állítják   enter átvisz   esc megszakít

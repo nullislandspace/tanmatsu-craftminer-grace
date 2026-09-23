@@ -269,3 +269,7 @@ bench.done = Расклопљено %d %s
 
 # --- hud ---
 hud.needs_tool = Треба %s
+
+# --- amount ---
+amount.title = Колико %s?
+amount.hint = стрелице или цифре подешавају   ентер помера   есц отказује

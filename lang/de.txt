@@ -261,3 +261,7 @@ bench.done = %d %s zerlegt
 
 # --- hud ---
 hud.needs_tool = Braucht %s
+
+# --- amount ---
+amount.title = Wie viele %s?
+amount.hint = Pfeile oder Ziffern stellen ein   Enter schiebt   Esc bricht ab

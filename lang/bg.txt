@@ -261,3 +261,7 @@ bench.done = Разглобени %d %s
 
 # --- hud ---
 hud.needs_tool = Нужна е %s
+
+# --- amount ---
+amount.title = Колко %s?
+amount.hint = стрелки или цифри настройват   ентер мести   есц отказва

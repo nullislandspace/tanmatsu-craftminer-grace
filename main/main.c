@@ -49,7 +49,9 @@
 #include "testkit/report.h"
 #include "testkit/showtime.h"
 #include "ui/icons.h"
+#include "ui/amount_ui.h"
 #include "ui/bench_ui.h"
+#include "ui/cheat_ui.h"
 #include "ui/chest_ui.h"
 #include "ui/craft_ui.h"
 #include "ui/furnace_ui.h"
@@ -1274,7 +1276,9 @@ static void on_update(float dt, void* user) {
     // The trashcan empties by the same clock, and for the same reason.
     if (chest_ui_active()) chest_ui_update(&s_player.inv, (uint32_t)s_meta.time_of_day);
     if (bench_ui_active()) bench_ui_update(&s_player.inv);
-    s_player.ui_open = craft_ui_active() || furnace_ui_active() || chest_ui_active() || bench_ui_active();
+    if (cheat_ui_active()) cheat_ui_update(&s_player.inv);
+    s_player.ui_open = craft_ui_active() || furnace_ui_active() || chest_ui_active() || bench_ui_active() ||
+                       cheat_ui_active();
 
     // The menus. Whatever changes the world or the game's running state
     // comes back as a command and is acted on here, in one place.
@@ -1497,6 +1501,16 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
     }
     // ... and so does the crafting book, because every letter typed
     // goes into its search box.
+    // The "how many?" modal sits OVER a screen and takes the keyboard
+    // from it, so it is asked about before the screen underneath.
+    if (amount_active()) {
+        amount_event(ev);
+        return;
+    }
+    if (cheat_ui_active()) {
+        cheat_ui_event(ev);
+        return;
+    }
     if (craft_ui_active()) {
         craft_ui_event(ev);
         return;
@@ -1562,6 +1576,11 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
     // something: binding Jump to F must not also start the flying camera.
     if (input_key_bound(sc)) return;
     switch (sc) {
+        case BSP_INPUT_SCANCODE_GRAVE:
+            // The cheat console, where a console goes.
+            s_player.inv.open = false;
+            cheat_ui_open();
+            return;
         case BSP_INPUT_SCANCODE_R:
             // Record a replay: from here, until R again. Written to
             // replays/last.cmr; copy it to test.cmr to make it the one
@@ -1872,6 +1891,7 @@ static void on_render(pax_buf_t* fb, void* user) {
         if (furnace_ui_active()) furnace_ui_draw(fb, &s_player.inv);
         if (chest_ui_active()) chest_ui_draw(fb, &s_player.inv);
         if (bench_ui_active()) bench_ui_draw(fb, &s_player.inv);
+        if (cheat_ui_active()) cheat_ui_draw(fb);
         if (s_player.needs_tool != 0) {
             char line[96];
             i18n_fmt(line, sizeof(line), CM_STR_HUD_NEEDS_TOOL, T(item_label(s_player.needs_tool)));

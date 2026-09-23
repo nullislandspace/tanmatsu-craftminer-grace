@@ -199,6 +199,8 @@ typedef enum {
     CM_STR_CHEST_NO_ROOM,               // chest.no_room
     CM_STR_CHEST_TRASH_WARN,            // chest.trash_warn
     CM_STR_CHEST_TRASH_GONE,            // chest.trash_gone
+    CM_STR_AMOUNT_TITLE,                // amount.title
+    CM_STR_AMOUNT_HINT,                 // amount.hint
     CM_STR_BENCH_TITLE,                 // bench.title
     CM_STR_BENCH_HINT,                  // bench.hint
     CM_STR_BENCH_EMPTY,                 // bench.empty

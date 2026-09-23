@@ -3894,6 +3894,11 @@ static struct {
     {"craft.auto_off", 18.0f, PANEL_ROOM(0.88f) / 2.0f},
     {"craft.auto_made", 14.0f, PANEL_ROOM(0.88f)},
 
+    // The "how many?" modal: a fixed 420 px box, so its own width and
+    // not a fraction of the panel.
+    {"amount.title", 22.0f, 640.0f - 44.0f},
+    {"amount.hint", 14.0f, 640.0f - 44.0f},
+
     // The line a block shows when it will not break, top left.
     {"hud.needs_tool", 16.0f, 800.0f - 32.0f},
 

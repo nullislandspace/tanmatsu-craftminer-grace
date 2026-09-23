@@ -269,3 +269,7 @@ bench.done = Purettiin %d %s
 
 # --- hud ---
 hud.needs_tool = Tarvitsee %s
+
+# --- amount ---
+amount.title = Kuinka monta %s?
+amount.hint = nuolet tai numerot asettavat   enter siirtää   esc peruu

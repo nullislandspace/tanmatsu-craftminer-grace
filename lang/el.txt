@@ -269,3 +269,7 @@ bench.done = Λύθηκαν %d %s
 
 # --- hud ---
 hud.needs_tool = Χρειάζεται %s
+
+# --- amount ---
+amount.title = Πόσα %s;
+amount.hint = βέλη ή ψηφία ρυθμίζουν   enter μετακινεί   esc ακυρώνει

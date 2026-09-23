@@ -269,3 +269,7 @@ bench.done = Díchóimeáladh %d %s
 
 # --- hud ---
 hud.needs_tool = Teastaíonn %s
+
+# --- amount ---
+amount.title = Cé mhéad %s?
+amount.hint = saigheada nó digití a shocraíonn   enter bogann   esc cealaíonn

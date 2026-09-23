@@ -269,3 +269,7 @@ bench.done = Tók %d %s í sundur
 
 # --- hud ---
 hud.needs_tool = Þarf %s
+
+# --- amount ---
+amount.title = Hversu mörg %s?
+amount.hint = örvar eða tölur stilla   enter færir   esc hættir við

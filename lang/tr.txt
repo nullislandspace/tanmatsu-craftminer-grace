@@ -269,3 +269,7 @@ bench.done = %d %s söküldü
 
 # --- hud ---
 hud.needs_tool = %s gerekir
+
+# --- amount ---
+amount.title = Kaç %s?
+amount.hint = oklar veya rakamlar ayarlar   enter taşır   esc iptal eder

@@ -269,3 +269,7 @@ bench.done = Rastavljeno %d %s
 
 # --- hud ---
 hud.needs_tool = Treba %s
+
+# --- amount ---
+amount.title = Koliko %s?
+amount.hint = strelice ili brojke postavljaju   enter premješta   esc otkazuje

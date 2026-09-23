@@ -269,3 +269,7 @@ bench.done = Išardyta %d %s
 
 # --- hud ---
 hud.needs_tool = Reikia %s
+
+# --- amount ---
+amount.title = Kiek %s?
+amount.hint = rodyklės ar skaitmenys nustato   enter perkelia   esc atšaukia

@@ -269,3 +269,7 @@ bench.done = Rozebrano %d %s
 
 # --- hud ---
 hud.needs_tool = Wymaga %s
+
+# --- amount ---
+amount.title = Ile %s?
+amount.hint = strzałki lub cyfry ustawiają   enter przenosi   esc anuluje

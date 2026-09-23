@@ -283,6 +283,11 @@ chest.trash_warn = anything left in here is gone after %d minutes of playing
 # ... and what it says when it has just thrown some away
 chest.trash_gone = %d stacks rotted away
 
+# --- How many to move -------------------------------------------------------
+# %s is what is being moved
+amount.title = How many %s?
+amount.hint = arrows or digits set it   enter moves   esc cancels
+
 # --- Taking things apart ----------------------------------------------------
 bench.title = Taking apart
 bench.hint = enter takes it apart   esc closes

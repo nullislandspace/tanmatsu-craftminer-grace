@@ -269,3 +269,7 @@ bench.done = Võeti lahti %d %s
 
 # --- hud ---
 hud.needs_tool = Vajab %s
+
+# --- amount ---
+amount.title = Kui palju %s?
+amount.hint = nooled või numbrid seavad   enter viib üle   esc katkestab

@@ -11,7 +11,7 @@
 //    sea       air below CH_SEA_LEVEL becomes water.
 //    caves     a 3D density field carves the stone. Kept below the
 //              surface so it opens as cave mouths rather than craters.
-//    ores      coal pockets in the stone.
+//    ores      single blocks of coal and iron in the stone.
 //    plants    flowers and tall grass on the grass.
 //    trees     the cross-chunk pass described in worldgen.h.
 //    signs     "Kurt was here" and friends, along the Far Lands edge.
@@ -117,8 +117,13 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
         }
 
         // Ore in what stone is left. Iron is DEEPER and RARER than
-        // coal, and tested first so the two never fight over a cell --
-        // a coal seam with iron in the middle of it looks like a bug.
+        // coal, and tested first so the two never fight over a cell.
+        //
+        // ONE BLOCK AT A TIME, NOT VEINS. cm_rand3 hashes the cell, so
+        // every ore block here is an independent coin flip and two
+        // together are a coincidence. Minecraft generates veins (coal
+        // 4-16 blocks, iron 1-10), which would want a pass of its own:
+        // origins on a coarse grid and a short random walk from each.
         if (b == BLK_STONE && y < 40 && y > CH_BEDROCK) {
             if (y < 28 && cm_rand3(wx, y, wz, seed ^ S_ORE2) > 0.9935f) {
                 b = BLK_IRON_ORE;

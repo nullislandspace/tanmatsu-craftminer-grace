@@ -269,3 +269,7 @@ bench.done = Skilte %d %s ad
 
 # --- hud ---
 hud.needs_tool = Kræver %s
+
+# --- amount ---
+amount.title = Hvor mange %s?
+amount.hint = piletaster eller tal indstiller   enter flytter   esc annullerer

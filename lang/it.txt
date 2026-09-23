@@ -269,3 +269,7 @@ bench.done = %d %s smontato
 
 # --- hud ---
 hud.needs_tool = Serve %s
+
+# --- amount ---
+amount.title = Quanti %s?
+amount.hint = frecce o cifre regolano   invio sposta   esc annulla

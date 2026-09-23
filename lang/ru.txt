@@ -269,3 +269,7 @@ bench.done = Разобрано %d %s
 
 # --- hud ---
 hud.needs_tool = Нужна %s
+
+# --- amount ---
+amount.title = Сколько %s?
+amount.hint = стрелки или цифры задают   ентер двигает   есц отменяет

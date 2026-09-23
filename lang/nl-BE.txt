@@ -259,3 +259,7 @@ bench.done = %d %s uit elkaar gehaald
 
 # --- hud ---
 hud.needs_tool = Vereist %s
+
+# --- amount ---
+amount.title = Hoeveel %s?
+amount.hint = pijlen of cijfers stellen in   enter verplaatst   esc annuleert

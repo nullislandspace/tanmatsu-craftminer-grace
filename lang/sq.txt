@@ -269,3 +269,7 @@ bench.done = U çmontuan %d %s
 
 # --- hud ---
 hud.needs_tool = Kërkon %s
+
+# --- amount ---
+amount.title = Sa %s?
+amount.hint = shigjetat ose shifrat rregullojnë   enter lëviz   esc anulon

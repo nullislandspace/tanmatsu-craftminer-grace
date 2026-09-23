@@ -269,3 +269,7 @@ bench.done = Tog isär %d %s
 
 # --- hud ---
 hud.needs_tool = Kräver %s
+
+# --- amount ---
+amount.title = Hur många %s?
+amount.hint = piltangenter eller siffror ställer in   enter flyttar   esc avbryter

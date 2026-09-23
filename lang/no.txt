@@ -269,3 +269,7 @@ bench.done = Tok %d %s fra hverandre
 
 # --- hud ---
 hud.needs_tool = Krever %s
+
+# --- amount ---
+amount.title = Hvor mange %s?
+amount.hint = piltaster eller tall stiller inn   enter flytter   esc avbryter

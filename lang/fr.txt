@@ -261,3 +261,7 @@ bench.done = %d %s démonté
 
 # --- hud ---
 hud.needs_tool = Demande %s
+
+# --- amount ---
+amount.title = Combien de %s ?
+amount.hint = flèches ou chiffres règlent   entrée déplace   échap annule

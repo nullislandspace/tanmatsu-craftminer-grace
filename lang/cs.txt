@@ -269,3 +269,7 @@ bench.done = Rozebráno %d %s
 
 # --- hud ---
 hud.needs_tool = Potřebuje %s
+
+# --- amount ---
+amount.title = Kolik %s?
+amount.hint = šipky nebo číslice nastaví   enter přesune   esc zruší

@@ -269,3 +269,7 @@ bench.done = %d %s desmontado
 
 # --- hud ---
 hud.needs_tool = Necesita %s
+
+# --- amount ---
+amount.title = ¿Cuántos %s?
+amount.hint = flechas o dígitos ajustan   intro mueve   esc cancela

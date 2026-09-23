@@ -13,6 +13,7 @@
 #include "items/items.h"
 #include "items/recipes.h"
 #include "se_ui.h"
+#include "ui/amount_ui.h"
 #include "testkit/showtime.h"
 
 #define ROW_INPUT  0
@@ -42,6 +43,11 @@ static unsigned s_act;
 static char   s_msg[64];
 static double s_msg_until;
 
+// A put waiting on "how many?". The slot, not a pointer: see chest_ui.c.
+static bool s_asking;
+static int  s_ask_slot;   // the player's slot the stack comes from
+static int  s_ask_into;   // BE_FURNACE_INPUT or BE_FURNACE_FUEL
+
 static blockent_t* furnace(void) {
     blockent_t* b = blockent_at(s_x, s_y, s_z);
     return (b != NULL && b->kind == BE_FURNACE) ? b : NULL;
@@ -57,6 +63,7 @@ bool furnace_ui_open(int32_t x, int32_t y, int32_t z) {
     s_cursor    = ROW_INPUT;
     s_pick_for  = -1;
     s_act       = 0;
+    s_asking    = false;
     s_msg_until = 0.0;
     return true;
 }
@@ -105,15 +112,16 @@ static void build_pick(inventory_t const* inv) {
 // Move a whole stack from the player into a furnace slot. What is
 // already there comes BACK, so choosing the wrong thing is undone by
 // choosing the right one rather than by breaking the furnace.
-static void put_in(inventory_t* inv, blockent_t* be, int be_slot, int inv_slot) {
+static void put_in(inventory_t* inv, blockent_t* be, int be_slot, int inv_slot, int want) {
     inv_slot_t* src = &inv->slot[inv_slot];
     inv_slot_t* dst = &be->slot[be_slot];
-    if (src->item == 0) return;
+    if (src->item == 0 || want <= 0) return;
+    if (want > src->count) want = src->count;
 
     if (dst->item == src->item && dst->wear == src->wear) {
         int const cap  = item_def(dst->item).stack_max;
         int const room = cap - dst->count;
-        int const take = src->count < room ? src->count : room;
+        int const take = want < room ? want : room;
         dst->count     = (uint8_t)(dst->count + take);
         src->count     = (uint8_t)(src->count - take);
         if (src->count == 0) {
@@ -123,11 +131,16 @@ static void put_in(inventory_t* inv, blockent_t* be, int be_slot, int inv_slot) 
         return;
     }
 
+    // A different thing was in the slot: it comes out, and only the
+    // asked-for part of the new stack goes in.
     inv_slot_t const was = *dst;
     *dst                 = *src;
-    src->item            = 0;
-    src->count           = 0;
-    src->wear            = 0;
+    dst->count           = (uint8_t)want;
+    src->count           = (uint8_t)(src->count - want);
+    if (src->count == 0) {
+        src->item = 0;
+        src->wear = 0;
+    }
     if (was.item != 0 && was.count > 0) {
         // Back into the pack -- and if it will not fit, back into the
         // slot it came from, which is now free. Nothing is ever lost.
@@ -152,6 +165,21 @@ void furnace_ui_update(inventory_t* inv, uint32_t now) {
     // does not tick, so this IS the furnace running (game/furnace.h).
     furnace_catch_up(be, now);
 
+    if (s_asking) {
+        int const want = amount_update();
+        if (want == AMOUNT_PENDING) return;
+        s_asking = false;
+        s_act    = 0;
+        if (want > 0) {
+            put_in(inv, be, s_ask_into, s_ask_slot, want);
+            furnace_catch_up(be, now);
+            blockent_touch(be);
+            sfx_play(SFX_PLACE);
+        }
+        s_pick_for = -1;
+        return;
+    }
+
     // --- The picker ---------------------------------------------------
     if (s_pick_for >= 0) {
         build_pick(inv);
@@ -166,8 +194,17 @@ void furnace_ui_update(inventory_t* inv, uint32_t now) {
             if (s_pick_cursor < 0) s_pick_cursor = 0;
             if (s_pick_cursor >= s_pick_n) s_pick_cursor = s_pick_n - 1;
             if (s_act & ACT_OK) {
-                put_in(inv, be, s_pick_for == ROW_FUEL ? BE_FURNACE_FUEL : BE_FURNACE_INPUT,
-                       s_pick[s_pick_cursor]);
+                inv_slot_t const* src  = &inv->slot[s_pick[s_pick_cursor]];
+                int const         into = s_pick_for == ROW_FUEL ? BE_FURNACE_FUEL : BE_FURNACE_INPUT;
+                if (src->count > 1) {
+                    s_asking   = true;
+                    s_ask_slot = s_pick[s_pick_cursor];
+                    s_ask_into = into;
+                    amount_open(src->item, src->count);
+                    s_act = 0;
+                    return;
+                }
+                put_in(inv, be, into, s_pick[s_pick_cursor], 1);
                 furnace_catch_up(be, now);  // it may start this instant
                 blockent_touch(be);         // or the card never hears about it
                 sfx_play(SFX_PLACE);
@@ -294,8 +331,11 @@ void furnace_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
     blockent_t const* be = furnace();
     if (be == NULL) return;
 
-    if (s_pick_for >= 0) {
+    if (s_pick_for >= 0 || s_asking) {
         draw_picker(fb, inv);
+        // Taking the OUTPUT never asks -- there is no reason to leave
+        // half a smelt in the furnace (the user's rule).
+        if (s_asking) amount_draw(fb);
         return;
     }
 
