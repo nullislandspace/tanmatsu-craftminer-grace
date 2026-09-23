@@ -119,6 +119,76 @@ static void check_voxel_mesher(void) {
         mesh_free(&m);
     }
     vg_case("voxel: two leaf blocks, fast", VOX_MESH_FAST, 1, false, true, 12);
+    // WATER (D-86). A liquid is only ever its surface: no sides, no
+    // bottom, and a top only where there is air above it -- and it hides
+    // nothing, so the bed of the lake is still meshed.
+    //
+    // A 2x2 pool one block deep, sitting on stone, with air above:
+    //
+    //   * the stone below keeps its top face, because water does not
+    //     hide it. Before K_LIQUID it did, and a lake was a blue lid
+    //     over a void;
+    //   * the water contributes exactly two quads, both at the surface
+    //     plane: one facing up and one facing down. The second is what
+    //     makes the surface a ceiling when the eye is under it -- an
+    //     axis-aligned face is visible only from the side its normal
+    //     points at;
+    //   * no side faces at all, however the pool is shaped.
+    //
+    // Counted by direction, because "how many triangles" would pass with
+    // the right number of the wrong faces.
+    vg_clear();
+    vg_fill(2, 1, 2, 3, 1, 3, BLK_STONE);
+    vg_fill(2, 2, 2, 3, 2, 3, BLK_WATER);
+    {
+        mesh_t m;
+        mesh_init(&m);
+        vox_grid_t const g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1};
+        voxel_mesh_build(&m, &g, VOX_MESH_FANCY);
+        // Counted per MATERIAL as well as per direction: the stone has
+        // faces of its own in this grid (a top under the water, a bottom
+        // over the air below it, four sides), and lumping them in with
+        // the water's would let the wrong faces pass for the right ones.
+        int wet_up = 0, wet_down = 0, wet_side = 0, wet_free = 0, stone_top = 0;
+        for (int i = 0; i < m.tn; i++) {
+            bool const wet = m.t[i].mat == VM_WATER;
+            switch (m.t[i].dir) {
+                case MESH_DIR_NONE: wet_free += wet; break;
+                case MESH_DIR_PY:
+                    wet_up += wet;
+                    stone_top += !wet;
+                    break;
+                case MESH_DIR_NY: wet_down += wet; break;
+                default: wet_side += wet; break;
+            }
+        }
+        printf("voxel: a pool: %d tris (water up %d, down %d, side %d; stone top %d)\n", m.tn, wet_up, wet_down,
+               wet_side, stone_top);
+        // Two triangles a quad, one merged quad over the 2x2 pool.
+        CHECK(wet_up == 2, "voxel: a pool: %d up-facing water tris, expected 2 (the surface)", wet_up);
+        CHECK(wet_down == 2, "voxel: a pool: %d down-facing water tris, expected 2 (its underside)", wet_down);
+        CHECK(wet_side == 0, "voxel: a pool: %d side water tris, expected none", wet_side);
+        CHECK(wet_free == 0, "voxel: a pool: %d unaligned water tris, expected none", wet_free);
+        // And the bed of the lake is still there: water hides nothing.
+        CHECK(stone_top == 2, "voxel: a pool: the stone under the water has %d top tris, expected 2", stone_top);
+        mesh_free(&m);
+    }
+    // Roofed over, the surface disappears entirely: a top only where
+    // there is AIR above.
+    vg_fill(2, 3, 2, 3, 3, 3, BLK_STONE);
+    {
+        mesh_t m;
+        mesh_init(&m);
+        vox_grid_t const g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1};
+        voxel_mesh_build(&m, &g, VOX_MESH_FANCY);
+        int water_faces = 0;
+        for (int i = 0; i < m.tn; i++) {
+            if (m.t[i].mat == VM_WATER) water_faces++;
+        }
+        printf("voxel: a pool with a lid: %d water tris\n", water_faces);
+        CHECK(water_faces == 0, "voxel: a roofed pool still drew %d water tris", water_faces);
+        mesh_free(&m);
+    }
     // A plant: two crossed quads, each from both sides; none when fast.
     vg_clear();
     *vg_cell(2, 0, 2) = BLK_FLOWER_RED;

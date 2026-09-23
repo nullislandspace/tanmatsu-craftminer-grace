@@ -50,6 +50,29 @@
 #define PL_JUMP     0.32f  // -> apex 1.33 blocks
 #define PL_TERMINAL 3.0f   // blocks a tick: nothing falls faster
 
+// SWIMMING (D-86). Water is not solid, so a player in it falls -- but
+// slowly, because buoyancy cancels almost all of gravity, and they can
+// push themselves back up. The numbers follow from phys_gravity's
+// recurrence `vy = (vy - g) * drag` rather than from feel:
+//
+//   sinking, hands down:  4 * (0 - 0.008)         = -0.032/tick, 0.6 b/s
+//   swimming up:          4 * (0.030 - 0.008)     = +0.088/tick, 1.8 b/s
+//   diving:               4 * (-0.030 - 0.008)    = -0.152/tick, 3.0 b/s
+//
+// (the 4 is drag/(1 - drag) with drag = 0.8.) Jump swims up and sneak
+// dives, which is free because the speed in water does not depend on
+// sneaking the way it does on land.
+#define PL_SWIM       0.11f   // blocks a tick: about half a walk
+#define PL_SWIM_UP    0.030f  // added to vy per tick while jump (or sneak) is held
+#define PL_WATER_GRAV 0.008f  // what is left of gravity once the water holds you
+#define PL_WATER_DRAG 0.80f   // per tick: water kills a fall in well under a second
+#define PL_WATER_TERM 0.50f   // blocks a tick: how deep a running jump can plunge you
+
+// Where the body is tested for being in water. Not the feet, which are
+// in the water the moment a toe touches it, and not the eye, which is
+// out of it while you are still swimming: the middle.
+#define PL_WADE_Y 0.9f
+
 // Survival, in Minecraft's units: 20 is full, and the HUD draws them
 // as ten hearts and ten drumsticks. The SYSTEMS that move them --
 // starvation, regeneration, fall damage, eating -- are block 12; this

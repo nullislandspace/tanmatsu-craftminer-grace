@@ -483,15 +483,31 @@ def cm_sand():
 
 
 def cm_water():
-    """Opaque (no transparency): deep blue with lighter wave crests,
-    running across u so a scrolled u reads as flowing water."""
+    """The surface of water, and the only face a liquid ever draws
+    (blocks.h, K_LIQUID): deep blue with lighter wave crests running
+    across u, so a scrolled u reads as flowing.
+
+    CUT-OUT, on a checkerboard. The engine has no blending -- alpha is
+    one bit -- so the way to make water look like water rather than like
+    a blue floor is to punch every other texel out and let what is
+    behind show through it. From above that is the lake bed; from
+    underneath it is the sky. A checkerboard rather than the random
+    scatter the leaves use, because a regular grid reads as a
+    half-transparent sheet where a random one reads as damage.
+
+    The crests stay solid: they are the part the eye reads as a surface,
+    and holes through them would make the water look torn."""
     gen = cm_gen(7)
     lum = gen.integers(-6, 7, (B, B)).astype(float)
+    crest = np.zeros((B, B), dtype=bool)
     for y in range(0, B, 4):
         off = int(gen.integers(0, B))
         for k in range(5):
             lum[(y + (k % 2)) % B, (off + k) % B] += 26
-    return cm_rgb(lum, (48, 84, 196))
+            crest[(y + (k % 2)) % B, (off + k) % B] = True
+    yy, xx = np.mgrid[0:B, 0:B]
+    holes = ((xx + yy) % 2 == 0) & ~crest
+    return cm_alpha(cm_rgb(lum, (48, 84, 196)), holes)
 
 
 def cm_log_side():

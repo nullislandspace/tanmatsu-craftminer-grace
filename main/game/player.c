@@ -138,13 +138,22 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     if (p->pitch > PITCH_MAX) p->pitch = PITCH_MAX;
     if (p->pitch < -PITCH_MAX) p->pitch = -PITCH_MAX;
 
+    // --- In the water? ------------------------------------------------
+    //
+    // Tested at the middle of the body (PL_WADE_Y): wading through a
+    // shallow stream should not turn into swimming, and being up to the
+    // chest in it should not stay walking.
+    bool const in_water = block_liquid(world_block((int32_t)floor(p->body.x), (int32_t)floor(p->body.y + PL_WADE_Y),
+                                                   (int32_t)floor(p->body.z)));
+
     // --- Walking ------------------------------------------------------
     //
     // Flattened: forward is where the player is facing, not where they
     // are looking. Looking at your feet must not slow you down.
     float const fwd = (act_held(mask, CM_FORWARD) ? 1.0f : 0.0f) - (act_held(mask, CM_BACK) ? 1.0f : 0.0f);
     float const str = (act_held(mask, CM_RIGHT) ? 1.0f : 0.0f) - (act_held(mask, CM_LEFT) ? 1.0f : 0.0f);
-    float const speed = act_held(mask, CM_SNEAK) ? PL_SNEAK : PL_WALK;
+    // In water there is one speed: sneak means dive, not creep.
+    float const speed = in_water ? PL_SWIM : act_held(mask, CM_SNEAK) ? PL_SNEAK : PL_WALK;
 
     float wish_x = 0.0f, wish_z = 0.0f;
     if (fwd != 0.0f || str != 0.0f) {
@@ -163,7 +172,9 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // Ease towards the wanted velocity rather than snapping to it, so
     // stopping and turning have some weight. On the ground only: in the
     // air you keep what you had, which is what makes a jump commit.
-    float const accel = p->body.on_ground ? PL_ACCEL : PL_ACCEL * 0.2f;
+    // Water has purchase the way the ground does, but half of it, so
+    // starting and stopping in it feel heavy.
+    float const accel = in_water ? PL_ACCEL * 0.5f : p->body.on_ground ? PL_ACCEL : PL_ACCEL * 0.2f;
     p->body.vx += (wish_x - p->body.vx) * accel;
     p->body.vz += (wish_z - p->body.vz) * accel;
 
@@ -175,7 +186,15 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // an apex of 0.83 blocks that way and 1.25 this way. A jump that
     // cannot clear one block is not a jump, and it is not obvious from
     // reading the code -- only from simulating the arc.
-    if (act_held(mask, CM_JUMP) && p->body.on_ground) p->body.vy = PL_JUMP;
+    if (in_water) {
+        // Swimming: an impulse added every tick the key is held, which
+        // the water's drag turns into a steady rise (player.h). Jump
+        // goes up, sneak goes down; let go and you sink slowly.
+        if (act_held(mask, CM_JUMP)) p->body.vy += PL_SWIM_UP;
+        else if (act_held(mask, CM_SNEAK)) p->body.vy -= PL_SWIM_UP;
+    } else if (act_held(mask, CM_JUMP) && p->body.on_ground) {
+        p->body.vy = PL_JUMP;
+    }
 
     p->in_air_last = !p->body.on_ground;
     phys_move(&p->body, (double)p->body.vx, (double)p->body.vy, (double)p->body.vz);
@@ -188,7 +207,11 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // The vertical for the NEXT tick, including the landing and
     // head-bump cases. In physics.c so that the host test runs the
     // same code rather than a copy of it.
-    phys_gravity(&p->body, PL_GRAVITY, PL_DRAG, PL_TERMINAL);
+    if (in_water) {
+        phys_gravity(&p->body, PL_WATER_GRAV, PL_WATER_DRAG, PL_WATER_TERM);
+    } else {
+        phys_gravity(&p->body, PL_GRAVITY, PL_DRAG, PL_TERMINAL);
+    }
 
     // --- The hotbar ---------------------------------------------------
     for (int i = 0; i < INV_HOTBAR; i++) {

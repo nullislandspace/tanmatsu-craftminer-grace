@@ -27,6 +27,11 @@ static bool face_shows(uint8_t b, uint8_t n, vox_mesh_mode_t mode) {
             // against its own id only if it is marked BF_SEE_SELF (leaves
             // are a canopy you see into, glass hides glass).
             return mode == VOX_MESH_FANCY && (n != b || (block_def(b)->flags & BF_SEE_SELF) != 0);
+        case K_LIQUID:
+            // A liquid never hides anything, in either mode. Without
+            // this the bed of a lake is never meshed and the surface is
+            // a lid over nothing (D-86).
+            return true;
         default:
             return true;  // air, a plant, a torch
     }
@@ -224,7 +229,22 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                 s0 = 0, s1 = d, pn = w, q0 = ylo, qn = band;
                 break;
             default:
-                s0 = ylo, s1 = yhi + 1, pn = w, q0 = 0, qn = d;
+                // ONE SLICE HIGHER than the highest block, because the
+                // underside of a water surface is emitted by the AIR
+                // cell above the liquid (see the mask below) and that
+                // cell is, by definition, above the highest block.
+                //
+                // NEVER past the box, though: a cell outside it belongs
+                // to the neighbouring section and is only ever a
+                // neighbour here. Letting one act as an owner emitted
+                // its faces twice, once from each side of the seam --
+                // which meshcheck's sectioning test caught at once
+                // (volume 186.667 against 148).
+                //
+                // A lake whose top cell IS the box's top needs no slice
+                // here: the section above owns the air over it and emits
+                // the underside from its own y = 0.
+                s0 = ylo, s1 = yhi + 2 > h ? h : yhi + 2, pn = w, q0 = 0, qn = d;
                 break;
         }
         int const        nx = dir.axis == 0 ? dir.sign : 0, ny = dir.axis == 1 ? dir.sign : 0;
@@ -247,14 +267,34 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                             break;
                     }
                     uint8_t const      b    = CELL(x, y, z);
+                    uint8_t const      nb   = CELL(x + nx, y + ny, z + nz);
                     block_kind_t const kb   = block_kind(b);
                     uint16_t           v    = 0;
                     bool const         edge = g->skirt && (x + nx < 0 || x + nx >= w || z + nz < 0 || z + nz >= d);
-                    if ((kb == K_CUBE || kb == K_SEE) && (edge || face_shows(b, CELL(x + nx, y + ny, z + nz), mode)))
+                    if ((kb == K_CUBE || kb == K_SEE) && (edge || face_shows(b, nb, mode))) {
                         // A skirt takes the block's top material: it only
                         // closes a seam, so it should match the ground.
                         v = (uint16_t)(((unsigned)LIGHT(x + nx, y + ny, z + nz) << 8) |
                                        (unsigned)(mode_mat(b, edge ? VF_TOP : face, mode) + 1));
+                    } else if (kb == K_LIQUID && ny > 0 && block_kind(nb) == K_AIR) {
+                        // THE SURFACE, and the only face a liquid has: no
+                        // sides, no bottom, and a top only where there is
+                        // air above it. Lit by that air, so it reads as
+                        // sky on water rather than as the gloom below.
+                        v = (uint16_t)(((unsigned)LIGHT(x + nx, y + ny, z + nz) << 8) |
+                                       (unsigned)(voxel_face_mat(b, VF_TOP) + 1));
+                    } else if (kb == K_AIR && ny < 0 && block_kind(nb) == K_LIQUID) {
+                        // THE UNDERSIDE of that same surface, emitted by
+                        // the air cell above it so that it lands on the
+                        // same plane (emit() puts a +y face at y+1 and a
+                        // -y face at y). An axis-aligned face is visible
+                        // only from the side its normal points at, so
+                        // without this second copy the surface disappears
+                        // the moment the eye goes under it -- which is
+                        // exactly how swimming used to look.
+                        v = (uint16_t)(((unsigned)LIGHT(x, y, z) << 8) |
+                                       (unsigned)(voxel_face_mat(nb, VF_TOP) + 1));
+                    }
                     mask[q * pn + p] = v;
                 }
             }

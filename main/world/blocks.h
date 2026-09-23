@@ -29,6 +29,13 @@ typedef enum {
     K_PLANT,    // two crossed double-sided quads (flowers, crops)
     K_TORCH,    // a thin stick in the middle of the cell
     K_SIGN,     // a post with a board on it, facing east, its text a texture
+    // A liquid is ONLY ever its surface. It draws no sides and no
+    // bottom, and a top only where there is air above it, and it never
+    // hides the faces of its neighbours -- so a lake is a lid over
+    // terrain you can see into, rather than a solid box with nothing
+    // inside it. The engine has no blending, so this is what
+    // "transparent" has to mean here (D-86). See voxel_mesh.c.
+    K_LIQUID,
 } block_kind_t;
 
 // Behaviour flags.
@@ -155,6 +162,9 @@ static inline uint8_t block_sound(uint8_t id) {
 }
 static inline bool block_solid(uint8_t id) {
     return (block_def(id)->flags & BF_SOLID) != 0;
+}
+static inline bool block_liquid(uint8_t id) {
+    return (block_def(id)->flags & BF_LIQUID) != 0;
 }
 static inline bool block_replaceable(uint8_t id) {
     return (block_def(id)->flags & BF_REPLACEABLE) != 0;

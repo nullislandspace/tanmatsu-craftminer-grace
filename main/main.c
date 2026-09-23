@@ -249,6 +249,16 @@ static bool enter_flight(void);
 static int64_t   s_title_time = TITLE_TIME;
 static uint8_t   s_lut[256];  // light byte -> brightness, for mesh_render
 
+// What being underwater looks like (D-86). The two tint factors are
+// 0..32, where 32 leaves a channel alone: red and green come down to
+// about four tenths, blue stays near full, which is what water does to
+// light. WATER_ARGB is both the sky and the fog -- from under the
+// surface the distance IS more water, so the two are the same colour,
+// and it is dark because the light has been through metres of it.
+#define WATER_TINT_RG 13u
+#define WATER_TINT_B  27u
+#define WATER_ARGB    0xFF14375Fu
+
 static player_t     s_player;
 static tick_clock_t s_tick;
 static bool         s_player_ready;
@@ -1641,6 +1651,28 @@ static void on_render(pax_buf_t* fb, void* user) {
     s_day = daytime_at(s_app == APP_PLAY ? s_meta.time_of_day : s_title_time);
     daytime_light_lut(s_day.day, s_lut);
     mesh_set_light_lut(s_force_nolight ? NULL : s_lut);
+
+    // --- Under the water (D-86) ---------------------------------------
+    //
+    // Water swallows red first and green next and leaves blue, so
+    // everything drawn takes a blue cast: se_scene_set_tint() scales the
+    // red and green of every triangle down and the blue hardly at all.
+    // The sky is not sky from down here either -- it is the colour of
+    // more water -- and the sun, the moon, the clouds and the stars are
+    // not in the picture at all.
+    //
+    // A RENDER-side test, not a tick one: what the camera is inside of
+    // must never reach the simulation (Part T).
+    bool const eye_wet =
+        block_liquid(world_block((int32_t)floor(s_cam.wx), (int32_t)floor((double)s_cam.wy),
+                                 (int32_t)floor(s_cam.wz)));
+    if (eye_wet) {
+        se_scene_set_tint(WATER_TINT_RG, WATER_TINT_B);
+        s_day.sky_argb = WATER_ARGB;
+        s_day.fog_argb = WATER_ARGB;
+    } else {
+        se_scene_set_tint(32, 32);
+    }
     chunk_render_set_fog(s_day.fog_argb);
     {
         // The directional light comes from whichever of the sun and the
@@ -1680,8 +1712,10 @@ static void on_render(pax_buf_t* fb, void* user) {
     // The sky first -- sun or moon, clouds, stars -- so the world draws
     // over it wherever they overlap.
     // No clouds on the title: its letters stand at the height they fly at.
-    voxel_sky_submit((float)showtime_now(), s_day.sun_dir, s_day.fog_argb, s_day.day, ox, oz,
-                     settings_clouds() && !s_force_noclouds && s_app == APP_PLAY);
+    if (!eye_wet) {
+        voxel_sky_submit((float)showtime_now(), s_day.sun_dir, s_day.fog_argb, s_day.day, ox, oz,
+                         settings_clouds() && !s_force_noclouds && s_app == APP_PLAY);
+    }
     chunk_render_submit(s_cam.wx, s_cam.wz);
     // The box round the block the crosshair found, while the player is
     // the one aiming. It is an edge, so the engine draws it after every

@@ -558,6 +558,7 @@ headers — enforced by a grep rule in `make check`.
 | AABB sweeps | 10000 random (start, velocity) pairs: never ends inside a solid; zero velocity is a fixed point; no tunnelling to 40 m/s; a 1.0-block step-up succeeds and 1.5 does not; a 0.6-wide body fits a 1-wide gap and not a 0.5 one. |
 | DDA picking | 10000 random rays against a brute-force march at 1/64 block: same block, same face normal, reach honoured, normal points at the cell a placement would fill. |
 | Crafting | Every recipe resolves at every legal grid offset; no two collide; every output and every `drop_item` exists. |
+| Water | A pool, counted per material and per direction: the surface is one merged quad up and one down, the water has no side or bottom faces at all, the stone under it keeps its top face, and a pool with a block over it draws no water at all (D-86). |
 | Menu labels | Every settings-row label, in all 32 languages, is narrower than the value column it sits beside -- measured with the engine's own glyph advances at the menu's row height (F-76). |
 | Music | Every file in `assets/music` loads, has notes, and ENDS inside twenty minutes at the real sample rate; a rewind replays it identically; every truncation of it still terminates. Junk, a header with no tracks and an SMPTE division are all refused. |
 | Save round trip | Chunk -> RLE -> chunk byte-identical; a 64-chunk region written and fully read back; a corrupted directory copy A falls back to B and reports the chunk *absent*, never corrupt; compaction preserves every chunk. |
@@ -991,6 +992,7 @@ frame time than the fell.
 | 27 | **The player's data out of the app's directory** | done | 2026-09-22, the user's catch (D-80): worlds, settings.txt, replays and screenshots move from `/sd/apps/at.cavac.craftminer` to `/sd/craftminer`, which the launcher does not manage. `world/datadir.c` moves what an earlier build left there on the first start -- a rename per entry, never over an existing one, nothing on a second start -- host-tested. Test-kit shots go to `/sd/craftminer/test`. |
 | 26 | **Screenshots** | done | 2026-09-22, asked for by the user: a new action, `Screenshot`, **0** by default and rebindable, saves the frame as the player sees it (HUD included) to `/sd/craftminer/screenshots/shotNNN.png` with the test kit's PNG writer; a "Saved ..." line shows for 2.5 s on the frames after, so it is never in the picture. |
 | 25 | **The depth plane in internal SRAM, and a key sort** | done | 2026-09-22, the user's call (D-77). Engine option `SE_SCENE_DEPTH16_INTERNAL`: at quarter resolution a plain 16-bit depth plane (188 KB) in internal SRAM, cleared each frame (0.29 ms), instead of the stamped PSRAM plane; the flat list it displaced went to PSRAM. Depth order is now a radix sort of 32-bit keys in internal SRAM plus one gather, not a qsort of the records. Same scenes as F-66: flight 13.97 -> 16.30 fps, near walk 10.22 -> 12.36, Far walk 7.08 -> 7.99 (F-67). |
+| 28 | **Water you can see into, and swim in** (D-86) | done | 2026-09-23, the user: water was an opaque cube, so putting your eyes under it broke the picture, and there was no swimming. Their rule, and it is the whole of it: **do not draw the sides or the bottom of a water block, and draw its top only when the block above is air.** That became `K_LIQUID`. Two things follow that the rule does not say out loud and the picture needs: a liquid must stop HIDING its neighbours, or the lake bed is never meshed and the surface is a lid over nothing; and the surface needs a second, downward-facing copy, emitted by the air cell above it, because an axis-aligned face is visible only from the side its normal points at -- which is exactly why it vanished as the eye went under. `water.png` became a cut-out checkerboard (the engine's one-bit alpha, the leaves' mechanism) so you see through the surface both ways. Swimming is buoyancy in `player.c`: jump rises, sneak dives, and the numbers come from `phys_gravity`'s recurrence rather than from feel. meshcheck pins the rule per material and per direction, and caught a real bug on the way -- the extra slice let a border cell act as an owner and doubled every face at a section seam. **And the blue.** The user's read of it was right and mine was wrong: the renderer already touches the brightness of every pixel, so the tint belongs there. `se_scene_set_tint()` scales the red and green of every triangle by one factor and the blue by another; the sky and the fog go to a dark blue and the sun, moon, clouds and stars are not drawn from under the surface. |
 
 ---
 
@@ -2461,6 +2463,78 @@ frame time than the fell.
   silent source is still a playing source, so it still holds the speaker up
   (F-75). The enable gates remain the way to turn a class off.
 
+- **D-86** 2026-09-23, **the user**: **water draws only its surface.** Not
+  "no sides and bottom" as an optimisation -- as the definition of what a
+  liquid IS in a renderer with no blending.
+
+  The problem was stated plainly: water is an opaque cube, "that's sort of
+  fine for now. But if we enter a place where the water covers our 'eyes',
+  the rendering breaks down." And the fix, equally plainly: "don't render
+  sides and bottoms of water blocks, and only render the top of water blocks
+  when the block above them is air", plus "maybe we could adapt the water
+  surface texture so it has a checkerboard of transparent pixels (sort of
+  like the leaves of trees), so you can sort of see through".
+
+  That is the rule, and `K_LIQUID` is it. Two consequences the rule implies
+  but does not say, and the picture is wrong without either:
+
+  * **a liquid hides nothing.** `face_shows` returns true against a liquid in
+    both mesh modes. Water used to be K_CUBE, so the stone under a lake had
+    its top face culled: remove water's own faces and all you would see is a
+    surface over a void.
+  * **the surface is drawn twice, up and down.** An axis-aligned face is
+    visible only from the side its normal points at -- that is the cheap cull
+    the whole renderer is built on. One face means the surface disappears the
+    instant the eye goes under it, which is the reported bug in a different
+    costume. The downward copy is emitted by the AIR cell above the water, so
+    it lands on the same plane for free (`emit()` puts a +y face at y+1 and a
+    -y face at y) and merges greedily like any other.
+
+  The checkerboard was the user's idea and it is the right one: alpha here is
+  one bit (se_texture.h), so "see through" can only mean holes, and a regular
+  grid reads as a half-transparent sheet where the leaves' random scatter
+  would read as damage. The wave crests stay solid, or the water looks torn.
+
+  **Swimming** came with it, since water you can see into is water you will
+  end up in. Buoyancy cancels almost all of gravity, jump rises and sneak
+  dives, and the three speeds are derived from `phys_gravity`'s recurrence
+  (`vy = (vy - g) * drag`) rather than tuned by feel, so they can be stated:
+  sinking 0.6 blocks a second, swimming up 1.8, diving 3.0.
+
+  **The blue cast, and a wrong answer corrected.** Asked how big a change it
+  would be, Claude priced three options and recommended the cheap one --
+  force the whole view through the flat, untextured path, which fog already
+  tints, and lose the textures while submerged. The user pushed back with one
+  sentence: *"But you are touching the brightness of every textured and
+  non-textured pixel anyway, right?"* They were right, and the estimate was
+  wrong for a specific reason worth recording: it assumed a branch inside the
+  hot loop, when the engine already establishes the better pattern one
+  function below, for cut-out textures -- *"A sibling rather than a flag in
+  the loop above, so opaque textures run exactly the code they always did."*
+
+  So the tint went where the shading already is. The textured loop scales all
+  three RGB565 channels with ONE multiply, by spreading them into separate
+  fields of a 32-bit word; one multiply cannot scale fields by different
+  amounts, two can, and two is what `se_scene_set_tint()` is. Red and green
+  share a factor -- which is what water does anyway, absorbing both far
+  faster than blue. The factors ride on the triangle's own shade, folded in
+  at setup, so the per-pixel cost really is the one extra multiply. The flat
+  path costs nothing: a flat triangle is shaded once.
+
+  It is free when off, and that is checked rather than asserted: with a tint
+  of (32, 32) the two-multiply form is **bit-identical** to the one-multiply
+  form over all 65536 texels at all 33 shade levels.
+
+  The sky is filled dark blue rather than sky blue (the user asked for that
+  explicitly), the fog takes the same colour -- from under the surface the
+  distance IS more water -- and `voxel_sky_submit` is skipped entirely.
+  The eye-in-water test is on the RENDER side, never the tick: what the
+  camera is inside of must not reach the simulation (Part T).
+
+  The engine did NOT take a version number for this. The user's call: it is
+  still unreleased and still being worked on, so 2.2 collects the whole
+  round (D-39's rule, restated).
+
 ## Verification
 
 - **Host:** `make check` = `worldcheck` + `scenecheck` + `meshcheck` +
@@ -2545,6 +2619,9 @@ untouched chunks keep their old ids) must be fixed before any block id moves.
     "If you need to ammend the fonts (use the full set) ... you are allowed
     to." Hershey's database is vendored with the generator that reads it;
     `simplex` itself is untouched and still public.
+  * `include/se_scene.h`, `src/se_scene.c`: `se_scene_set_tint()`, a
+    scene-wide colour cast for being underwater, as sibling raster loops
+    so an untinted scene is unchanged (D-86).
   * `include/se_audio.h`, `src/audio_mixer.c`: per-class volume
     (`audio_mixer_set_music_volume` / `_set_group_volume`) and
     `audio_mixer_keep_awake()`, which holds the amplifier up through the

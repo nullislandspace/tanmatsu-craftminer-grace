@@ -62,10 +62,13 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                   .tool     = TOOL_SHOVEL,
                   .flags    = BF_SOLID | BF_OPAQUE | BF_GRAVITY, .sound = SND_SAND},
 
-    // Opaque, as in Minecraft's "fast" graphics: the engine has no
-    // blending, so a see-through liquid is not on the table.
+    // The engine has no blending, so water is not see-through in the
+    // usual sense. It is K_LIQUID instead: only its surface is drawn,
+    // and it hides nothing, so you look through a lake at the bed of it
+    // (D-86). BF_OPAQUE stays on for the lighting, which reads
+    // BF_LIQUID first and dims by 2 a block either way.
     [BLK_WATER] = {.name     = "water",
-                   .kind     = K_CUBE,
+                   .kind     = K_LIQUID,
                    .mat      = M1(VM_WATER),
                    .hardness = HARDNESS_UNBREAKABLE,
                    .flags    = BF_OPAQUE | BF_REPLACEABLE | BF_LIQUID, .sound = SND_SPLASH},

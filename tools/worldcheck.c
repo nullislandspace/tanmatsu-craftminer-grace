@@ -83,7 +83,7 @@ static void check_blocks(void) {
     for (int i = 0; i < BLK_COUNT; i++) {
         block_def_t const* d = &BLOCKS[i];
         CHECK(d->name != NULL && d->name[0] != '\0', "block %d has no name", i);
-        CHECK(d->kind <= K_SIGN, "block %s: kind %u out of range", d->name ? d->name : "?", d->kind);
+        CHECK(d->kind <= K_LIQUID, "block %s: kind %u out of range", d->name ? d->name : "?", d->kind);
 
         // Every block that meshes needs three real materials, or the
         // mesher indexes a texture that was never loaded.

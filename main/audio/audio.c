@@ -31,6 +31,7 @@ static float  s_step_accum = 0.0f;
 static double s_last_x = 0.0, s_last_z = 0.0;
 static bool   s_have_last = false;
 static float  s_fall_speed = 0.0f;  // the last airborne vy, kept for the landing
+static bool   s_was_wet = false;    // in the water last tick, for the splash on entry
 
 bool cm_audio_init(void) {
     if (s_up) return true;
@@ -80,6 +81,7 @@ void cm_audio_leave_world(void) {
     s_step_accum = 0.0f;
     s_have_last  = false;
     s_fall_speed = 0.0f;
+    s_was_wet    = false;
     if (s_up) audio_mixer_stop_all_voices();
 }
 
@@ -104,6 +106,15 @@ static uint8_t body_block(player_t const* p) {
 
 void cm_audio_player_tick(player_t const* p) {
     if (!s_up || p == NULL) return;
+
+    // Hitting the water. The same edge as a landing, and the same
+    // reason: a fall that ends in a lake should be heard, and at the
+    // moment it ends rather than a tick later.
+    bool const wet = block_liquid(body_block(p));
+    if (wet && !s_was_wet && s_fall_speed > LAND_SPEED) {
+        sfx_play_pitched(SFX_BREAK_SPLASH, -2.0f);
+    }
+    s_was_wet = wet;
 
     // Landing. player_t.in_air_last is the previous tick's answer, which
     // is exactly the edge we want: airborne then not.
