@@ -157,6 +157,45 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                      .flags      = BF_SOLID | BF_OPAQUE, .sound = SND_STONE,
                      .flags2     = BF2_USABLE | BF2_RECORD},
 
+    // Iron. Needs a stone pickaxe and REFUSES the swing without one
+    // (BF2_TOOL_REQUIRED, the user's call) -- the ore drops itself and
+    // the furnace turns it into an ingot.
+    [BLK_IRON_ORE] = {.name       = "iron_ore", .drop_item = BLK_IRON_ORE, .drop_min = 1, .drop_max = 1,
+                      .kind       = K_CUBE,
+                      .mat        = M1(VM_IRON_ORE),
+                      .hardness   = 220,
+                      .tool       = TOOL_PICK,
+                      .tool_level = 2,
+                      .flags      = BF_SOLID | BF_OPAQUE, .sound = SND_STONE,
+                      .flags2     = BF2_TOOL_REQUIRED},
+
+    [BLK_CHEST] = {.name     = "chest", .drop_item = BLK_CHEST, .drop_min = 1, .drop_max = 1,
+                   .kind     = K_CUBE,
+                   .mat      = M3(VM_CHEST_TOP, VM_CHEST_SIDE, VM_CHEST_TOP),
+                   .hardness = 50,
+                   .tool     = TOOL_AXE,
+                   .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_WOOD,
+                   .flags2   = BF2_USABLE | BF2_RECORD},
+
+    // The same box, and what goes in it does not stay: the user's
+    // trashcan, emptied by the clock rather than by a button.
+    [BLK_TRASH] = {.name     = "trash_chest", .drop_item = BLK_TRASH, .drop_min = 1, .drop_max = 1,
+                   .kind     = K_CUBE,
+                   .mat      = M3(VM_TRASH_TOP, VM_TRASH_SIDE, VM_TRASH_TOP),
+                   .hardness = 50,
+                   .tool     = TOOL_AXE,
+                   .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_WOOD,
+                   .flags2   = BF2_USABLE | BF2_RECORD},
+
+    // Takes things apart. No record: it holds nothing between uses.
+    [BLK_BENCH] = {.name     = "disassembly_bench", .drop_item = BLK_BENCH, .drop_min = 1, .drop_max = 1,
+                   .kind     = K_CUBE,
+                   .mat      = M3(VM_BENCH_TOP, VM_TABLE_SIDE, VM_PLANKS),
+                   .hardness = 50,
+                   .tool     = TOOL_AXE,
+                   .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_WOOD,
+                   .flags2   = BF2_USABLE},
+
     [BLK_GRAVEL] = {.name     = "gravel", .drop_item = BLK_GRAVEL, .drop_min = 1, .drop_max = 1,
                     .kind     = K_CUBE,
                     .mat      = M1(VM_GRAVEL),
@@ -176,6 +215,8 @@ block_def_t const BLOCKS[BLK_COUNT] = {
 uint8_t block_record_kind(uint8_t id) {
     switch (id) {
         case BLK_FURNACE: return BE_FURNACE;
+        case BLK_CHEST: return BE_CHEST;
+        case BLK_TRASH: return BE_TRASH;
         default: return BE_NONE;
     }
 }

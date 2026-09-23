@@ -104,6 +104,12 @@ typedef struct {
     ray_hit_t aim;          // what the crosshair found this tick
     bool      aim_valid;
 
+    // The player swung at a block that will not break with what they
+    // are holding, and THIS is the tool it wants (an item id, 0 for
+    // none). Reported so the HUD can name it -- a swing that does
+    // nothing and says nothing is a bug as far as anyone can tell.
+    uint16_t  needs_tool;
+
     // The Use key was pressed on a block that opens something (a
     // crafting table; later a furnace or a chest). The block's id, or
     // BLK_AIR for "nothing was used this tick". REPORTED, not acted on:

@@ -235,3 +235,37 @@ furnace.burns = topește %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Meșteșug
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto pornit
+craft.auto_off = auto oprit
+craft.auto_made = %d %s făcute pe drum
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Minereu de fier
+item.chest = Ladă
+item.trash_chest = Coș de gunoi
+item.disassembly_bench = Masă de demontare
+item.iron_ingot = Lingou de fier
+item.pickaxe_iron = Târnăcop de fier
+item.axe_iron = Topor de fier
+item.shovel_iron = Lopată de fier
+
+# --- chest ---
+chest.title = Ladă
+chest.title_trash = Coș de gunoi
+chest.yours = Ce porți cu tine
+chest.hint = tab schimbă partea   enter mută un teanc   esc închide
+chest.no_room = Nu e loc pentru asta
+chest.trash_warn = ce rămâne aici dispare după %d minute de joc
+chest.trash_gone = %d teancuri au putrezit
+
+# --- bench ---
+bench.title = Demontare
+bench.hint = enter îl demontează   esc închide
+bench.empty = Aici nu se demontează nimic
+bench.gives = dă înapoi %s
+bench.done = %d %s demontat
+
+# --- hud ---
+hud.needs_tool = Necesită %s

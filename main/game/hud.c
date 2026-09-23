@@ -180,7 +180,7 @@ void hud_dropped_items(void) {
 // The Tab screen's slots are bigger than the hotbar's: it is a screen
 // you stop and read, and an icon at 44 px with a count over it is small
 // for a thing you are trying to tell apart from five others.
-#define INV_SLOT_W 60
+#define INV_SLOT_W HUD_INV_SLOT_W
 #define BAR_Y    (DISPLAY_LOG_H - 56)
 
 static void frame(pax_buf_t* fb, int x, int y, int w, int h, int t, uint32_t argb) {
@@ -365,6 +365,36 @@ void hud_player(pax_buf_t* fb, player_t const* p) {
 // actually live in, with the hotbar as its bottom row -- so "move this
 // up to where I can reach it" is a direction rather than a rule to
 // remember.
+// One slot: the box, its frame, what is in it and how many.
+static void one_slot(pax_buf_t* fb, int x, int y, int sw, inv_slot_t const* sl, bool cursor, bool selected,
+                     bool active) {
+    box(fb, x, y, sw, sw, active ? 0xFF1A1A20u : 0xFF14141Au);
+    uint32_t const ring = cursor ? 0xFFFFD040u : selected ? 0xFFFFFFFFu : active ? 0xFF505058u : 0xFF34343Cu;
+    frame(fb, x, y, sw, sw, cursor ? 3 : 1, ring);
+
+    if (sl->item == 0) return;
+    slot_icon_sized(fb, x, y, sw, sl->item, item_def(sl->item));
+    if (sl->count > 1) {
+        char n[8];
+        snprintf(n, sizeof(n), "%d", sl->count);
+        pax_vec2f const sz = rendertext_size(NULL, 18.0f, n);
+        float const     tx = (float)(x + sw - 5) - sz.x, ty = (float)(y + sw - 6) - sz.y;
+        rendertext_draw(fb, 0xFF000000u, NULL, 18.0f, tx + 1.0f, ty + 1.0f, n);
+        rendertext_draw(fb, 0xFFFFFFFFu, NULL, 18.0f, tx, ty, n);
+    }
+}
+
+void hud_slot_grid(pax_buf_t* fb, int x0, int y0, inv_slot_t const* slot, int n, int cols, int slot_w, int cursor,
+                   bool active) {
+    if (fb == NULL || slot == NULL || cols <= 0) return;
+    hud_begin(fb);
+    for (int i = 0; i < n; i++) {
+        int const x = x0 + (i % cols) * (slot_w + SLOT_GAP);
+        int const y = y0 + (i / cols) * (slot_w + SLOT_GAP);
+        one_slot(fb, x, y, slot_w, &slot[i], i == cursor, false, active);
+    }
+}
+
 void hud_inventory(pax_buf_t* fb, player_t const* p) {
     if (fb == NULL || p == NULL || !p->inv.open) return;
     hud_begin(fb);
@@ -391,26 +421,10 @@ void hud_inventory(pax_buf_t* fb, player_t const* p) {
         // bottom row, which is where it is on screen when closed.
         int const col = i % INV_HOTBAR;
         int const row = inv_screen_row(i);  // the same mapping the cursor moves by
-
-        int const x = gx + col * (sw + SLOT_GAP);
-        int const y = gy + row * (sw + SLOT_GAP);
-
-        box(fb, x, y, sw, sw, 0xFF1A1A20u);
-        bool const cur = (i == p->inv.cursor);
+        int const x   = gx + col * (sw + SLOT_GAP);
+        int const y   = gy + row * (sw + SLOT_GAP);
         bool const sel = i < INV_HOTBAR && (i == p->inv.selected);
-        frame(fb, x, y, sw, sw, cur ? 3 : 1, cur ? 0xFFFFD040u : sel ? 0xFFFFFFFFu : 0xFF505058u);
-
-        inv_slot_t const* sl = &p->inv.slot[i];
-        if (sl->item == 0) continue;
-        slot_icon_sized(fb, x, y, sw, sl->item, item_def(sl->item));
-        if (sl->count > 1) {
-            char n[8];
-            snprintf(n, sizeof(n), "%d", sl->count);
-            pax_vec2f const sz = rendertext_size(NULL, 18.0f, n);
-            float const     tx = (float)(x + sw - 5) - sz.x, ty = (float)(y + sw - 6) - sz.y;
-            rendertext_draw(fb, 0xFF000000u, NULL, 18.0f, tx + 1.0f, ty + 1.0f, n);
-            rendertext_draw(fb, 0xFFFFFFFFu, NULL, 18.0f, tx, ty, n);
-        }
+        one_slot(fb, x, y, sw, &p->inv.slot[i], i == p->inv.cursor, sel, true);
     }
 
     // CENTRED ON THE SCREEN, not on the panel: the line is wider than

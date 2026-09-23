@@ -235,3 +235,37 @@ furnace.burns = bræðir %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Smíði
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = sjálfvirkt á
+craft.auto_off = sjálfvirkt af
+craft.auto_made = bjó til %d %s á leiðinni
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Járngrýti
+item.chest = Kista
+item.trash_chest = Ruslafata
+item.disassembly_bench = Sundurtökubekkur
+item.iron_ingot = Járnstöng
+item.pickaxe_iron = Járnhaki
+item.axe_iron = Járnöxi
+item.shovel_iron = Járnskófla
+
+# --- chest ---
+chest.title = Kista
+chest.title_trash = Ruslafata
+chest.yours = Það sem þú berð
+chest.hint = tab skiptir um hlið   enter færir stafla   esc lokar
+chest.no_room = Ekkert pláss fyrir það
+chest.trash_warn = allt hér hverfur eftir %d mínútna spilun
+chest.trash_gone = %d staflar rotnuðu
+
+# --- bench ---
+bench.title = Taka í sundur
+bench.hint = enter tekur það í sundur   esc lokar
+bench.empty = Ekkert hér tekst í sundur
+bench.gives = skilar %s
+bench.done = Tók %d %s í sundur
+
+# --- hud ---
+hud.needs_tool = Þarf %s

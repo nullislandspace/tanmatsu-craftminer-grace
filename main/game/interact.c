@@ -111,6 +111,16 @@ break_result_t interact_break(int32_t x, int32_t y, int32_t z, uint16_t tool_ite
     if (block_def(b)->hardness == HARDNESS_UNBREAKABLE) return r;  // bedrock, and the world's edge
     if (chunk_find(chunk_of(x), chunk_of(z)) == NULL) return r;
 
+    // Some blocks will not break at all without the right tool (the
+    // user's rule for iron, 2026-09-23). Say WHICH tool: a swing that
+    // does nothing and explains nothing is indistinguishable from a
+    // bug, and that is exactly why Minecraft chose the softer rule.
+    if (block_tool_required(b) && !item_can_harvest(b, tool_item)) {
+        block_def_t const* d = block_def(b);
+        r.needs_tool         = item_tool_for(d->tool, d->tool_level);
+        return r;
+    }
+
     int const before = item_entity_live();
     bool const placed = (world_state(x, y, z) & ST_PLACED) != 0;
     if (block_fellable(b) && !placed) {

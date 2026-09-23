@@ -235,3 +235,37 @@ furnace.burns = eritir %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Üretim
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = oto açık
+craft.auto_off = oto kapalı
+craft.auto_made = yolda %d %s yapıldı
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Demir cevheri
+item.chest = Sandık
+item.trash_chest = Çöp kutusu
+item.disassembly_bench = Sökme tezgâhı
+item.iron_ingot = Demir külçe
+item.pickaxe_iron = Demir kazma
+item.axe_iron = Demir balta
+item.shovel_iron = Demir kürek
+
+# --- chest ---
+chest.title = Sandık
+chest.title_trash = Çöp kutusu
+chest.yours = Taşıdıkların
+chest.hint = tab tarafı değiştirir   enter bir yığını taşır   esc kapatır
+chest.no_room = Buna yer yok
+chest.trash_warn = burada kalan her şey %d dakika oynadıktan sonra yok olur
+chest.trash_gone = %d yığın çürüdü
+
+# --- bench ---
+bench.title = Sökme
+bench.hint = enter söker   esc kapatır
+bench.empty = Burada hiçbir şey sökülmez
+bench.gives = geri verir %s
+bench.done = %d %s söküldü
+
+# --- hud ---
+hud.needs_tool = %s gerekir

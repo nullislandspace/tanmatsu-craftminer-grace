@@ -29,6 +29,7 @@ static bool s_sfx      = true;
 static uint8_t s_music_vol = 100;  // per-class mix levels; the device volume is the badge's
 static uint8_t s_sfx_vol   = 100;
 static bool s_gyro     = false;
+static bool s_autocraft = true;  // on by default: it only ever does what you asked for
 static bool s_clouds   = true;
 static bool s_third    = false;
 static bool s_left     = false;
@@ -70,6 +71,8 @@ static void apply_line(char* line) {
         s_sfx_vol = v > 100 ? 100 : (uint8_t)v;
     } else if (strcmp(key, "gyro") == 0) {
         s_gyro = v != 0;
+    } else if (strcmp(key, "autocraft") == 0) {
+        s_autocraft = v != 0;
     } else if (strcmp(key, "clouds") == 0) {
         s_clouds = v != 0;
     } else if (strcmp(key, "third_person") == 0) {
@@ -119,9 +122,9 @@ void settings_save(void) {
     fprintf(f, "language=%s\n", i18n_language_code(i18n_language()));
     fprintf(f,
             "view=%d\ntextures=%d\nhalf_res=%d\nclouds=%d\nthird_person=%d\nleft_handed=%d\nmusic=%d\neffects=%d\n"
-            "music_volume=%u\neffects_volume=%u\ngyro=%d\n",
+            "music_volume=%u\neffects_volume=%u\ngyro=%d\nautocraft=%d\n",
             s_view, s_textured, s_half, s_clouds, s_third, s_left, s_music, s_sfx, (unsigned)s_music_vol,
-            (unsigned)s_sfx_vol, s_gyro);
+            (unsigned)s_sfx_vol, s_gyro, s_autocraft);
     for (int a = 0; a < CM_ACTION_COUNT; a++) {
         fprintf(f, KEY_PREFIX "%s=0x%04x\n", input_action_id((cm_action_t)a), (unsigned)input_key((cm_action_t)a));
     }
@@ -244,6 +247,16 @@ bool settings_gyro(void) {
 void settings_set_gyro(bool on) {
     if (on == s_gyro) return;
     s_gyro = on;
+    settings_save();
+}
+
+bool settings_autocraft(void) {
+    return s_autocraft;
+}
+
+void settings_set_autocraft(bool on) {
+    if (on == s_autocraft) return;
+    s_autocraft = on;
     settings_save();
 }
 

@@ -235,3 +235,37 @@ furnace.burns = smälter %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Tillverkning
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto på
+craft.auto_off = auto av
+craft.auto_made = gjorde %d %s på vägen
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Järnmalm
+item.chest = Kista
+item.trash_chest = Papperskorg
+item.disassembly_bench = Demonteringsbänk
+item.iron_ingot = Järntacka
+item.pickaxe_iron = Järnhacka
+item.axe_iron = Järnyxa
+item.shovel_iron = Järnspade
+
+# --- chest ---
+chest.title = Kista
+chest.title_trash = Papperskorg
+chest.yours = Det du bär
+chest.hint = tab byter sida   enter flyttar en hög   esc stänger
+chest.no_room = Ingen plats för det
+chest.trash_warn = allt här är borta efter %d minuters spelande
+chest.trash_gone = %d högar ruttnade bort
+
+# --- bench ---
+bench.title = Ta isär
+bench.hint = enter tar isär det   esc stänger
+bench.empty = Inget här går att ta isär
+bench.gives = ger tillbaka %s
+bench.done = Tog isär %d %s
+
+# --- hud ---
+hud.needs_tool = Kräver %s

@@ -12,6 +12,7 @@
 #include "i18n/i18n.h"
 #include "items/recipes.h"
 #include "se_ui.h"
+#include "ui/settings.h"
 #include "testkit/showtime.h"
 
 // The most rows the book can show at once. There will never be this
@@ -42,6 +43,7 @@ static char s_folded[FOLD_MAX];
 #define ACT_BKSP  0x10u
 #define ACT_LEFT  0x20u
 #define ACT_RIGHT 0x40u
+#define ACT_TAB   0x80u
 static unsigned s_act;
 static char     s_typed[16];
 static int      s_typed_n;
@@ -62,6 +64,15 @@ static bool s_eat_chars;
 // is missing, so there has to be somewhere that does.
 static bool s_detail;
 
+// MAKE WHAT IT NEEDS FIRST (the user's checkbox). Not a row in the list
+// -- the list is recipes -- and not a letter key, because those go to
+// the search box. Tab, which is free here: the inventory screen it
+// usually opens is blocked while this one is up.
+//
+// It lives in settings.txt rather than in this file, so it is still on
+// tomorrow. That is the whole reason it is a setting and not a local.
+static bool s_auto;
+
 // The filtered list, rebuilt every frame: recipe_count() is small and a
 // cache would be one more thing to invalidate when the inventory moves.
 static int s_list[CRAFT_ROWS_MAX];
@@ -79,6 +90,7 @@ void craft_ui_open(int station) {
     s_msg_until = 0.0;
     s_eat_chars = true;
     s_detail    = false;
+    s_auto      = settings_autocraft();
 }
 
 void craft_ui_close(void) {
@@ -112,6 +124,7 @@ void craft_ui_event(bsp_input_event_t const* ev) {
             case BSP_INPUT_SCANCODE_ESCAPED_GREY_LEFT: s_act |= ACT_LEFT; break;
             case BSP_INPUT_SCANCODE_ESCAPED_GREY_RIGHT: s_act |= ACT_RIGHT; break;
             case BSP_INPUT_SCANCODE_BACKSPACE: s_act |= ACT_BKSP; break;
+            case BSP_INPUT_SCANCODE_TAB: s_act |= ACT_TAB; break;
             default: break;
         }
     } else if (ev->type == INPUT_EVENT_TYPE_KEYBOARD) {
@@ -122,22 +135,13 @@ void craft_ui_event(bsp_input_event_t const* ev) {
     }
 }
 
-// A CRAFTING TABLE CAN DO EVERYTHING THE HANDS CAN, and not the other
-// way round (the user's catch: torches and planks belong in both).
-// It is a one-way widening, not a set of equals -- standing at a table
-// must never be a reason to walk away from it.
-static bool station_shows(uint8_t station) {
-    if (station == s_station) return true;
-    return s_station == RS_TABLE && station == RS_INVENTORY;
-}
-
 // Rebuild s_list from what the player knows and what they typed.
 static void filter(inventory_t const* inv) {
     s_list_n  = 0;
     s_known_n = 0;
     for (int i = 0; i < recipe_count() && s_list_n < CRAFT_ROWS_MAX; i++) {
         recipe_t const* r = recipe_at(i);
-        if (!station_shows(r->station)) continue;
+        if (!recipe_station_allows(s_station, r->station)) continue;
         if (!recipe_known(r, inv)) continue;
         s_known_n++;
         // Matched against the name the player READS, folded -- and
@@ -187,6 +191,11 @@ void craft_ui_update(inventory_t* inv) {
     }
     s_typed_n = 0;
 
+    if (s_act & ACT_TAB) {
+        s_auto = !s_auto;
+        settings_set_autocraft(s_auto);
+    }
+
     filter(inv);
 
     // --- Moving and making -------------------------------------------
@@ -208,10 +217,15 @@ void craft_ui_update(inventory_t* inv) {
 
         if (!s_detail && (s_act & ACT_OK)) {
             recipe_t const* r = recipe_at(s_list[s_cursor]);
-            if (recipe_can_make(r, inv, 1) < 1) {
+            // With the planner on, "can I make this" means "can I get
+            // there from here", so both questions go through the same
+            // pair of calls and the two paths cannot disagree.
+            int const  able = s_auto ? recipe_can_make_auto(r, inv, s_station) : recipe_can_make(r, inv, 1);
+            int const  did  = able >= 1 ? (s_auto ? recipe_make_auto(r, inv, 1, s_station) : recipe_make(r, inv, 1)) : 0;
+            if (able < 1) {
                 s_detail = true;
                 sfx_play(SFX_DENY);
-            } else if (recipe_make(r, inv, 1) > 0) {
+            } else if (did > 0) {
                 i18n_fmt(s_msg, sizeof(s_msg), CM_STR_CRAFT_MADE, (int)r->out_n, T(item_label(r->out)));
                 s_msg_until = showtime_now() + MSG_SECONDS;
                 sfx_play(SFX_CRAFT);
@@ -301,7 +315,7 @@ void craft_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
 
     for (int i = 0; i < s_list_n; i++) {
         recipe_t const* r = recipe_at(s_list[i]);
-        if (recipe_can_make(r, inv, 1) >= 1) {
+        if ((s_auto ? recipe_can_make_auto(r, inv, s_station) : recipe_can_make(r, inv, 1)) >= 1) {
             i18n_fmt(vals[n], sizeof(vals[n]), CM_STR_CRAFT_VALUE_MAKE, (int)r->out_n);
         } else {
             snprintf(vals[n], sizeof(vals[n]), "%s", T(CM_STR_CRAFT_VALUE_MISSING));
@@ -326,10 +340,13 @@ void craft_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
         n             = 1;
     }
 
-    char search[FOLD_MAX + 32];
+    char search[FOLD_MAX + 64];
     i18n_fmt(search, sizeof(search), CM_STR_CRAFT_SEARCH, s_query);
-    // A caret, so an empty box still looks like something you type into.
-    strncat(search, "_", sizeof(search) - strlen(search) - 1);
+    // A caret, so an empty box still looks like something you type into
+    // -- then the planner's state, which has nowhere else to go: the
+    // rows are recipes and the footer is the cursor's ingredients.
+    strncat(search, "_   ", sizeof(search) - strlen(search) - 1);
+    strncat(search, T(s_auto ? CM_STR_CRAFT_AUTO_ON : CM_STR_CRAFT_AUTO_OFF), sizeof(search) - strlen(search) - 1);
 
     // The footer carries the cursor's ingredients -- or, for a moment
     // after crafting, what just happened.

@@ -57,3 +57,17 @@ void hud_dropped_items(void);
 // A few lines of text at the top left, with a shadow so they read over
 // sky and ground alike: the position overlay (CM_INFO).
 void hud_text_lines(pax_buf_t* fb, char const* const* lines, int n);
+
+// A grid of inventory slots, drawn the way the Tab screen draws them.
+// Exposed because the chest screen needs TWO of them side by side, and
+// a second copy of "box, frame, icon, count" would be a second place
+// for the slot to stop looking like a slot.
+//
+// `cursor` is the slot to ring in yellow, or -1 for none; `active`
+// dims the whole grid when the cursor is on the other one, which is
+// what tells a player which side the arrow keys belong to.
+void hud_slot_grid(pax_buf_t* fb, int x, int y, inv_slot_t const* slot, int n, int cols, int slot_w, int cursor,
+                   bool active);
+
+// The size the Tab screen and the chest screen draw slots at.
+#define HUD_INV_SLOT_W 60

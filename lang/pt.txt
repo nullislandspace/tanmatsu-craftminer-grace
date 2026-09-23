@@ -235,3 +235,37 @@ furnace.burns = funde %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Fabrico
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto sim
+craft.auto_off = auto não
+craft.auto_made = %d %s feitos pelo caminho
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Minério de ferro
+item.chest = Baú
+item.trash_chest = Lixeira
+item.disassembly_bench = Desmontadora
+item.iron_ingot = Lingote de ferro
+item.pickaxe_iron = Picareta de ferro
+item.axe_iron = Machado de ferro
+item.shovel_iron = Pá de ferro
+
+# --- chest ---
+chest.title = Baú
+chest.title_trash = Lixeira
+chest.yours = O que levas
+chest.hint = tab troca de lado   enter move uma pilha   esc fecha
+chest.no_room = Sem espaço para isso
+chest.trash_warn = o que ficar aqui desaparece após %d minutos de jogo
+chest.trash_gone = %d pilhas apodreceram
+
+# --- bench ---
+bench.title = Desmontar
+bench.hint = enter desmonta   esc fecha
+bench.empty = Aqui nada se desmonta
+bench.gives = devolve %s
+bench.done = %d %s desmontado
+
+# --- hud ---
+hud.needs_tool = Precisa de %s

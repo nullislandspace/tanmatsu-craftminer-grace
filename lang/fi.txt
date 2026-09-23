@@ -235,3 +235,37 @@ furnace.burns = sulattaa %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Valmistus
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto päällä
+craft.auto_off = auto pois
+craft.auto_made = tehtiin %d %s matkalla
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Rautamalmi
+item.chest = Arkku
+item.trash_chest = Roskakori
+item.disassembly_bench = Purkupenkki
+item.iron_ingot = Rautaharkko
+item.pickaxe_iron = Rautahakku
+item.axe_iron = Rautakirves
+item.shovel_iron = Rautalapio
+
+# --- chest ---
+chest.title = Arkku
+chest.title_trash = Roskakori
+chest.yours = Mitä kannat
+chest.hint = tab vaihtaa puolta   enter siirtää pinon   esc sulkee
+chest.no_room = Ei tilaa sille
+chest.trash_warn = kaikki täällä katoaa %d minuutin pelaamisen jälkeen
+chest.trash_gone = %d pinoa lahosi pois
+
+# --- bench ---
+bench.title = Purkaminen
+bench.hint = enter purkaa sen   esc sulkee
+bench.empty = Täällä ei purku mikään
+bench.gives = antaa takaisin %s
+bench.done = Purettiin %d %s
+
+# --- hud ---
+hud.needs_tool = Tarvitsee %s

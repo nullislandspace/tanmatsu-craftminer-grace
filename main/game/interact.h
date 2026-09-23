@@ -43,6 +43,10 @@
 // right drops and show the right particles.
 typedef struct {
     bool    ok;
+    // The block will not break with what is in hand (BF2_TOOL_REQUIRED)
+    // and this is the tool it wants -- an ITEM id, so the caller can
+    // name it in the player's language rather than saying only "no".
+    uint16_t needs_tool;
     uint8_t block;     // what was there
     int     felled;    // blocks removed IN TOTAL (1 for an ordinary break)
     bool    was_tree;  // the felling rule applied

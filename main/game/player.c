@@ -95,6 +95,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     //
     // A field that says "this tick" is cleared at the top of the tick.
     p->used_block = BLK_AIR;
+    p->needs_tool = 0;
 
     // --- The inventory screen ----------------------------------------
     //
@@ -266,6 +267,17 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
             p->mine_z      = p->aim.z;
             p->mine_ticks  = 0;
             p->mine_needed = item_break_ticks(p->aim.block, held);
+        }
+        // Will it break at all? Asked every tick the key is held, not
+        // once, so the message keeps showing for as long as they keep
+        // swinging at it rather than blinking once and going away.
+        if (block_tool_required(p->aim.block) && !item_can_harvest(p->aim.block, held)) {
+            block_def_t const* d = block_def(p->aim.block);
+            p->needs_tool        = item_tool_for(d->tool, d->tool_level);
+            p->mining            = false;
+            p->mine_ticks        = 0;
+            if ((p->mine_ticks % SWING_TICKS) == 0) sfx_play(SFX_DENY);
+            return;
         }
         uint8_t const aimed = p->aim.block;
         if (p->mine_needed < 0) {

@@ -49,6 +49,12 @@ static struct {
     [VM_TABLE_SIDE]    = {"table_side.png", 0xFF8E6E44u},
     [VM_FURNACE_FRONT] = {"furnace_front.png", 0xFF6E6E70u},
     [VM_FURNACE_TOP]   = {"furnace_top.png", 0xFF707072u},
+    [VM_IRON_ORE]      = {"iron_ore.png", 0xFF8E8278u},
+    [VM_CHEST_TOP]     = {"chest_top.png", 0xFF926A3Au},
+    [VM_CHEST_SIDE]    = {"chest_side.png", 0xFF96703Eu},
+    [VM_TRASH_TOP]     = {"trash_top.png", 0xFF3E3C3Au},
+    [VM_TRASH_SIDE]    = {"trash_side.png", 0xFF605C5Au},
+    [VM_BENCH_TOP]     = {"bench_top.png", 0xFF967446u},
 };
 
 char const* chunk_render_mat_file(int mat) {

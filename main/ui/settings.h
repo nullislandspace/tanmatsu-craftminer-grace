@@ -101,6 +101,13 @@ void    settings_set_sfx_volume(uint8_t pct);
 bool settings_gyro(void);
 void settings_set_gyro(bool on);
 
+// The crafting book makes missing ingredients first (the user's
+// checkbox; items/recipes.h). Toggled with Tab inside the book rather
+// than from a settings screen -- it belongs to the thing it changes --
+// but it is stored here so it survives being put down.
+bool settings_autocraft(void);
+void settings_set_autocraft(bool on);
+
 // The mixer group the game's sound effects play on (se_audio.h assigns
 // group numbers no meaning; this is ours).
 #define SETTINGS_SFX_GROUP 0

@@ -70,6 +70,8 @@ set(APP_SOURCES
     main/ui/menu.c
     main/ui/craft_ui.c
     main/ui/furnace_ui.c
+    main/ui/chest_ui.c
+    main/ui/bench_ui.c
     main/ui/keybind_ui.c
     main/ui/icons.c
     main/ui/settings.c

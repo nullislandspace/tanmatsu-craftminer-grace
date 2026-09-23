@@ -235,3 +235,37 @@ furnace.burns = tali %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Izrada
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto uklj
+craft.auto_off = auto isklj
+craft.auto_made = usput izrađeno %d %s
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Željezna ruda
+item.chest = Škrinja
+item.trash_chest = Kanta za smeće
+item.disassembly_bench = Stol za rastavljanje
+item.iron_ingot = Željezna poluga
+item.pickaxe_iron = Željezni pijuk
+item.axe_iron = Željezna sjekira
+item.shovel_iron = Željezna lopata
+
+# --- chest ---
+chest.title = Škrinja
+chest.title_trash = Kanta za smeće
+chest.yours = Što nosiš
+chest.hint = tab mijenja stranu   enter premješta hrpu   esc zatvara
+chest.no_room = Nema mjesta za to
+chest.trash_warn = što ostane ovdje nestaje nakon %d minuta igranja
+chest.trash_gone = %d hrpa je istrunulo
+
+# --- bench ---
+bench.title = Rastavljanje
+bench.hint = enter to rastavlja   esc zatvara
+bench.empty = Ovdje se ništa ne rastavlja
+bench.gives = vraća %s
+bench.done = Rastavljeno %d %s
+
+# --- hud ---
+hud.needs_tool = Treba %s

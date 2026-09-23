@@ -235,3 +235,37 @@ furnace.burns = топи %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Израда
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = ауто укљ
+craft.auto_off = ауто искљ
+craft.auto_made = успут направљено %d %s
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Руда гвожђа
+item.chest = Сандук
+item.trash_chest = Канта за смеће
+item.disassembly_bench = Сто за расклапање
+item.iron_ingot = Гвоздена полуга
+item.pickaxe_iron = Гвоздени пијук
+item.axe_iron = Гвоздена секира
+item.shovel_iron = Гвоздена лопата
+
+# --- chest ---
+chest.title = Сандук
+chest.title_trash = Канта за смеће
+chest.yours = Шта носиш
+chest.hint = таб мења страну   ентер помера гомилу   есц затвара
+chest.no_room = Нема места за то
+chest.trash_warn = шта остане овде нестаје после %d минута играња
+chest.trash_gone = %d гомила је иструнуло
+
+# --- bench ---
+bench.title = Расклапање
+bench.hint = ентер то расклапа   есц затвара
+bench.empty = Овде се ништа не расклапа
+bench.gives = враћа %s
+bench.done = Расклопљено %d %s
+
+# --- hud ---
+hud.needs_tool = Треба %s

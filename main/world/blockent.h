@@ -105,6 +105,26 @@ void blockent_remove(int32_t x, int32_t y, int32_t z);
 // know it is in a chunk until it is asked.
 void blockent_touch(blockent_t const* be);
 
+// Ten minutes of PLAYING at 20 Hz -- the user's call, and NOT the
+// in-world clock, where ten minutes is a sixtieth of a 20-minute day
+// and would be three seconds.
+#define BE_TRASH_TICKS   12000u
+#define BE_TRASH_MINUTES (BE_TRASH_TICKS / (20u * 60u))
+
+// Empty a trashcan whose time is up, and stamp it. Returns how many
+// stacks went. Does nothing to any other kind of record.
+//
+// ONE STAMP FOR THE WHOLE BIN, refreshed whenever something goes in
+// (blockent_touch does not do this; the caller does). Per-slot stamps
+// would be more literal, but "it empties ten minutes after you last
+// threw something in" is a rule a player can hold in their head, and
+// "every stack has its own clock you cannot see" is not.
+//
+// Worked out when the bin is OPENED, never on a timer: the same lazy
+// clock the furnace runs on (game/furnace.h), and the user's own
+// instruction -- "calculated the next time we open it".
+int blockent_rot_trash(blockent_t* be, uint32_t now);
+
 // Forget every record in a chunk: what EVICTION does, after the save.
 void blockent_drop_chunk(int32_t cx, int32_t cz);
 

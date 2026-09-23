@@ -1172,7 +1172,8 @@ reason Minecraft chose the other rule.
 | 8.1 | `items/recipes.{c,h}`, the discovery set, `i18n/fold.{c,h}`, inventory crafting and the book | done | 2026-09-23: recipes as ingredient multisets; discovery stored as every item ever held; the search box folding 32 languages onto one QWERTY (F-78). Three fixes straight from the user's first play: an empty pack on a new world, the opening keystroke no longer lands in the search box, and a recipe that says "missing" now opens a panel saying what is missing. Then four more from the second: a crafting table shows the inventory recipes too (one-way), Tab no longer opens the inventory behind an open screen, and two lines that ran off the screen (F-81). And F-80, which was two reports and one bug. |
 | 8.2 | The crafting table and the wood and stone tools | done | 2026-09-23: block 20, its two textures, and the seven recipes. `BF2_USABLE` -- the Use key OPENS a block rather than placing against it, and which blocks do is a registry flag while what each one opens is main.c's business. **Tool speeds fixed**: the right tool divided by `level + 1`, so wood was 2x a bare fist and stone 3x -- the user's "mining with the wrong tool is a lot slower" simply was not true. Now `2 x level`: hand 1x, wood 2x, stone 4x, iron 6x, and no hardness number had to move. Iron moved out to 8.4, since ingots need the furnace. |
 | 8.3 | `world/blockent.{c,h}` -- the chunk format's unused block-entity section -- and the **furnace** | done | 2026-09-23: pulled forward from 8.4 the moment the user found that iron needs smelting and coal needs finding, so a furnace early is what makes wood into fuel. `world/blockent.{c,h}`: a fixed pool of 192 records keyed by world position, written into `SECTION_BLOCK_ENTITIES` -- **a section the format has had a number for since Part W and never had a byte in**. `game/furnace.{c,h}` never ticks; it catches up from `now - stamp` when opened, in a loop that runs once per EVENT rather than once per tick (4 billion ticks in 0.01 ms, host-measured). Smelting: log to coal, sand to glass, cobblestone to stone -- the last two unasked for, but glass and stone had no way of being obtained at all. Two real catches on the way, both in F-77. |
-| 8.4 | Chests, the trashcan, the disassembly bench, iron, auto-crafting of intermediates | todo | |
+| 8.4 | Chests, the trashcan, the disassembly bench, iron, auto-crafting | done | 2026-09-23. **Chests and the trashcan** are the block-entity pool's second and third customers, and cost almost nothing on top of the furnace: a record with 24 slots and no timers. Their screen is two grids side by side -- Tab swaps sides, enter moves a stack -- and the trashcan is the SAME screen, emptying by the same lazy clock the furnace runs on (`blockent_rot_trash`, one stamp for the bin, refreshed when anything goes in). **The bench** takes apart anything whose recipe carries `RF_REVERSIBLE`, giving back the full ingredient list however worn the tool -- the user's call, so salvage-and-recraft is a repair priced at the one coal in the bench's own recipe. **Iron** is block 22, deeper and rarer than coal, and the first block that REFUSES the swing (`BF2_TOOL_REQUIRED`) -- with a line on the HUD naming the tool it wants, because a swing that does nothing and says nothing is a bug as far as anyone can tell. **Auto-crafting** is Tab in the book, and F-82 is the part worth reading. |
+| 8.6 | The 8.4 screens in all 32 languages | done | 2026-09-23: 24 more keys each. Three languages spell "disassembly bench" wider than the column that holds an item name (Portuguese, Greek, Bulgarian) and were shortened rather than the column widened -- it is already the widest layout in the game. F-83. |
 | 8.5 | Item names and the crafting UI in all 32 languages | done | 2026-09-23: 63 keys x 31 languages -- every block and item a player can carry, the crafting book, the furnace and its picker. **Six overflowed and the check caught all six** before the badge did (French, Irish, Albanian, Greek, Bulgarian, Serbian), and widening the two crafting panels to hold them exposed something nothing had been measuring: **the book's row labels are ITEM NAMES**, and Russian "Деревянная лопата" is half as wide again as "Wooden shovel". `item.` joined `LABEL_COLUMNS`, the panels went to the wide layout, and the fold table grew to cover 82978 characters across the 32 languages. |
 | 9 | Farming: tilled soil, wheat, carrots, seeds, saplings, growth on the tick | todo | |
 | 10 | Cooking and the hunger loop | todo | |
@@ -1200,6 +1201,42 @@ reason Minecraft chose the other rule.
 ---
 
 ## Part E: findings and decisions log
+
+- **F-82** 2026-09-23: **the auto-crafting planner was wrong in a way that
+  only a worked example shows.** The user's own example was the test: *"when we
+  need a pickaxe, but only have blocks of wood"*. Two logs is eight planks; a
+  pickaxe is three planks and two sticks, and sticks are two more planks.
+
+  The first version provided each ingredient in turn and then crafted. It turns
+  a log into four planks (three needed -- done), then turns two of those planks
+  into four sticks -- **and the three planks it had a moment ago are now two.**
+  Nothing reserves anything, so a later ingredient quietly eats what an earlier
+  one was given.
+
+  The fix is not reservation, which would need a whole allocator's worth of
+  bookkeeping for a tree four deep. It is to **ask again**: each pass
+  re-provides whatever is short, and the loop ends when the recipe can actually
+  be made, when a pass achieves nothing, or when something cannot be provided at
+  all. Two logs now come out as a pickaxe with three planks over, which is the
+  arithmetic done by hand.
+
+  Two smaller things fell out of writing the check. The planner would have made
+  a crafting-table recipe in your bare hands, because nothing asked whether the
+  RECIPE belonged at the station -- only its ingredients. And it must never
+  smelt: an iron pickaxe planned from iron ORE would have the menu lighting a
+  furnace on the player's behalf.
+
+- **F-83** 2026-09-23: **a translation helper that dropped keys in silence.**
+  The script appending translations to `lang/*.txt` grouped them under four
+  known prefixes and wrote nothing for a key outside that list -- so when the
+  chest, the bench and the HUD brought `chest.`, `bench.` and `hud.`, 13 keys x
+  31 languages went in and nowhere, with no error. `make_lang.py` caught it
+  ("13 of 215 untranslated"), which is the only reason it was a round trip and
+  not a shipped bug.
+
+  The helper now refuses to write anything unless every key it was given is
+  accounted for. A tool that quietly does part of the job is worse than one
+  that fails, because the part it did looks like the whole.
 
 - **F-81** 2026-09-23: **the width check only measured labels, so it passed
   while the user was looking at the bug.** F-76 added `check_label_widths()`

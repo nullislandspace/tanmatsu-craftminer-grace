@@ -225,3 +225,37 @@ furnace.burns = smelt %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Vervaardigen
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto aan
+craft.auto_off = auto uit
+craft.auto_made = %d %s onderweg gemaakt
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Ijzererts
+item.chest = Kist
+item.trash_chest = Vuilnisbak
+item.disassembly_bench = Sloopbank
+item.iron_ingot = Ijzerstaaf
+item.pickaxe_iron = Ijzeren pikhouweel
+item.axe_iron = Ijzeren bijl
+item.shovel_iron = Ijzeren schop
+
+# --- chest ---
+chest.title = Kist
+chest.title_trash = Vuilnisbak
+chest.yours = Wat ge draagt
+chest.hint = tab wisselt van kant   enter verplaatst een stapel   esc sluit
+chest.no_room = Geen plaats voor
+chest.trash_warn = wat hier blijft is na %d minuten spelen weg
+chest.trash_gone = %d stapels vergaan
+
+# --- bench ---
+bench.title = Uit elkaar halen
+bench.hint = enter haalt het uit elkaar   esc sluit
+bench.empty = Hier gaat niets uit elkaar
+bench.gives = geeft %s terug
+bench.done = %d %s uit elkaar gehaald
+
+# --- hud ---
+hud.needs_tool = Vereist %s

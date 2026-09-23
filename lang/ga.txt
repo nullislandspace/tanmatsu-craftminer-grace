@@ -235,3 +235,37 @@ furnace.burns = bruithníonn %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Ceardaíocht
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = uath ann
+craft.auto_off = uath as
+craft.auto_made = rinneadh %d %s ar an mbealach
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Mianach iarainn
+item.chest = Cófra
+item.trash_chest = Bosca bruscair
+item.disassembly_bench = Binse díchóimeála
+item.iron_ingot = Barra iarainn
+item.pickaxe_iron = Piocóid iarainn
+item.axe_iron = Tua iarainn
+item.shovel_iron = Sluasaid iarainn
+
+# --- chest ---
+chest.title = Cófra
+chest.title_trash = Bosca bruscair
+chest.yours = A bhfuil á iompar agat
+chest.hint = tab malartaíonn taobh   enter bogann cruach   esc dúnann
+chest.no_room = Níl spás dó
+chest.trash_warn = imíonn a bhfuil fágtha anseo tar éis %d nóiméad imeartha
+chest.trash_gone = Lobh %d cruach
+
+# --- bench ---
+bench.title = Díchóimeáil
+bench.hint = enter díchóimeálann é   esc dúnann
+bench.empty = Ní dhíchóimeáiltear faic anseo
+bench.gives = tugann %s ar ais
+bench.done = Díchóimeáladh %d %s
+
+# --- hud ---
+hud.needs_tool = Teastaíonn %s

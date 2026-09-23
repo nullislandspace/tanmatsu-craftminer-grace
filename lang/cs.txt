@@ -235,3 +235,37 @@ furnace.burns = roztaví %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Výroba
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto zap
+craft.auto_off = auto vyp
+craft.auto_made = cestou vyrobeno %d %s
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Železná ruda
+item.chest = Truhla
+item.trash_chest = Koš
+item.disassembly_bench = Rozebírací stůl
+item.iron_ingot = Železný ingot
+item.pickaxe_iron = Železný krumpáč
+item.axe_iron = Železná sekera
+item.shovel_iron = Železná lopata
+
+# --- chest ---
+chest.title = Truhla
+chest.title_trash = Koš
+chest.yours = Co neseš
+chest.hint = tab mění stranu   enter přesune hromádku   esc zavře
+chest.no_room = Není na to místo
+chest.trash_warn = co tu zůstane, je po %d minutách hraní pryč
+chest.trash_gone = %d hromádek shnilo
+
+# --- bench ---
+bench.title = Rozebírání
+bench.hint = enter to rozebere   esc zavře
+bench.empty = Tady se nic nerozebere
+bench.gives = vrátí %s
+bench.done = Rozebráno %d %s
+
+# --- hud ---
+hud.needs_tool = Potřebuje %s

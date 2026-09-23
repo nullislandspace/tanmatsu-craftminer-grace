@@ -91,6 +91,40 @@ int recipe_can_make(recipe_t const* r, inventory_t const* inv, int cap);
 // inventory must never eat the materials.
 int recipe_make(recipe_t const* r, inventory_t* inv, int n);
 
+// Can a book opened at `open_at` show a recipe made at `station`?
+//
+// A CRAFTING TABLE CAN DO EVERYTHING THE HANDS CAN, and not the other
+// way round (the user's rule): torches and planks belong in both
+// lists. One-way, because standing at a table must never be a reason
+// to walk away from it.
+static inline bool recipe_station_allows(int open_at, int station) {
+    if (station == open_at) return true;
+    return open_at == RS_TABLE && station == RS_INVENTORY;
+}
+
+// --- Making what it needs first ---------------------------------------
+//
+// The user's checkbox: "when we need a pickaxe, but only have blocks of
+// wood, auto-crafting would first turn some of them into planks, then
+// sticks, so it can then craft the pickaxe."
+//
+// Depth-first through the recipe table, at this station or a lesser
+// one, and NEVER through a furnace -- smelting takes fuel and time and
+// is not something a menu should start on the player's behalf.
+
+// How deep the search may go. Log to planks to sticks to a tool is
+// three, so four is one more than the tree has ever needed; it is a
+// stop, not a tuning knob.
+#define RECIPE_AUTO_DEPTH 4
+
+// Make `n` of `r`, making any missing ingredient first if it can be
+// made. ALL OR NOTHING PER UNIT, like recipe_make: a plan that runs out
+// half way puts everything back.
+int recipe_make_auto(recipe_t const* r, inventory_t* inv, int n, int station);
+
+// Whether it could, without doing it. For the book's value column.
+int recipe_can_make_auto(recipe_t const* r, inventory_t const* inv, int station);
+
 // How many of `ing` are still missing to make `r` once. 0 when the
 // player has enough -- this is what puts "2 x Stick -- have 0" under
 // the cursor in the book.

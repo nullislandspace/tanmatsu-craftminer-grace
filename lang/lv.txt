@@ -235,3 +235,37 @@ furnace.burns = izkausēs %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Izgatavošana
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto ieslēgts
+craft.auto_off = auto izslēgts
+craft.auto_made = pa ceļam izgatavots %d %s
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Dzelzs rūda
+item.chest = Lāde
+item.trash_chest = Atkritumu tvertne
+item.disassembly_bench = Izjaukšanas galds
+item.iron_ingot = Dzelzs lietnis
+item.pickaxe_iron = Dzelzs cērte
+item.axe_iron = Dzelzs cirvis
+item.shovel_iron = Dzelzs lāpsta
+
+# --- chest ---
+chest.title = Lāde
+chest.title_trash = Atkritumu tvertne
+chest.yours = Ko nes
+chest.hint = tab maina pusi   enter pārvieto kaudzi   esc aizver
+chest.no_room = Nav tam vietas
+chest.trash_warn = kas paliek šeit, pazūd pēc %d spēlēšanas minūtēm
+chest.trash_gone = %d kaudzes sapuva
+
+# --- bench ---
+bench.title = Izjaukšana
+bench.hint = enter to izjauc   esc aizver
+bench.empty = Šeit nekas netiek izjaukts
+bench.gives = atdod %s
+bench.done = Izjaukts %d %s
+
+# --- hud ---
+hud.needs_tool = Vajag %s

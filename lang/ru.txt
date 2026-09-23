@@ -235,3 +235,37 @@ furnace.burns = расплавит %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Изготовление
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = авто вкл
+craft.auto_off = авто выкл
+craft.auto_made = по пути создано %d %s
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Железная руда
+item.chest = Сундук
+item.trash_chest = Мусорка
+item.disassembly_bench = Верстак разборки
+item.iron_ingot = Железный слиток
+item.pickaxe_iron = Железная кирка
+item.axe_iron = Железный топор
+item.shovel_iron = Железная лопата
+
+# --- chest ---
+chest.title = Сундук
+chest.title_trash = Мусорка
+chest.yours = Что ты несёшь
+chest.hint = таб меняет сторону   ентер двигает стопку   есц закрывает
+chest.no_room = Нет места для этого
+chest.trash_warn = что останется здесь, исчезнет через %d минут игры
+chest.trash_gone = %d стопок сгнило
+
+# --- bench ---
+bench.title = Разборка
+bench.hint = ентер разбирает это   есц закрывает
+bench.empty = Здесь ничего не разбирается
+bench.gives = возвращает %s
+bench.done = Разобрано %d %s
+
+# --- hud ---
+hud.needs_tool = Нужна %s

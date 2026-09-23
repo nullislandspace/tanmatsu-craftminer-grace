@@ -34,6 +34,10 @@ enum {
     ITEM_AXE_STONE,
     ITEM_SHOVEL_WOOD,
     ITEM_SHOVEL_STONE,
+    ITEM_IRON_INGOT,
+    ITEM_PICK_IRON,
+    ITEM_AXE_IRON,
+    ITEM_SHOVEL_IRON,
     ITEM_COUNT
 };
 
@@ -76,6 +80,11 @@ uint16_t item_by_name(char const* name);
 static inline cm_str_t item_label(uint16_t id) {
     return item_def(id).label;
 }
+
+// The tool of class `tool` at exactly `level`, or 0 if this build has
+// none. What lets a refusal NAME what is needed ("Needs a stone
+// pickaxe") instead of saying only that it will not budge.
+uint16_t item_tool_for(uint8_t tool, uint8_t level);
 
 // How many ticks `block` takes to break while holding `tool_item`.
 //

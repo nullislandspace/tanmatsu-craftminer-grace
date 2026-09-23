@@ -235,3 +235,37 @@ furnace.burns = olvaszt %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Barkácsolás
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto be
+craft.auto_off = auto ki
+craft.auto_made = útközben %d %s készült
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Vasérc
+item.chest = Láda
+item.trash_chest = Szemetes
+item.disassembly_bench = Szétszedő pad
+item.iron_ingot = Vasrúd
+item.pickaxe_iron = Vas csákány
+item.axe_iron = Vas fejsze
+item.shovel_iron = Vas lapát
+
+# --- chest ---
+chest.title = Láda
+chest.title_trash = Szemetes
+chest.yours = Amit viszel
+chest.hint = tab oldalt vált   enter átvisz egy köteget   esc bezár
+chest.no_room = Nincs rá hely
+chest.trash_warn = ami itt marad, %d perc játék után eltűnik
+chest.trash_gone = %d köteg elrohadt
+
+# --- bench ---
+bench.title = Szétszedés
+bench.hint = enter szétszedi   esc bezár
+bench.empty = Itt semmi sem szedhető szét
+bench.gives = visszaad %s
+bench.done = Szétszedve %d %s
+
+# --- hud ---
+hud.needs_tool = Kell hozzá %s

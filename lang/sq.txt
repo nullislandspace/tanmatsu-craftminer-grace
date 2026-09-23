@@ -235,3 +235,37 @@ furnace.burns = shkrin %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Punimi
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto ndezur
+craft.auto_off = auto fikur
+craft.auto_made = u bënë %d %s rrugës
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Xeheror hekuri
+item.chest = Arkë
+item.trash_chest = Kosh plehrash
+item.disassembly_bench = Banku i çmontimit
+item.iron_ingot = Shufër hekuri
+item.pickaxe_iron = Kazmë hekuri
+item.axe_iron = Sëpatë hekuri
+item.shovel_iron = Lopatë hekuri
+
+# --- chest ---
+chest.title = Arkë
+chest.title_trash = Kosh plehrash
+chest.yours = Çfarë mban me vete
+chest.hint = tab ndërron anën   enter lëviz një grumbull   esc mbyll
+chest.no_room = Nuk ka vend
+chest.trash_warn = çdo gjë këtu zhduket pas %d minutash lojë
+chest.trash_gone = %d grumbuj u kalbën
+
+# --- bench ---
+bench.title = Çmontimi
+bench.hint = enter e çmonton   esc mbyll
+bench.empty = Këtu nuk çmontohet asgjë
+bench.gives = kthen %s
+bench.done = U çmontuan %d %s
+
+# --- hud ---
+hud.needs_tool = Kërkon %s

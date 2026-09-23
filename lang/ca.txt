@@ -235,3 +235,37 @@ furnace.burns = fon %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Fabricació
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto sí
+craft.auto_off = auto no
+craft.auto_made = %d %s fets pel camí
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Mineral de ferro
+item.chest = Cofre
+item.trash_chest = Paperera
+item.disassembly_bench = Taula de desmuntatge
+item.iron_ingot = Lingot de ferro
+item.pickaxe_iron = Pic de ferro
+item.axe_iron = Destral de ferro
+item.shovel_iron = Pala de ferro
+
+# --- chest ---
+chest.title = Cofre
+chest.title_trash = Paperera
+chest.yours = El que portes
+chest.hint = tab canvia de costat   retorn mou una pila   esc tanca
+chest.no_room = No hi ha lloc
+chest.trash_warn = el que quedi aquí desapareix als %d minuts de joc
+chest.trash_gone = %d piles s'han podrit
+
+# --- bench ---
+bench.title = Desmuntar
+bench.hint = retorn ho desmunta   esc tanca
+bench.empty = Aquí no es desmunta res
+bench.gives = retorna %s
+bench.done = %d %s desmuntat
+
+# --- hud ---
+hud.needs_tool = Cal %s

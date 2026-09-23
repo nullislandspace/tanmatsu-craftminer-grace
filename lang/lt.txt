@@ -235,3 +235,37 @@ furnace.burns = išlydys %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Gaminimas
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto įj
+craft.auto_off = auto išj
+craft.auto_made = pakeliui pagaminta %d %s
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Geležies rūda
+item.chest = Skrynia
+item.trash_chest = Šiukšliadėžė
+item.disassembly_bench = Ardymo stalas
+item.iron_ingot = Geležies luitas
+item.pickaxe_iron = Geležinis kirtiklis
+item.axe_iron = Geležinis kirvis
+item.shovel_iron = Geležinis kastuvas
+
+# --- chest ---
+chest.title = Skrynia
+chest.title_trash = Šiukšliadėžė
+chest.yours = Ką neši
+chest.hint = tab keičia pusę   enter perkelia krūvą   esc uždaro
+chest.no_room = Nėra tam vietos
+chest.trash_warn = kas čia lieka, dingsta po %d žaidimo minučių
+chest.trash_gone = %d krūvų supuvo
+
+# --- bench ---
+bench.title = Ardymas
+bench.hint = enter tai išardo   esc uždaro
+bench.empty = Čia niekas neišardoma
+bench.gives = grąžina %s
+bench.done = Išardyta %d %s
+
+# --- hud ---
+hud.needs_tool = Reikia %s

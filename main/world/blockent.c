@@ -96,6 +96,24 @@ void blockent_touch(blockent_t const* be) {
     chunk_mark_edited(chunk_of(be->x), chunk_of(be->z));
 }
 
+int blockent_rot_trash(blockent_t* be, uint32_t now) {
+    if (be == NULL || be->kind != BE_TRASH) return 0;
+
+    // A stamp from the future means the clock moved back under it;
+    // treat it as no time at all rather than as an instant emptying.
+    uint32_t const elapsed = now >= be->stamp ? now - be->stamp : 0;
+    if (elapsed < BE_TRASH_TICKS) return 0;
+
+    int gone = 0;
+    for (int i = 0; i < BE_SLOTS; i++) {
+        if (be->slot[i].item == 0) continue;
+        memset(&be->slot[i], 0, sizeof(be->slot[i]));
+        gone++;
+    }
+    be->stamp = now;
+    return gone;
+}
+
 void blockent_drop_chunk(int32_t cx, int32_t cz) {
     if (s_pool == NULL) return;
     for (int i = 0; i < BE_MAX; i++) {

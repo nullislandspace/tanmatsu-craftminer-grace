@@ -2586,6 +2586,193 @@ static void check_items(void) {
 //  the section machinery works at all.
 // ---------------------------------------------------------------------
 
+static void check_autocraft(void) {
+    printf("crafting: making what it needs first\n");
+
+    recipe_t const* pick = NULL;
+    for (int i = 0; i < recipe_count(); i++) {
+        if (recipe_at(i)->out == ITEM_PICK_WOOD) pick = recipe_at(i);
+    }
+    CHECK(pick != NULL, "there is no wooden pickaxe recipe");
+    if (pick == NULL) return;
+
+    // THE USER'S OWN EXAMPLE: "when we need a pickaxe, but only have
+    // blocks of wood". Two logs is eight planks; three of those and two
+    // sticks (which are another two planks) is a pickaxe.
+    inventory_t inv;
+    inv_clear(&inv);
+    inv_add(&inv, BLK_LOG, 2, 0);
+    CHECK(recipe_can_make(pick, &inv, 1) == 0, "a pickaxe can be made directly out of logs");
+    CHECK(recipe_can_make_auto(pick, &inv, RS_TABLE) == 1, "two logs should reach a wooden pickaxe");
+    CHECK(recipe_make_auto(pick, &inv, 1, RS_TABLE) == 1, "the planner refused a pickaxe it said it could make");
+    CHECK(inv_count(&inv, ITEM_PICK_WOOD) == 1, "no pickaxe came out of the plan");
+    CHECK(inv_count(&inv, BLK_LOG) == 0, "the plan left a log unused");
+    printf("  2 logs -> 8 planks -> 4 sticks -> a pickaxe, and %d planks over\n", inv_count(&inv, BLK_PLANKS));
+
+    // NOT ENOUGH, AND NOTHING TAKEN. One log cannot reach a pickaxe,
+    // and the attempt must leave the log alone rather than turn it into
+    // planks the player never asked for -- this is the half-finished
+    // plan, and it is the reason the snapshot wraps the WHOLE plan.
+    inv_clear(&inv);
+    inv_add(&inv, BLK_LOG, 1, 0);
+    CHECK(recipe_can_make_auto(pick, &inv, RS_TABLE) == 0, "one log reached a pickaxe");
+    CHECK(recipe_make_auto(pick, &inv, 1, RS_TABLE) == 0, "one log made a pickaxe");
+    CHECK(inv_count(&inv, BLK_LOG) == 1, "the failed plan ate the log");
+    CHECK(inv_count(&inv, BLK_PLANKS) == 0, "the failed plan left %d planks behind",
+          inv_count(&inv, BLK_PLANKS));
+
+    // ASKING DOES NOT DO. recipe_can_make_auto works on a copy, so the
+    // inventory it was asked about must be untouched.
+    inv_clear(&inv);
+    inv_add(&inv, BLK_LOG, 2, 0);
+    (void)recipe_can_make_auto(pick, &inv, RS_TABLE);
+    CHECK(inv_count(&inv, BLK_LOG) == 2 && inv_count(&inv, BLK_PLANKS) == 0,
+          "asking whether a plan works carried it out");
+
+    // THE STATION STILL COUNTS. The same two logs at no table reach
+    // planks and sticks, and stop there.
+    inv_clear(&inv);
+    inv_add(&inv, BLK_LOG, 2, 0);
+    CHECK(recipe_can_make_auto(pick, &inv, RS_INVENTORY) == 0, "a pickaxe was planned with no crafting table");
+
+    // AND IT NEVER SMELTS. An iron pickaxe from iron ORE would mean the
+    // planner lighting a furnace on the player's behalf.
+    recipe_t const* iron = NULL;
+    for (int i = 0; i < recipe_count(); i++) {
+        if (recipe_at(i)->out == ITEM_PICK_IRON) iron = recipe_at(i);
+    }
+    CHECK(iron != NULL, "there is no iron pickaxe recipe");
+    if (iron != NULL) {
+        inv_clear(&inv);
+        inv_add(&inv, BLK_IRON_ORE, 8, 0);
+        inv_add(&inv, BLK_LOG, 4, 0);
+        CHECK(recipe_can_make_auto(iron, &inv, RS_TABLE) == 0, "the planner smelted iron ore by itself");
+        CHECK(inv_count(&inv, BLK_IRON_ORE) == 8, "the planner consumed ore it could not use");
+    }
+
+    // The depth stop is real, and nothing recurses forever: every
+    // recipe planned from an empty pack terminates and makes nothing.
+    inv_clear(&inv);
+    for (int i = 0; i < recipe_count(); i++) {
+        recipe_t const* r = recipe_at(i);
+        if (r->station == RS_FURNACE) continue;
+        CHECK(recipe_make_auto(r, &inv, 1, RS_TABLE) == 0, "%s was made out of an empty pack",
+              item_def(r->out).name);
+    }
+}
+
+static void check_trash(void) {
+    printf("the trashcan: it empties by the clock, not by a button\n");
+
+    blockent_clear();
+    blockent_t* bin = blockent_add(0, 64, 0, BE_TRASH);
+    CHECK(bin != NULL, "could not make a trashcan");
+    if (bin == NULL) return;
+    bin->slot[0] = (inv_slot_t){BLK_COBBLE, 64, 0};
+    bin->slot[1] = (inv_slot_t){ITEM_PICK_WOOD, 1, 30};
+    bin->stamp   = 0;
+
+    // A MINUTE SHORT AND IT IS ALL STILL THERE.
+    CHECK(blockent_rot_trash(bin, BE_TRASH_TICKS - 1) == 0, "the bin emptied early");
+    CHECK(bin->slot[0].count == 64, "the bin lost something before its time");
+
+    // ... and on the tick it is due, it goes.
+    CHECK(blockent_rot_trash(bin, BE_TRASH_TICKS) == 2, "the bin did not empty on time");
+    CHECK(bin->slot[0].item == 0 && bin->slot[1].item == 0, "the bin kept something");
+    CHECK(bin->stamp == BE_TRASH_TICKS, "the bin did not restamp itself");
+
+    // A CHEST IS NOT A BIN, however long it is left.
+    blockent_t* box = blockent_add(1, 64, 0, BE_CHEST);
+    box->slot[0]    = (inv_slot_t){BLK_COBBLE, 64, 0};
+    box->stamp      = 0;
+    CHECK(blockent_rot_trash(box, 0xFFFFFFFEu) == 0, "a chest rotted");
+    CHECK(box->slot[0].count == 64, "a chest lost what was in it");
+
+    // A stamp from the future is not an instant emptying.
+    bin->slot[0] = (inv_slot_t){BLK_SAND, 10, 0};
+    bin->stamp   = 9000;
+    CHECK(blockent_rot_trash(bin, 10) == 0, "a clock that went backwards emptied the bin");
+    CHECK(bin->slot[0].count == 10, "the bin lost sand to a clock that went backwards");
+
+    printf("  %u ticks is %u minutes of playing\n", (unsigned)BE_TRASH_TICKS, (unsigned)BE_TRASH_MINUTES);
+    blockent_clear();
+}
+
+static void check_bench(void) {
+    printf("the bench: what comes apart, and what does not\n");
+
+    // WHAT THE USER SAID MUST NOT REVERSE. These are their own
+    // examples, so they are named here rather than counted.
+    for (int i = 0; i < recipe_count(); i++) {
+        recipe_t const* r = recipe_at(i);
+        bool const      rev = (r->flags & RF_REVERSIBLE) != 0;
+        if (r->out == ITEM_IRON_INGOT || r->out == ITEM_STICK || r->out == BLK_PLANKS || r->out == BLK_TORCH ||
+            r->out == BLK_GLASS || r->out == BLK_STONE) {
+            CHECK(!rev, "%s can be taken apart, and should not be", item_def(r->out).name);
+        }
+        if (r->out == ITEM_PICK_WOOD || r->out == BLK_CHEST || r->out == BLK_FURNACE ||
+            r->out == BLK_CRAFTING_TABLE) {
+            CHECK(rev, "%s cannot be taken apart, and should be", item_def(r->out).name);
+        }
+    }
+
+    // A worn tool gives back its FULL ingredient list (the user's
+    // call). Three planks and two sticks, whatever state it is in.
+    recipe_t const* pick = NULL;
+    for (int i = 0; i < recipe_count(); i++) {
+        if (recipe_at(i)->out == ITEM_PICK_WOOD) pick = recipe_at(i);
+    }
+    if (pick == NULL) return;
+
+    inventory_t inv;
+    inv_clear(&inv);
+    inv_add(&inv, ITEM_PICK_WOOD, 1, 55);  // nearly spent: 60 uses, 55 gone
+    CHECK(inv_take(&inv, ITEM_PICK_WOOD, pick->out_n), "a worn pickaxe could not be taken off the bench");
+    for (int i = 0; i < pick->n_in; i++) {
+        CHECK(inv_add(&inv, pick->in[i].item, pick->in[i].count, 0) == 0, "the pieces would not fit back");
+    }
+    CHECK(inv_count(&inv, BLK_PLANKS) == 3 && inv_count(&inv, ITEM_STICK) == 2,
+          "a 92%% worn pickaxe gave back %d planks and %d sticks, wanted 3 and 2", inv_count(&inv, BLK_PLANKS),
+          inv_count(&inv, ITEM_STICK));
+    printf("  a nearly-spent pickaxe still gives back 3 planks and 2 sticks\n");
+}
+
+static void check_iron(void) {
+    printf("iron: the one block that refuses the swing\n");
+
+    CHECK(block_tool_required(BLK_IRON_ORE), "iron ore does not require a tool");
+    CHECK(!block_tool_required(BLK_STONE), "stone requires a tool, and should only be slow without one");
+    CHECK(!block_tool_required(BLK_COAL_ORE), "coal ore requires a tool; a wooden pickaxe should get it");
+
+    CHECK(!item_can_harvest(BLK_IRON_ORE, ITEM_PICK_WOOD), "a wooden pickaxe harvests iron");
+    CHECK(item_can_harvest(BLK_IRON_ORE, ITEM_PICK_STONE), "a stone pickaxe cannot harvest iron");
+    CHECK(item_can_harvest(BLK_COAL_ORE, ITEM_PICK_WOOD), "a wooden pickaxe cannot harvest coal");
+    CHECK(item_can_harvest(BLK_STONE, ITEM_PICK_WOOD), "a wooden pickaxe cannot harvest stone");
+
+    // The refusal has to NAME the tool, or it is indistinguishable
+    // from a bug -- which is the whole reason Minecraft chose the other
+    // rule (blocks.h, BF2_TOOL_REQUIRED).
+    block_def_t const* d = block_def(BLK_IRON_ORE);
+    CHECK(item_tool_for(d->tool, d->tool_level) == ITEM_PICK_STONE, "iron ore cannot say what it wants");
+    CHECK(item_tool_for(TOOL_PICK, 3) == ITEM_PICK_IRON, "there is no level-3 pickaxe to name");
+    CHECK(item_tool_for(TOOL_NONE, 0) == 0, "a tool class of none named something");
+
+    // Every block that refuses a swing must be able to say what it
+    // wants, or a player is left hitting it with no idea why.
+    for (int b = 0; b < BLK_COUNT; b++) {
+        if (!block_tool_required((uint8_t)b)) continue;
+        block_def_t const* def = block_def((uint8_t)b);
+        CHECK(item_tool_for(def->tool, def->tool_level) != 0, "%s refuses the swing and cannot name a tool",
+              def->name);
+    }
+
+    // Iron takes 6x off a bare fist with the tool that finally opens it.
+    int const by_hand = item_break_ticks(BLK_IRON_ORE, 0);
+    int const by_iron = item_break_ticks(BLK_IRON_ORE, ITEM_PICK_IRON);
+    CHECK(by_hand / by_iron == 6, "an iron pickaxe is %dx a fist on iron ore, wanted 6", by_hand / by_iron);
+    printf("  iron ore: %d ticks by hand, %d with an iron pickaxe\n", by_hand, by_iron);
+}
+
 static void check_blockent(void) {
     printf("block entities: blocks that remember\n");
 
@@ -3687,6 +3874,29 @@ static struct {
     {"craft.detail_sub", 18.0f, PANEL_ROOM(0.88f)},
     {"craft.detail_hint", 14.0f, PANEL_ROOM(0.88f)},
 
+    // The chest screen, which is drawn by hand rather than by se_ui:
+    // two grids of CHEST_SLOT_W, with lines centred on the display.
+    {"chest.title", 30.0f, 800.0f - 32.0f},
+    {"chest.title_trash", 30.0f, 800.0f - 32.0f},
+    {"chest.yours", 18.0f, 6.0f * 44.0f + 5.0f * 4.0f},
+    {"chest.hint", 15.0f, 800.0f - 32.0f},
+    {"chest.trash_warn", 16.0f, 800.0f - 32.0f},
+    {"chest.trash_gone", 16.0f, 800.0f - 32.0f},
+    {"chest.no_room", 16.0f, 800.0f - 32.0f},
+
+    // The bench, and the planner's state, which shares the search line.
+    {"bench.title", 32.0f, PANEL_ROOM(0.88f)},
+    {"bench.hint", 14.0f, PANEL_ROOM(0.88f)},
+    {"bench.empty", 28.0f, PANEL_ROOM(0.88f)},
+    {"bench.gives", 18.0f, PANEL_ROOM(0.88f)},
+    {"bench.done", 18.0f, PANEL_ROOM(0.88f)},
+    {"craft.auto_on", 18.0f, PANEL_ROOM(0.88f) / 2.0f},
+    {"craft.auto_off", 18.0f, PANEL_ROOM(0.88f) / 2.0f},
+    {"craft.auto_made", 14.0f, PANEL_ROOM(0.88f)},
+
+    // The line a block shows when it will not break, top left.
+    {"hud.needs_tool", 16.0f, 800.0f - 32.0f},
+
     // The furnace: three rows with a value column, a subtitle that says
     // what it is doing, and the picker over the player's own stacks.
     {"furnace.slot", 28.0f, VALUE_ROOM(0.94f, 240.0f)},
@@ -3836,6 +4046,10 @@ int main(void) {
     check_furnace();
     check_discovery();
     check_crafting();
+    check_autocraft();
+    check_trash();
+    check_bench();
+    check_iron();
     check_fold();
     check_light();
     check_replay();

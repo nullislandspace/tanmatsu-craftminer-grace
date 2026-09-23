@@ -20,6 +20,13 @@ static item_def_t const ITEMS[ITEM_COUNT - BLK_COUNT] = {
     [ITEM_AXE_STONE - BLK_COUNT]    = {"axe_stone", CM_STR_ITEM_AXE_STONE, 1, TOOL_AXE, 2, 130, 0, 0xFFA0A8B0u},
     [ITEM_SHOVEL_WOOD - BLK_COUNT]  = {"shovel_wood", CM_STR_ITEM_SHOVEL_WOOD, 1, TOOL_SHOVEL, 1, 60, 200, 0xFFA07838u},
     [ITEM_SHOVEL_STONE - BLK_COUNT] = {"shovel_stone", CM_STR_ITEM_SHOVEL_STONE, 1, TOOL_SHOVEL, 2, 130, 0, 0xFF888F98u},
+
+    // Iron: smelted from the ore, and the only tier that opens iron
+    // ore itself. 250 uses, as in Minecraft, and iron does not burn.
+    [ITEM_IRON_INGOT - BLK_COUNT]  = {"iron_ingot", CM_STR_ITEM_IRON_INGOT, ITEM_STACK_MAX, TOOL_NONE, 0, 0, 0, 0xFFD8D8DEu},
+    [ITEM_PICK_IRON - BLK_COUNT]   = {"pickaxe_iron", CM_STR_ITEM_PICKAXE_IRON, 1, TOOL_PICK, 3, 250, 0, 0xFFDEDEE4u},
+    [ITEM_AXE_IRON - BLK_COUNT]    = {"axe_iron", CM_STR_ITEM_AXE_IRON, 1, TOOL_AXE, 3, 250, 0, 0xFFDEDEE4u},
+    [ITEM_SHOVEL_IRON - BLK_COUNT] = {"shovel_iron", CM_STR_ITEM_SHOVEL_IRON, 1, TOOL_SHOVEL, 3, 250, 0, 0xFFDEDEE4u},
 };
 
 // A flat colour standing in for the block's texture in the inventory.
@@ -38,7 +45,9 @@ static uint32_t const BLOCK_ARGB[BLK_COUNT] = {
     [BLK_TALL_GRASS] = 0xFF5C9634u,   [BLK_BARRIER] = 0xFF303030u,
     [BLK_BEDROCK] = 0xFF4A4A4Au,      [BLK_GRAVEL] = 0xFF847C78u,
     [BLK_SIGN] = 0xFFA4804Eu,         [BLK_CRAFTING_TABLE] = 0xFF9C7A4Au,
-    [BLK_FURNACE] = 0xFF707072u,
+    [BLK_FURNACE] = 0xFF707072u,        [BLK_IRON_ORE] = 0xFF8E8278u,
+    [BLK_CHEST] = 0xFF96703Eu,          [BLK_TRASH] = 0xFF605C5Au,
+    [BLK_BENCH] = 0xFF967446u,
 };
 
 // What each block is CALLED on screen, beside the colour above. A
@@ -60,6 +69,10 @@ static cm_str_t const BLOCK_LABEL[BLK_COUNT] = {
     [BLK_SIGN] = CM_STR_ITEM_SIGN,
     [BLK_CRAFTING_TABLE] = CM_STR_ITEM_CRAFTING_TABLE,
     [BLK_FURNACE] = CM_STR_ITEM_FURNACE,
+    [BLK_IRON_ORE] = CM_STR_ITEM_IRON_ORE,
+    [BLK_CHEST] = CM_STR_ITEM_CHEST,
+    [BLK_TRASH] = CM_STR_ITEM_TRASH_CHEST,
+    [BLK_BENCH] = CM_STR_ITEM_DISASSEMBLY_BENCH,
     // Air and the barrier are never in anybody's hands and have none.
 };
 
@@ -69,6 +82,7 @@ static cm_str_t const BLOCK_LABEL[BLK_COUNT] = {
 // 100, coal 1600, a wooden tool 200.
 static uint16_t const BLOCK_FUEL[BLK_COUNT] = {
     [BLK_LOG] = 300, [BLK_PLANKS] = 300, [BLK_CRAFTING_TABLE] = 300,
+    [BLK_CHEST] = 300, [BLK_TRASH] = 300, [BLK_BENCH] = 300,
 };
 
 item_def_t item_def(uint16_t id) {
@@ -97,6 +111,15 @@ uint16_t item_by_name(char const* name) {
     for (uint16_t id = 1; id < ITEM_COUNT; id++) {
         if (id == BLK_BARRIER) continue;  // never carried
         if (strcmp(item_def(id).name, name) == 0) return id;
+    }
+    return 0;
+}
+
+uint16_t item_tool_for(uint8_t tool, uint8_t level) {
+    if (tool == TOOL_NONE || level == 0) return 0;
+    for (uint16_t id = BLK_COUNT; id < ITEM_COUNT; id++) {
+        item_def_t const d = item_def(id);
+        if (d.tool == tool && d.tool_level == level) return id;
     }
     return 0;
 }

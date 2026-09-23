@@ -49,6 +49,8 @@
 #include "testkit/report.h"
 #include "testkit/showtime.h"
 #include "ui/icons.h"
+#include "ui/bench_ui.h"
+#include "ui/chest_ui.h"
 #include "ui/craft_ui.h"
 #include "ui/furnace_ui.h"
 #include "ui/menu.h"
@@ -1269,7 +1271,10 @@ static void on_update(float dt, void* user) {
     // The furnace runs on the world's own clock, not on wall time: it
     // never ticks, it catches up (game/furnace.h).
     if (furnace_ui_active()) furnace_ui_update(&s_player.inv, (uint32_t)s_meta.time_of_day);
-    s_player.ui_open = craft_ui_active() || furnace_ui_active();
+    // The trashcan empties by the same clock, and for the same reason.
+    if (chest_ui_active()) chest_ui_update(&s_player.inv, (uint32_t)s_meta.time_of_day);
+    if (bench_ui_active()) bench_ui_update(&s_player.inv);
+    s_player.ui_open = craft_ui_active() || furnace_ui_active() || chest_ui_active() || bench_ui_active();
 
     // The menus. Whatever changes the world or the game's running state
     // comes back as a command and is acted on here, in one place.
@@ -1414,6 +1419,13 @@ static void on_update(float dt, void* user) {
             } else if (s_player.used_block == BLK_FURNACE && !furnace_ui_active()) {
                 s_player.inv.open = false;
                 furnace_ui_open(s_player.aim.x, s_player.aim.y, s_player.aim.z);
+            } else if ((s_player.used_block == BLK_CHEST || s_player.used_block == BLK_TRASH) &&
+                       !chest_ui_active()) {
+                s_player.inv.open = false;
+                chest_ui_open(s_player.aim.x, s_player.aim.y, s_player.aim.z);
+            } else if (s_player.used_block == BLK_BENCH && !bench_ui_active()) {
+                s_player.inv.open = false;
+                bench_ui_open();
             }
             s_meta.time_of_day++;  // the world's clock is its own ticks (D-51)
         }
@@ -1491,6 +1503,14 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
     }
     if (furnace_ui_active()) {
         furnace_ui_event(ev);
+        return;
+    }
+    if (chest_ui_active()) {
+        chest_ui_event(ev);
+        return;
+    }
+    if (bench_ui_active()) {
+        bench_ui_event(ev);
         return;
     }
     if (ev->type != INPUT_EVENT_TYPE_SCANCODE) return;
@@ -1850,7 +1870,14 @@ static void on_render(pax_buf_t* fb, void* user) {
         hud_inventory(fb, &s_player);
         if (craft_ui_active()) craft_ui_draw(fb, &s_player.inv);
         if (furnace_ui_active()) furnace_ui_draw(fb, &s_player.inv);
-        if (s_info || replay_recording()) {
+        if (chest_ui_active()) chest_ui_draw(fb, &s_player.inv);
+        if (bench_ui_active()) bench_ui_draw(fb, &s_player.inv);
+        if (s_player.needs_tool != 0) {
+            char line[96];
+            i18n_fmt(line, sizeof(line), CM_STR_HUD_NEEDS_TOOL, T(item_label(s_player.needs_tool)));
+            char const* const lines = line;
+            hud_text_lines(fb, &lines, 1);
+        } else if (s_info || replay_recording()) {
             draw_info(fb);
         } else if (showtime_now() < s_shot_msg_until) {
             char const* const line = s_shot_msg;

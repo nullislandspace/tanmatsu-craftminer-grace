@@ -235,3 +235,37 @@ furnace.burns = smelter %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Håndverk
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto på
+craft.auto_off = auto av
+craft.auto_made = laget %d %s underveis
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Jernmalm
+item.chest = Kiste
+item.trash_chest = Søppelbøtte
+item.disassembly_bench = Demonteringsbenk
+item.iron_ingot = Jernbarre
+item.pickaxe_iron = Jernhakke
+item.axe_iron = Jernøks
+item.shovel_iron = Jernspade
+
+# --- chest ---
+chest.title = Kiste
+chest.title_trash = Søppelbøtte
+chest.yours = Det du bærer
+chest.hint = tab bytter side   enter flytter en stabel   esc lukker
+chest.no_room = Ikke plass til det
+chest.trash_warn = alt her er borte etter %d minutters spilling
+chest.trash_gone = %d stabler råtnet bort
+
+# --- bench ---
+bench.title = Ta fra hverandre
+bench.hint = enter tar det fra hverandre   esc lukker
+bench.empty = Ingenting her tas fra hverandre
+bench.gives = gir tilbake %s
+bench.done = Tok %d %s fra hverandre
+
+# --- hud ---
+hud.needs_tool = Krever %s

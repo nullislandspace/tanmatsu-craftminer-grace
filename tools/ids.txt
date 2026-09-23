@@ -40,6 +40,10 @@ block 18 gravel
 block 19 sign
 block 20 crafting_table
 block 21 furnace
+block 22 iron_ore
+block 23 chest
+block 24 trash_chest
+block 25 disassembly_bench
 item coal
 item stick
 item pickaxe_wood
@@ -48,3 +52,7 @@ item axe_wood
 item axe_stone
 item shovel_wood
 item shovel_stone
+item iron_ingot
+item pickaxe_iron
+item axe_iron
+item shovel_iron

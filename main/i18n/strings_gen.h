@@ -131,6 +131,9 @@ typedef enum {
     CM_STR_CRAFT_ING,                   // craft.ing
     CM_STR_CRAFT_MADE,                  // craft.made
     CM_STR_CRAFT_FULL,                  // craft.full
+    CM_STR_CRAFT_AUTO_ON,               // craft.auto_on
+    CM_STR_CRAFT_AUTO_OFF,              // craft.auto_off
+    CM_STR_CRAFT_AUTO_MADE,             // craft.auto_made
     CM_STR_CRAFT_DETAIL_SUB,            // craft.detail_sub
     CM_STR_CRAFT_DETAIL_HINT,           // craft.detail_hint
     CM_STR_CRAFT_DETAIL_HAVE,           // craft.detail_have
@@ -154,6 +157,10 @@ typedef enum {
     CM_STR_ITEM_SIGN,                   // item.sign
     CM_STR_ITEM_CRAFTING_TABLE,         // item.crafting_table
     CM_STR_ITEM_FURNACE,                // item.furnace
+    CM_STR_ITEM_IRON_ORE,               // item.iron_ore
+    CM_STR_ITEM_CHEST,                  // item.chest
+    CM_STR_ITEM_TRASH_CHEST,            // item.trash_chest
+    CM_STR_ITEM_DISASSEMBLY_BENCH,      // item.disassembly_bench
     CM_STR_ITEM_COAL,                   // item.coal
     CM_STR_ITEM_STICK,                  // item.stick
     CM_STR_ITEM_PICKAXE_WOOD,           // item.pickaxe_wood
@@ -162,6 +169,10 @@ typedef enum {
     CM_STR_ITEM_AXE_STONE,              // item.axe_stone
     CM_STR_ITEM_SHOVEL_WOOD,            // item.shovel_wood
     CM_STR_ITEM_SHOVEL_STONE,           // item.shovel_stone
+    CM_STR_ITEM_IRON_INGOT,             // item.iron_ingot
+    CM_STR_ITEM_PICKAXE_IRON,           // item.pickaxe_iron
+    CM_STR_ITEM_AXE_IRON,               // item.axe_iron
+    CM_STR_ITEM_SHOVEL_IRON,            // item.shovel_iron
     CM_STR_FURNACE_TITLE,               // furnace.title
     CM_STR_FURNACE_INPUT,               // furnace.input
     CM_STR_FURNACE_FUEL,                // furnace.fuel
@@ -181,6 +192,19 @@ typedef enum {
     CM_STR_FURNACE_PICK_HINT,           // furnace.pick_hint
     CM_STR_FURNACE_BECOMES,             // furnace.becomes
     CM_STR_FURNACE_BURNS,               // furnace.burns
+    CM_STR_CHEST_TITLE,                 // chest.title
+    CM_STR_CHEST_TITLE_TRASH,           // chest.title_trash
+    CM_STR_CHEST_YOURS,                 // chest.yours
+    CM_STR_CHEST_HINT,                  // chest.hint
+    CM_STR_CHEST_NO_ROOM,               // chest.no_room
+    CM_STR_CHEST_TRASH_WARN,            // chest.trash_warn
+    CM_STR_CHEST_TRASH_GONE,            // chest.trash_gone
+    CM_STR_BENCH_TITLE,                 // bench.title
+    CM_STR_BENCH_HINT,                  // bench.hint
+    CM_STR_BENCH_EMPTY,                 // bench.empty
+    CM_STR_BENCH_GIVES,                 // bench.gives
+    CM_STR_BENCH_DONE,                  // bench.done
+    CM_STR_HUD_NEEDS_TOOL,              // hud.needs_tool
     CM_STR_ACTION_FORWARD,              // action.forward
     CM_STR_ACTION_BACK,                 // action.back
     CM_STR_ACTION_LEFT,                 // action.left

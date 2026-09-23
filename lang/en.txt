@@ -175,7 +175,7 @@ craft.title = Crafting
 craft.title_table = Crafting table
 # %s is what has been typed into the search box so far
 craft.search = Search: %s
-craft.hint = type to search   enter to craft   esc to close
+craft.hint = type to search   enter crafts   tab: auto   esc closes
 craft.empty = Nothing to make yet
 craft.empty_sub = Recipes appear as you pick up the materials they need
 craft.no_match = Nothing matches
@@ -190,6 +190,12 @@ craft.ing = %s %d/%d
 # shown for a moment after crafting: %d made, %s what it was
 craft.made = Made %d %s
 craft.full = No room for it
+# shown beside the search box: whether the book will make the missing pieces
+# first. KEEP THESE SHORT, they share a line with what has been typed
+craft.auto_on = auto on
+craft.auto_off = auto off
+# when auto-crafting made something on the way: %d of %s were needed first
+craft.auto_made = made %d %s on the way
 
 # --- What a recipe needs, opened on a recipe that cannot be made yet --------
 craft.detail_sub = what it takes
@@ -223,6 +229,10 @@ item.gravel = Gravel
 item.sign = Sign
 item.crafting_table = Crafting table
 item.furnace = Furnace
+item.iron_ore = Iron ore
+item.chest = Chest
+item.trash_chest = Trashcan
+item.disassembly_bench = Disassembly bench
 item.coal = Coal
 item.stick = Stick
 item.pickaxe_wood = Wooden pickaxe
@@ -231,6 +241,10 @@ item.axe_wood = Wooden axe
 item.axe_stone = Stone axe
 item.shovel_wood = Wooden shovel
 item.shovel_stone = Stone shovel
+item.iron_ingot = Iron ingot
+item.pickaxe_iron = Iron pickaxe
+item.axe_iron = Iron axe
+item.shovel_iron = Iron shovel
 
 # --- The furnace ------------------------------------------------------------
 furnace.title = Furnace
@@ -257,6 +271,29 @@ furnace.pick_hint = enter chooses   esc goes back
 furnace.becomes = makes %s
 # ... or, for fuel, how many items it would smelt
 furnace.burns = smelts %d
+
+# --- Chests, and the trashcan -----------------------------------------------
+chest.title = Chest
+chest.title_trash = Trashcan
+chest.yours = What you are carrying
+chest.hint = tab swaps sides   enter moves a stack   esc closes
+chest.no_room = No room for it
+# %d is how many minutes of playing before what is in the trashcan is gone
+chest.trash_warn = anything left in here is gone after %d minutes of playing
+# ... and what it says when it has just thrown some away
+chest.trash_gone = %d stacks rotted away
+
+# --- Taking things apart ----------------------------------------------------
+bench.title = Taking apart
+bench.hint = enter takes it apart   esc closes
+bench.empty = Nothing here comes apart
+# the footer, for the thing under the cursor
+bench.gives = gives back %s
+bench.done = Took apart %d %s
+
+# --- What a block will not do -----------------------------------------------
+# %s is the tool it wants, e.g. "a stone pickaxe"
+hud.needs_tool = Needs %s
 
 # --- The things a key can be bound to ---------------------------------------
 # These are the Controls list, one row each.

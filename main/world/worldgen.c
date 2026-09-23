@@ -34,6 +34,7 @@
 #define S_HILL   0x2222u
 #define S_CAVE   0x3333u
 #define S_ORE    0x4444u
+#define S_ORE2   0x4545u  // iron: its own hash, so coal's pockets do not move
 #define S_TREE   0x5555u
 #define S_PLANT  0x6666u
 #define S_DETAIL 0x7777u
@@ -115,9 +116,15 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
             if (sy > CH_SEA_LEVEL + 2 || y < CH_SEA_LEVEL - 3) b = BLK_AIR;
         }
 
-        // Ore in what stone is left.
+        // Ore in what stone is left. Iron is DEEPER and RARER than
+        // coal, and tested first so the two never fight over a cell --
+        // a coal seam with iron in the middle of it looks like a bug.
         if (b == BLK_STONE && y < 40 && y > CH_BEDROCK) {
-            if (cm_rand3(wx, y, wz, seed ^ S_ORE) > 0.988f) b = BLK_COAL_ORE;
+            if (y < 28 && cm_rand3(wx, y, wz, seed ^ S_ORE2) > 0.9935f) {
+                b = BLK_IRON_ORE;
+            } else if (cm_rand3(wx, y, wz, seed ^ S_ORE) > 0.988f) {
+                b = BLK_COAL_ORE;
+            }
         }
 
         id[y] = b;

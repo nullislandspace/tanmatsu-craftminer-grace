@@ -83,6 +83,12 @@ typedef enum {
     VM_TABLE_SIDE,
     VM_FURNACE_FRONT,
     VM_FURNACE_TOP,
+    VM_IRON_ORE,
+    VM_CHEST_TOP,
+    VM_CHEST_SIDE,
+    VM_TRASH_TOP,
+    VM_TRASH_SIDE,
+    VM_BENCH_TOP,
     VM_COUNT
 } vox_mat_t;
 

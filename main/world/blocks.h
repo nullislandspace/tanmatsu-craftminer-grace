@@ -64,6 +64,16 @@ typedef enum {
 // record from the pool and breaking one gives it back, contents first.
 #define BF2_RECORD     (1u << 1)
 
+// THE BLOCK WILL NOT BREAK AT ALL without a tool of at least its
+// `tool_level`. Minecraft's rule is that it breaks and drops nothing,
+// and this game used that until iron arrived -- the user asked for the
+// stricter one (2026-09-23), so iron ore refuses the swing outright.
+//
+// A refusal has to SAY SO, or a swing that does nothing and explains
+// nothing reads as a bug -- which is exactly why Minecraft chose the
+// other rule. See break_result_t.needs_tool.
+#define BF2_TOOL_REQUIRED (1u << 2)
+
 // Tool classes. `tool_level` is 0 hand, 1 wood, 2 stone, 3 iron.
 typedef enum {
     TOOL_NONE = 0,
@@ -159,7 +169,11 @@ enum {
     BLK_SIGN = 19,
     BLK_CRAFTING_TABLE = 20,
     BLK_FURNACE        = 21,
-    // New blocks here: BLK_SOMETHING = 22, and a line in tools/ids.txt.
+    BLK_IRON_ORE       = 22,
+    BLK_CHEST          = 23,
+    BLK_TRASH          = 24,
+    BLK_BENCH          = 25,
+    // New blocks here: BLK_SOMETHING = 26, and a line in tools/ids.txt.
     BLK_COUNT
 };
 
@@ -195,6 +209,10 @@ static inline bool block_usable(uint8_t id) {
 
 static inline bool block_keeps_record(uint8_t id) {
     return (block_def(id)->flags2 & BF2_RECORD) != 0;
+}
+
+static inline bool block_tool_required(uint8_t id) {
+    return (block_def(id)->flags2 & BF2_TOOL_REQUIRED) != 0;
 }
 
 // The be_kind_t a block's record is. Not in the table: blockent.h

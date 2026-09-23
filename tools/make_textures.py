@@ -640,6 +640,85 @@ def cm_furnace_front():
     return cm_rgb(lum, (114, 114, 116))
 
 
+def cm_iron_ore():
+    """Stone with pale tan blobs in it, so it reads as ore but not as
+    coal -- the two sit next to each other underground."""
+    lum, gen = cm_stone_lum(35)
+    rgb = cm_rgb(lum, (122, 122, 124))
+    for cx, cy, r in ((4, 4, 2), (11, 6, 2), (6, 11, 2), (12, 12, 1)):
+        for y in range(cy - r, cy + r + 1):
+            for x in range(cx - r, cx + r + 1):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r and 0 <= x < B and 0 <= y < B:
+                    d = int(gen.integers(-12, 13))
+                    rgb[y, x] = np.clip(np.array([206 + d, 168 + d, 132 + d]), 0, 255)
+    return rgb
+
+
+CHEST_IRON = (86, 86, 92)
+
+
+def cm_chest_side():
+    """Planks with two iron bands and a latch: a box, from any side."""
+    lum, gen = cm_planks_lum(36)
+    rgb = cm_rgb(lum, (150, 110, 62))
+    for y in (2, 13):
+        rgb[y, :] = CHEST_IRON
+        rgb[y + 1, :] = tuple(c - 18 for c in CHEST_IRON)
+    # The latch, in the middle of the front.
+    for y in range(6, 11):
+        for x in range(6, 10):
+            rgb[y, x] = CHEST_IRON if (y + x) % 3 else tuple(c + 26 for c in CHEST_IRON)
+    return rgb
+
+
+def cm_chest_top():
+    """... and its lid, banded the other way."""
+    lum, _ = cm_planks_lum(37)
+    rgb = cm_rgb(lum, (146, 106, 58))
+    for x in (2, 13):
+        rgb[:, x] = CHEST_IRON
+        rgb[:, x + 1] = tuple(c - 18 for c in CHEST_IRON)
+    return rgb
+
+
+def cm_trash_side():
+    """The same box, in grey with a dark mouth: it is a chest that eats
+    what you put in it, and it has to look like it."""
+    lum, _ = cm_planks_lum(38)
+    rgb = cm_rgb(lum - 18, (104, 100, 98))
+    for y in (2, 13):
+        rgb[y, :] = (62, 60, 58)
+        rgb[y + 1, :] = (48, 46, 44)
+    for y in range(6, 12):
+        for x in range(4, 12):
+            rgb[y, x] = (34, 32, 30)
+    return rgb
+
+
+def cm_trash_top():
+    lum, _ = cm_planks_lum(39)
+    rgb = cm_rgb(lum - 18, (100, 96, 94))
+    for y in range(3, 13):
+        for x in range(3, 13):
+            rgb[y, x] = (30, 28, 26)
+    return rgb
+
+
+def cm_bench_top():
+    """The crafting table's opposite number: the same planks, with the
+    grid replaced by a cut across it."""
+    lum, gen = cm_planks_lum(41)
+    for at in (7, 8):
+        lum[at, 1:15] -= 52
+    for x in range(2, 14, 2):                # the teeth of the saw
+        lum[6, x] -= 34
+        lum[9, x + 1] -= 34
+    lum += gen.integers(-3, 4, (B, B))
+    lum[0, :] -= 26
+    lum[15, :] -= 26
+    return cm_rgb(lum, (150, 116, 70))
+
+
 # --- Item icons -------------------------------------------------------
 #
 # The things that are NOT blocks need a picture of their own: a block can
@@ -708,6 +787,18 @@ def cm_item_shovel(rgb):
     _rect(img, 8, 3, 12, 8, rgb)
     _rect(img, 8, 3, 12, 4, _shade(rgb, 22))
     _rect(img, 8, 7, 12, 8, _shade(rgb, -22))
+    return img
+
+
+def cm_item_ingot():
+    """A bar: a flat-topped trapezium with a highlight along the top."""
+    img = _icon()
+    rgb = (214, 214, 220)
+    for i, y in enumerate(range(6, 11)):
+        x0 = 3 + i // 2
+        x1 = 13 - i // 2
+        _rect(img, x0, y, x1, y + 1, _shade(rgb, -6 * i))
+    _rect(img, 4, 6, 12, 7, _shade(rgb, 22))
     return img
 
 
@@ -1018,7 +1109,17 @@ TEXTURES = {
     "leaves_fast.png": cm_leaves_fast,
     "bedrock.png": cm_bedrock,
     "gravel.png": cm_gravel,
+    "iron_ore.png": cm_iron_ore,
+    "chest_top.png": cm_chest_top,
+    "chest_side.png": cm_chest_side,
+    "trash_top.png": cm_trash_top,
+    "trash_side.png": cm_trash_side,
+    "bench_top.png": cm_bench_top,
     "item_coal.png": cm_item_coal,
+    "item_iron_ingot.png": cm_item_ingot,
+    "item_pickaxe_iron.png": lambda: cm_item_pickaxe((222, 222, 228)),
+    "item_axe_iron.png": lambda: cm_item_axe((222, 222, 228)),
+    "item_shovel_iron.png": lambda: cm_item_shovel((222, 222, 228)),
     "item_stick.png": cm_item_stick,
     "item_pickaxe_wood.png": lambda: cm_item_pickaxe((176, 128, 64)),
     "item_pickaxe_stone.png": lambda: cm_item_pickaxe((144, 152, 160)),

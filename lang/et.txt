@@ -235,3 +235,37 @@ furnace.burns = sulatab %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Meisterdamine
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto sees
+craft.auto_off = auto väljas
+craft.auto_made = teel tehti %d %s
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Rauamaak
+item.chest = Kirst
+item.trash_chest = Prügikast
+item.disassembly_bench = Lahtivõtmise pink
+item.iron_ingot = Rauakang
+item.pickaxe_iron = Raudkirka
+item.axe_iron = Raudkirves
+item.shovel_iron = Raudlabidas
+
+# --- chest ---
+chest.title = Kirst
+chest.title_trash = Prügikast
+chest.yours = Mida kannad
+chest.hint = tab vahetab poolt   enter viib virna üle   esc sulgeb
+chest.no_room = Selle jaoks pole ruumi
+chest.trash_warn = mis siia jääb, kaob %d mängimisminuti pärast
+chest.trash_gone = %d virna mädanes ära
+
+# --- bench ---
+bench.title = Lahtivõtmine
+bench.hint = enter võtab selle lahti   esc sulgeb
+bench.empty = Siin ei võeta midagi lahti
+bench.gives = annab tagasi %s
+bench.done = Võeti lahti %d %s
+
+# --- hud ---
+hud.needs_tool = Vajab %s

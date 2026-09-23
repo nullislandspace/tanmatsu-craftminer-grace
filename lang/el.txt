@@ -235,3 +235,37 @@ furnace.burns = λιώνει %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Κατασκευή
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = αυτο ναι
+craft.auto_off = αυτο οχι
+craft.auto_made = φτιάχτηκαν %d %s στον δρόμο
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Μετάλλευμα σιδήρου
+item.chest = Κιβώτιο
+item.trash_chest = Κάδος
+item.disassembly_bench = Πάγκος λύσης
+item.iron_ingot = Ράβδος σιδήρου
+item.pickaxe_iron = Σιδερένια αξίνα
+item.axe_iron = Σιδερένιο τσεκούρι
+item.shovel_iron = Σιδερένιο φτυάρι
+
+# --- chest ---
+chest.title = Κιβώτιο
+chest.title_trash = Κάδος
+chest.yours = Τι κουβαλάς
+chest.hint = tab αλλάζει πλευρά   enter μετακινεί σωρό   esc κλείνει
+chest.no_room = Δεν υπάρχει χώρος
+chest.trash_warn = ό,τι μείνει εδώ χάνεται μετά από %d λεπτά παιχνιδιού
+chest.trash_gone = %d σωροί σάπισαν
+
+# --- bench ---
+bench.title = Αποσυναρμολόγηση
+bench.hint = enter το λύνει   esc κλείνει
+bench.empty = Τίποτα εδώ δεν λύνεται
+bench.gives = δίνει πίσω %s
+bench.done = Λύθηκαν %d %s
+
+# --- hud ---
+hud.needs_tool = Χρειάζεται %s

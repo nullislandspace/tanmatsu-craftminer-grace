@@ -227,3 +227,37 @@ furnace.burns = schmilzt %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Handwerk
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto ein
+craft.auto_off = auto aus
+craft.auto_made = %d %s nebenbei gemacht
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Eisenerz
+item.chest = Truhe
+item.trash_chest = Mülleimer
+item.disassembly_bench = Zerlegebank
+item.iron_ingot = Eisenbarren
+item.pickaxe_iron = Eisenspitzhacke
+item.axe_iron = Eisenaxt
+item.shovel_iron = Eisenschaufel
+
+# --- chest ---
+chest.title = Truhe
+chest.title_trash = Mülleimer
+chest.yours = Was du trägst
+chest.hint = Tab wechselt die Seite   Enter schiebt einen Stapel   Esc schließt
+chest.no_room = Kein Platz dafür
+chest.trash_warn = was hier liegt, ist nach %d Minuten Spielzeit weg
+chest.trash_gone = %d Stapel verrottet
+
+# --- bench ---
+bench.title = Zerlegen
+bench.hint = Enter zerlegt es   Esc schließt
+bench.empty = Hier lässt sich nichts zerlegen
+bench.gives = gibt %s zurück
+bench.done = %d %s zerlegt
+
+# --- hud ---
+hud.needs_tool = Braucht %s

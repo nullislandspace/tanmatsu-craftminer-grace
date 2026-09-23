@@ -235,3 +235,37 @@ furnace.burns = wytopi %d
 
 # --- The things a key can be bound to ---------------------------------------
 action.craft = Wytwarzanie
+
+# --- Crafting ---------------------------------------------------------------
+craft.auto_on = auto wł
+craft.auto_off = auto wył
+craft.auto_made = po drodze zrobiono %d %s
+
+# --- The names of things ----------------------------------------------------
+item.iron_ore = Ruda żelaza
+item.chest = Skrzynia
+item.trash_chest = Kosz
+item.disassembly_bench = Stół rozbiórkowy
+item.iron_ingot = Sztabka żelaza
+item.pickaxe_iron = Żelazny kilof
+item.axe_iron = Żelazny topór
+item.shovel_iron = Żelazna łopata
+
+# --- chest ---
+chest.title = Skrzynia
+chest.title_trash = Kosz
+chest.yours = Co niesiesz
+chest.hint = tab zmienia stronę   enter przenosi stos   esc zamyka
+chest.no_room = Nie ma na to miejsca
+chest.trash_warn = co tu zostanie, znika po %d minutach gry
+chest.trash_gone = %d stosów zgniło
+
+# --- bench ---
+bench.title = Rozbieranie
+bench.hint = enter to rozbiera   esc zamyka
+bench.empty = Tu nic się nie rozbierze
+bench.gives = zwraca %s
+bench.done = Rozebrano %d %s
+
+# --- hud ---
+hud.needs_tool = Wymaga %s
