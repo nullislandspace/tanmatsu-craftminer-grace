@@ -1,0 +1,156 @@
+# CraftMiner -- Български
+#
+# Този превод е направен от изкуствен интелект и чака някой, за когото това е
+# роден език. Ако знаете по-добре: поправете реда и пуснете
+# `python3 tools/make_lang.py`. Може и без инструменти -- файл
+# /sd/craftminer/lang/bg.txt на картата, със същите редове, има предимство
+# пред вградения превод (i18n.h).
+#
+# Ключовете са в lang/en.txt. %-заместителите оттам трябва да се появят и тук;
+# може да се разместват с %2$s, но не и да се изпускат.
+
+menu.play = Играй
+menu.settings = Настройки
+menu.quit = Изход
+
+worlds.title = Светове
+worlds.slot = %d  %s
+worlds.slot_newer = %d  (от по-нова версия)
+worlds.slot_older = %d  (трябва обновяване)
+worlds.slot_empty = %d  - празно -
+worlds.damaged = (повреден)
+
+world.play = Играй
+world.rename = Преименувай
+world.delete = Изтрий
+world.sub = място %d, семе %u
+
+new.title = Нов свят
+new.sub = на място %d
+new.name = Име
+new.seed = Семе
+new.seed_random = случайно
+new.create = Създай свят
+new.cancel = Откажи
+new.default_name = Свят %d
+
+text.title_rename = Преименувай света
+text.title_name = Име на света
+text.title_seed = Семе (празно за случайно)
+text.sub = пишете, после Enter, за да се запази
+text.hint = Backspace изтрива, Esc отказва
+
+delete.title = Да се изтрие ли „%s“?
+delete.sub = това не може да се върне
+delete.no = Не, запази го
+delete.yes = Да, изтрий го завинаги
+
+settings.title = Настройки
+settings.language = Език
+settings.controls = Управление
+settings.graphics = Графика
+settings.audio = Звук
+settings.display = Дисплей
+
+language.title = Език
+
+controls.title = Управление
+controls.gyro = Жироскоп
+controls.reset = Върни по подразбиране
+controls.hint = горе / долу избира, Enter сменя клавиша, Esc се връща
+
+graphics.title = Графика
+graphics.view = Далечина на видимост
+graphics.textures = Текстури
+graphics.resolution = Разделителна способност
+graphics.clouds = Облаци
+graphics.camera = Камера
+graphics.hand = Ръката на Фред
+view.near = Близо
+view.medium = Средно
+view.far = Далече
+res.half = Наполовина (по-бързо)
+res.full = Пълна (по-ясно)
+camera.first = Първо лице
+camera.third = Трето лице
+hand.left = Лява
+hand.right = Дясна
+
+audio.title = Звук
+audio.sub = още няма звуци: тези настройки ги чакат
+audio.volume = Сила на звука
+audio.music = Музика
+audio.sfx = Звукови ефекти
+
+display.title = Дисплей
+display.sub = споделено с стартера и всички други приложения
+display.screen = Екран
+display.keyboard = Клавиатура
+display.leds = Светодиоди
+
+pause.title = Пауза
+pause.resume = Продължи
+pause.save = Запази
+pause.quit = Запази и излез към заглавието
+
+common.back = Назад
+hint.list = горе / долу избира, Enter потвърждава, Esc се връща
+hint.adjust = горе / долу избира, ляво / дясно променя, Esc се връща
+
+status.newer = Направен от по-нов CraftMiner: обновете, за да играете
+status.older = По-стар формат на записа: тази версия още не може да го обнови
+status.needs_name = Светът има нужда от име
+status.renamed = Преименуван
+status.rename_failed = Преименуването не успя
+status.deleted = Светът е изтрит
+status.delete_failed = Не успях да изтрия всичко
+status.keys_reset = Всички клавиши са по подразбиране
+
+loading.plain = Зарежда
+loading.world = Зареждане на света
+loading.creating = Създаване на света
+
+hud.inventory = Инвентар
+hud.inventory_hint = стрелките местят   F1-F6 слага на лентата   Tab затваря
+
+info.position = X %.1f   Y %.1f   Z %.1f
+info.facing = посока %s (%d)
+info.clock = %02d:%02d   ден %lld
+info.recording = ЗАПИС (R спира)
+info.replay = възпроизвеждане %d / %d
+dir.n = север
+dir.ne = североизток
+dir.e = изток
+dir.se = югоизток
+dir.s = юг
+dir.sw = югозапад
+dir.w = запад
+dir.nw = северозапад
+
+shot.saved = Запазено: screenshots/shot%03d.png
+shot.failed = Снимката не успя
+shot.full = screenshots/ е пълна (999)
+
+action.forward = Напред
+action.back = Назад
+action.left = Наляво
+action.right = Надясно
+action.jump = Скок
+action.sneak = Промъкване
+action.attack = Копай
+action.use = Постави
+action.lookup = Поглед нагоре
+action.lookdown = Поглед надолу
+action.lookleft = Поглед наляво
+action.lookright = Поглед надясно
+action.slot1 = Място 1
+action.slot2 = Място 2
+action.slot3 = Място 3
+action.slot4 = Място 4
+action.slot5 = Място 5
+action.slot6 = Място 6
+action.inv = Инвентар
+action.pause = Пауза
+action.drop = Пусни
+action.info = Покажи позицията
+action.screenshot = Снимка на екрана

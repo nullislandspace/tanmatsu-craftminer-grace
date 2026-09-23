@@ -39,6 +39,7 @@ PURE=(
     main/items/items.c      main/items/items.h
     main/items/inventory.c  main/items/inventory.h
     main/items/item_entity.c main/items/item_entity.h
+    main/i18n/i18n.c        main/i18n/i18n.h
 )
 
 # Headers a pure module must not reach for. psram.h is the sanctioned

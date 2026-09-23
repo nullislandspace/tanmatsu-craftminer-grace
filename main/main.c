@@ -38,6 +38,7 @@
 #include "game/tick.h"
 #include "gl_input.h"
 #include "graceloader.h"
+#include "i18n/i18n.h"
 #include "math/mesh_render.h"
 #include "synthengine3d.h"  // the whole public API
 #include "testkit/devtest.h"
@@ -380,6 +381,22 @@ static struct {
 static bool content_select(char const* name) {
     if (name == NULL) return false;
     s_fl_scene = false;
+    // Any scene may be asked for in a language: `scene=menu_settings.de`.
+    // It lasts for this run, like the other scene options, and never
+    // reaches settings.txt -- it is here so a screenful of Bulgarian can
+    // be photographed without anybody's saved settings being touched.
+    static char base[64];
+    char const* dot = strrchr(name, '.');
+    if (dot != NULL) {
+        cm_lang_t lang;
+        if (i18n_language_from_code(dot + 1, &lang)) {
+            i18n_set_language(lang);
+            i18n_load_overrides(CM_DATA_DIR);
+            snprintf(base, sizeof(base), "%.*s", (int)(dot - name), name);
+            name = base;
+            ESP_LOGI(TAG, "scene language: %s", i18n_language_code(lang));
+        }
+    }
     // "savecheck" -- block 5's acceptance: 200 edits through a save.
     if (strcmp(name, "savecheck") == 0) {
         s_content    = "savecheck";
@@ -665,6 +682,12 @@ static void on_init(void* user) {
         }
     }
     settings_load(CM_DATA_DIR);
+    // settings.txt named the language; this is where a player's own
+    // corrections to that language, if they have put any on the card,
+    // come in over the baked-in text (i18n.h).
+    i18n_load_overrides(CM_DATA_DIR);
+    ESP_LOGI(TAG, "language: %s (%s)", i18n_language_code(i18n_language()),
+             i18n_language_name(i18n_language()));
     // The launcher's key-cap PNGs, for the Controls menu (synthracer's
     // icons.c). Missing ones fall back to a text label.
     icons_load();
@@ -747,7 +770,7 @@ static bool enter_title(void) {
     title_stream_at(0.5 * 16.0, &px, &pz);  // the middle of the loop
     s_cam_mode = CAM_PLAYER;
     menu_close();  // opened when the loading is done
-    start_loading(px, pz, APP_TITLE, "Loading");
+    start_loading(px, pz, APP_TITLE, T(CM_STR_LOADING_PLAIN));
     return true;
 }
 
@@ -810,7 +833,7 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     // The ground under the player before the player is on it (D-26),
     // behind a progress bar (5.5). The rest streams in behind them while
     // they are already walking, which is what the freeze above covers.
-    start_loading(s_saved.x, s_saved.z, APP_PLAY, create ? "Creating world" : "Loading world");
+    start_loading(s_saved.x, s_saved.z, APP_PLAY, T(create ? CM_STR_LOADING_CREATING : CM_STR_LOADING_WORLD));
     ESP_LOGI(TAG, "entering at %.1f, %.1f, %.1f (%s)", s_saved.x, s_saved.y, s_saved.z,
              s_saved.placed ? "where they left" : "a new player");
     return true;
@@ -1085,7 +1108,7 @@ static void loading_step(void) {
 static void draw_loading(pax_buf_t* fb) {
     pax_background(fb, 0xFF14181Eu);
     float const       w   = (float)DISPLAY_LOG_W, h = (float)DISPLAY_LOG_H;
-    char const* const msg = s_load.what != NULL ? s_load.what : "Loading";
+    char const* const msg = s_load.what != NULL ? s_load.what : T(CM_STR_LOADING_PLAIN);
     pax_vec2f const   sz  = rendertext_size(NULL, 30.0f, msg);
     rendertext_draw(fb, 0xFFFFFFFFu, NULL, 30.0f, (w - sz.x) * 0.5f, h * 0.40f, msg);
     // The world's name -- not a scratch world's placeholder.
@@ -1498,17 +1521,17 @@ static void take_screenshot(pax_buf_t* fb) {
     }
     bool const ok = n < 1000 && screenshot_capture_to(fb, path);
     if (ok) {
-        snprintf(s_shot_msg, sizeof(s_shot_msg), "Saved screenshots/shot%03d.png", n);
+        i18n_fmt(s_shot_msg, sizeof(s_shot_msg), CM_STR_SHOT_SAVED, n);
     } else {
-        snprintf(s_shot_msg, sizeof(s_shot_msg), n < 1000 ? "Screenshot failed" : "screenshots/ is full (999)");
+        snprintf(s_shot_msg, sizeof(s_shot_msg), "%s", T(n < 1000 ? CM_STR_SHOT_FAILED : CM_STR_SHOT_FULL));
     }
     ESP_LOGI(TAG, "screenshot: %s", s_shot_msg);
     s_shot_msg_until = showtime_now() + 2.5;
 }
 
 static void draw_info(pax_buf_t* fb) {
-    static char const* const NAMES[8] = {"north", "north-east", "east", "south-east",
-                                         "south", "south-west", "west", "north-west"};
+    static cm_str_t const NAMES[8] = {CM_STR_DIR_N,  CM_STR_DIR_NE, CM_STR_DIR_E,  CM_STR_DIR_SE,
+                                      CM_STR_DIR_S,  CM_STR_DIR_SW, CM_STR_DIR_W,  CM_STR_DIR_NW};
     float deg = s_player.yaw * (180.0f / 3.14159265f);
     deg       = fmodf(deg, 360.0f);
     if (deg < 0.0f) deg += 360.0f;
@@ -1518,12 +1541,13 @@ static void draw_info(pax_buf_t* fb) {
     daytime_clock(s_meta.time_of_day, &hh, &mm);
 
     char pos[64], face[48], clock[48], extra[48];
-    snprintf(pos, sizeof(pos), "X %.1f   Y %.1f   Z %.1f", s_player.body.x, s_player.body.y, s_player.body.z);
-    snprintf(face, sizeof(face), "facing %s (%d)", NAMES[octant], (int)(deg + 0.5f) % 360);
-    snprintf(clock, sizeof(clock), "%02d:%02d   day %lld", hh, mm, (long long)(s_meta.time_of_day / DAY_TICKS) + 1);
+    i18n_fmt(pos, sizeof(pos), CM_STR_INFO_POSITION, (double)s_player.body.x, (double)s_player.body.y,
+             (double)s_player.body.z);
+    i18n_fmt(face, sizeof(face), CM_STR_INFO_FACING, T(NAMES[octant]), (int)(deg + 0.5f) % 360);
+    i18n_fmt(clock, sizeof(clock), CM_STR_INFO_CLOCK, hh, mm, (long long)(s_meta.time_of_day / DAY_TICKS) + 1);
     extra[0] = '\0';
-    if (replay_recording()) snprintf(extra, sizeof(extra), "RECORDING (R to stop)");
-    if (replay_playing()) snprintf(extra, sizeof(extra), "replay %d / %d", replay_position(), replay_length());
+    if (replay_recording()) snprintf(extra, sizeof(extra), "%s", T(CM_STR_INFO_RECORDING));
+    if (replay_playing()) i18n_fmt(extra, sizeof(extra), CM_STR_INFO_REPLAY, replay_position(), replay_length());
     bool const        msg      = showtime_now() < s_shot_msg_until;
     char const* const lines[5] = {pos, face, clock, extra, msg ? s_shot_msg : NULL};
     hud_text_lines(fb, lines, 5);

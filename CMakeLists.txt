@@ -69,6 +69,10 @@ set(APP_SOURCES
     main/ui/icons.c
     main/ui/settings.c
 
+    # The UI's words, in six languages (lang/*.txt -> strings_gen.c).
+    main/i18n/i18n.c
+    main/i18n/strings_gen.c
+
     # Textures by name, cached.
     main/common/texcache.c
 )

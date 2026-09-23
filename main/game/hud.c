@@ -4,6 +4,8 @@
 
 #include "game/hud.h"
 
+#include "i18n/i18n.h"
+
 #include <math.h>
 
 #include "math/mesh_render.h"
@@ -323,7 +325,7 @@ void hud_inventory(pax_buf_t* fb, player_t const* p) {
     direct_565_dim_rect(s_px, s_rev, 0, 0, (int)DISPLAY_LOG_W, (int)DISPLAY_LOG_H);
     box(fb, gx - 12, gy - 34, gw + 24, gh + 46, 0xFF2A2A32u);
     frame(fb, gx - 12, gy - 34, gw + 24, gh + 46, 2, 0xFF606068u);
-    rendertext_draw(fb, 0xFFFFFFFFu, NULL, 22.0f, (float)(gx - 4), (float)(gy - 30), "Inventory");
+    rendertext_draw(fb, 0xFFFFFFFFu, NULL, 22.0f, (float)(gx - 4), (float)(gy - 30), T(CM_STR_HUD_INVENTORY));
 
     for (int i = 0; i < INV_SLOTS; i++) {
         // Row 0 of the DRAWING is the storage top; the hotbar is the
@@ -353,7 +355,7 @@ void hud_inventory(pax_buf_t* fb, player_t const* p) {
     }
 
     rendertext_draw(fb, 0xFFB0B0B8u, NULL, 16.0f, (float)(gx - 4), (float)(gy + gh + 4),
-                    "cursor keys move   F1-F6 put it on the hotbar   Tab closes");
+                    T(CM_STR_HUD_INVENTORY_HINT));
 }
 
 void hud_mine_progress(pax_buf_t* fb, float progress) {

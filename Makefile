@@ -57,7 +57,8 @@ build: check
 HOSTCC      ?= cc
 ENGINE_DEFS := $(shell sed -n 's/^add_compile_definitions(\(SE_[A-Z_]*=[0-9]*\))/-D\1/p' CMakeLists.txt)
 HOSTCFLAGS  := -O1 -Wall -Wextra -Werror=implicit-function-declaration \
-               -DCM_HOST -Imain -Itools -Isynthengine3D/include $(ENGINE_DEFS)
+               -DCM_HOST -Imain -Itools -Isynthengine3D/include \
+               -Isynthengine3D/src/internal $(ENGINE_DEFS)
 
 PURE_SRCS       := main/math/xform.c main/math/mesh.c main/voxel/voxel_mesh.c \
                    main/world/blocks.c main/world/chunk.c main/common/rng.c main/common/tags.c \
@@ -65,12 +66,21 @@ PURE_SRCS       := main/math/xform.c main/math/mesh.c main/voxel/voxel_mesh.c \
                    main/world/vfs_compat.c main/world/light.c main/world/worldstore.c main/world/datadir.c main/world/chunkmesh.c main/world/chunk_worker.c \
                    main/game/physics.c main/game/raycast.c main/game/interact.c main/game/daytime.c main/game/replay.c \
                    main/items/items.c main/items/inventory.c main/items/item_entity.c \
+                   main/i18n/i18n.c main/i18n/strings_gen.c \
                    synthengine3D/src/nbt.c
 MESHCHECK_SRCS  := tools/meshcheck.c $(PURE_SRCS)
 WORLDCHECK_SRCS := tools/worldcheck.c $(PURE_SRCS)
 
 .PHONY: check
-check: hostpurity meshcheck worldcheck
+check: hostpurity langcheck meshcheck worldcheck
+
+# The translations: lang/*.txt is the source, main/i18n/strings_gen.* the
+# baked copy that ships. This fails if they have drifted apart, and on a
+# translation whose %-placeholders do not match English's. That the FONT
+# can draw every character is worldcheck's "languages" section.
+.PHONY: langcheck
+langcheck:
+	python3 tools/make_lang.py --check
 
 # The pure set really is pure: no engine, no RTOS, no ESP-IDF.
 .PHONY: hostpurity

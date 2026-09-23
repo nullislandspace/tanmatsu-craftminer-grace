@@ -35,11 +35,16 @@
 // medium was, until its cost on foot was measured (F-66).
 #define SETTINGS_VIEW_DEFAULT 0
 
+// The language lives here too, as its code ("de"), but it is i18n.h
+// that holds it: settings_load hands it to i18n_set_language, and
+// settings_save asks i18n_language() what to write. There is no
+// settings_language() -- one copy of that state, not two.
+
 // Read settings.txt from `dir` (CM_DATA_DIR, datadir.h). Missing
-// keys keep their defaults (near, textured, half resolution, music and
-// effects on, gyroscope off, every key its default binding). Call once at
-// boot, AFTER input_init(): the key bindings it restores are the ones
-// input_init registered.
+// keys keep their defaults (English, near, textured, half resolution,
+// music and effects on, gyroscope off, every key its default binding).
+// Call once at boot, AFTER input_init(): the key bindings it restores are
+// the ones input_init registered.
 void settings_load(char const* dir);
 
 // Write the file now. The setters below do it themselves; the key

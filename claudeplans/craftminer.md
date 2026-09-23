@@ -129,13 +129,16 @@ main/
   fred/
 *   fred.{c,h}            PORTED showreel miner: the player's figure and arm
 *   fred_mesh.{c,h}       his meshes, plus an axe and a shovel
+  i18n/
+*   i18n.{c,h}            T(id), the language, and a printf that reorders    (pure)
+*   strings_gen.{c,h}     GENERATED from lang/*.txt by tools/make_lang.py
   ui/
 *   title.{c,h}           "CraftMiner" in blocks, on a scratch world (D-58)
 *   menu.{c,h}            every menu: title strip, then se_ui panels for slots,
                           new world, typing, settings, controls, pause
 *   keybind_ui.{c,h}      PORTED from synthracer: a binding as a key cap or label
 *   icons.{c,h}           PORTED from synthracer: the launcher's key-cap PNGs
-*   settings.{c,h}        settings.txt on the SD card: graphics, audio, gyro, bindings (D-67)
+*   settings.{c,h}        settings.txt on the SD card: language, graphics, audio, gyro, bindings (D-67)
 * testkit/                wired into CMakeLists; PROF_HUD added (F-46)
 tools/
 * worldcheck.c            host test of every pure module
@@ -947,6 +950,7 @@ frame time than the fell.
 | 6.4 | **Gyroscope look** | done | 2026-09-22, asked for by the user: a Controls checkbox, off by default. The **rate** gyroscope is added up frame by frame and handed to the look beside the cursor keys, one real degree per view degree, so both work at once (D-65). A resting gyroscope's offset is tracked rather than turned into a slow spin. Yaw sign as the diagram in `graceloader_imu.h` predicts; the **pitch sign had to be flipped**, reported by the user on the badge. |
 | 6.2 | Graphics menu: textures, render scale, view distance; settings.txt | done | 2026-09-22: view distance (default near -- medium for a few hours, D-66 then D-76), textures, half / full resolution, in `settings.txt` on the SD card (D-67; NVS under `craftminer` at first, moved the same day). Replaces the T and V debug keys. Full resolution clears its own sky now, which it never had to while it was only the no-PPA fallback. |
 | 6.3 | Audio and display via `se_hw.h` | done | 2026-09-22: device volume and the three brightnesses through `se_hw` (shared with the launcher); music and effects switches stored and wired to the mixer's gates, and labelled as waiting for block 14, since the game makes no sound yet. |
+| 6.5 | **The UI in six languages** (D-81) | done | 2026-09-23, asked for by the user. `lang/*.txt` (English the reference, plus German, Dutch, Flemish, French, Bulgarian), baked by `tools/make_lang.py` into `main/i18n/strings_gen.c`: 126 strings x 6, a lookup is an array index. Language is the first row of Settings, each named in its own language, stored in settings.txt; a player with no toolchain can correct any line from `/sd/craftminer/lang/<code>.txt` on the card. The font was the work, not the text (F-69): the engine drew ASCII only, and now draws Cyrillic, accented Latin, both dashes and the European quotation marks, generated from Hershey's own database with a check that every letter of every declared alphabet exists. `i18n_fmt` does its own `%2$s` substitution and takes the argument types from English, so an edited lang file cannot mislead it (F-70). `make check` gains `langcheck` (keys, placeholders, staleness) and worldcheck's "languages" section (every character drawable, the formatter against six nasty strings). On the badge: the language list, Settings in Bulgarian, Controls in German. |
 | | **Accept:** every menu reached on the badge, a key rebound and used, a world created, played, saved, reopened with its inventory; the Testworld adopted | **in progress** | 2026-09-22: the Testworld adoption **ran on the user's card** — `worlds/flyover` became `slot1`, named *Testworld*, all five region files with it (a copy of the original is kept off the badge). The title strip renders (screenshot). The user is testing the rest by hand: the gyroscope works after one sign flip (F-55), and the inventory cursor bug (F-54) was found that way. `make check` covers slots, the inventory round trip and the adoption. |
 | **7** | **Far Lands** | | |
 | 7.0 | **Bedrock, gravel, and generated signs** (D-79) | done | 2026-09-22, asked for by the user for the Far Lands: bedrock (unbreakable) and gravel (shovel, drops itself) as blocks 17 and 18; a sign, block 19, a post with a board facing east (`K_SIGN`), not solid, breakable with nothing dropped. Its text -- "Kurt / was here", "Wolfie / was here", "Far Lands / or Bust!" -- is one of three 64x32 textures drawn by `make_textures.py` with its own 5x7 pixel font (so the PNGs do not depend on PIL's fonts), chosen by a hash of where the sign stands (`voxel_sign_text`). Existing textures regenerate byte-identical. |
@@ -1646,6 +1650,39 @@ frame time than the fell.
   (F-40), not undoing features. Lesson recorded with it: a frame rate belongs
   to a scene, and two numbers from two scenes compare nothing -- the same
   mistake as F-36, the other way round.
+- **F-69** 2026-09-23, translating the UI (6.5): **the font was the whole
+  job; the strings were the easy half.** The engine drew ASCII and nothing
+  else -- Hershey roman simplex, 95 glyphs, indexed by `char - 32` -- so
+  German needed umlauts, French its accents and Bulgarian an alphabet the
+  font had never heard of. Hershey's own database (public domain, the same
+  source the 95 came from) turned out to hold a Cyrillic face, 32 letters in
+  each case, and the quotation marks, comma and dash the European languages
+  want; the accented Latin letters are composed (one acute, fifty vowels),
+  `Æ` `æ` `Ĳ` `ĳ` `“` `”` `„` `…` are Hershey's glyphs placed side by side, and
+  `ß` `ẞ` `œ` `Œ` `«` `»` were drawn by hand. Two things make that trustworthy
+  rather than hopeful: the generator regenerates the 95 ASCII glyphs from
+  the raw database on every run and refuses to write anything unless they
+  match the committed table point for point (so the coordinate conversion is
+  provably the renderer's own), and it checks every letter of every declared
+  alphabet has a glyph and names those that do not. A codepoint with no
+  glyph draws an empty box, so a gap is visible rather than silently
+  dropped. Cost: about 5 KB of tables, and a bisection over 83 entries only
+  for characters that are not ASCII. Measured on the badge: Bulgarian menus,
+  German umlauts and French cedillas all render at menu size.
+- **F-70** 2026-09-23, translating the UI (6.5): **positional printf is not
+  promised, so the substitution is ours.** A translation may need the values
+  in a different order than English puts them, which printf spells `%2$s` --
+  a POSIX extension newlib only has when built with `_WANT_IO_POS_ARGS`.
+  The graceloader's sdkconfig suggests full formatting, which probably has
+  it; "probably" is not something a UI should rest on, and an IDF upgrade
+  could take it away. `i18n_fmt` therefore does the substitution itself and
+  hands the C library one value and one plain specifier at a time, which
+  every libc can do. It also made the thing safe: the TYPES come from the
+  English string, never from the translation, so a lang file a stranger
+  edited on the SD card can get the padding wrong or drop a value but can
+  never make the formatter read the wrong kind of argument off the stack.
+  Host-tested against `%s` where English says `%d`, `%9$d`, a lone per-cent,
+  more values than exist, and a reorder.
 - **F-68** 2026-09-22, building the Far Lands (7.1): **porting Beta's generator
   and overflowing it reproduces the Edge Far Lands without being told what
   they look like.** Over 32 chunks at the edge: 42% rock, 30% air, 19% water,
@@ -1698,6 +1735,28 @@ frame time than the fell.
 
 ### Decisions (D-n), each with date and who decided
 
+- **D-81** 2026-09-23, **the user**: **the UI is translated, English by
+  default, into German, Dutch, Flemish, French and Bulgarian**, with the
+  language an easy reach in Settings. Machine translations to begin with,
+  "but the translations should be easy to adapt by humans" -- so the text is
+  text files (`lang/*.txt`, `key = text`, UTF-8) and never a string literal
+  in the code, and the cheapest thing at run time was asked for as well.
+  Both: the files are baked into arrays by `tools/make_lang.py`, so a lookup
+  is an array index and nothing is parsed while the game runs, and a player
+  with no toolchain can still drop `/sd/craftminer/lang/<code>.txt` on the
+  card to correct what ships. `lang/en.txt` defines the keys; a language
+  missing one shows English, and a key English does not have is an error.
+  Language names are never translated -- the player who needs that row is
+  the one who cannot read the language the game is in. Not translated:
+  the name CraftMiner, world names, the key names printed on the badge's
+  own keys, and every log line (the user: "the debug output stays
+  untouched").
+  **Amended the same day, the user:** support the *languages*, not the
+  strings that exist today -- the font must cover every letter of every
+  alphabet, so that adding or changing a string can never meet a character
+  the font lacks. The check therefore runs over alphabets, not over
+  translations, and how to extend the font is written down for the next
+  language (`synthengine3D/tools/hershey/README.md`).
 - **D-80** 2026-09-22, **the user**: **the player's data lives in
   /sd/craftminer, not in the app's install directory.** The launcher owns
   /sd/apps/<slug> and may empty it on an update or a reinstall; worlds,
@@ -2215,6 +2274,12 @@ untouched chunks keep their old ids) must be fixed before any block id moves.
   which it was until the user asked for the rasteriser to be looked at.
   SynthEngine3D is a submodule and its commits are its own; the version stays
   **2.1** while it is work in progress, as asked.
+  * `src/internal/hershey*.h`, `tools/hershey/`: text is UTF-8 and the font
+    has Cyrillic, accented Latin, both dashes and the European quotation
+    marks (F-69). The user's call, and their permission to amend the fonts:
+    "If you need to ammend the fonts (use the full set) ... you are allowed
+    to." Hershey's database is vendored with the generator that reads it;
+    `simplex` itself is untouched and still public.
   * `CMakeLists.txt`: built `-O2`, not `-Os` (F-39).
   * `src/se_scene.c`: `ceil_i` / `floor_i` instead of the libm calls in the
     column scans, and per-pass pixel and span counters.

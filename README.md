@@ -72,7 +72,7 @@ Cursor keys choose, **Enter** selects, **Esc** goes back.
 Play        eight save slots, each empty or holding a named world
   a world     Play / Rename / Delete (asks first)
   empty       New world: name, seed (a number, any text, or blank for random), Create
-Settings    Controls / Graphics / Audio / Display
+Settings    Language / Controls / Graphics / Audio / Display
 Quit        back to the launcher
 ```
 
@@ -80,6 +80,10 @@ In a world, **Esc** (or whatever Pause is bound to) opens the pause menu —
 **Resume / Save / Settings / Save and quit to title** — and **saves as it
 opens**, since pausing is what people do before switching a handheld off.
 
+* **Language** — English, Deutsch, Nederlands, Vlaams, Français, Български.
+  First row of Settings, and each language stands under its own name, so the
+  player who needs that row is not asked to read a language they do not have.
+  Takes effect at once and is remembered in `settings.txt`.
 * **Controls** — **Gyroscope** (off by default): look round by physically
   turning the badge; the cursor keys still work, so you choose when to move
   the badge and when to press keys. Below it, every action can be rebound: pick it, press the new key. A key
@@ -102,6 +106,47 @@ file on the SD card, `/sd/craftminer/settings.txt`, next to `worlds/`,
 `replays/` and `screenshots/`. Copy that directory and you have backed up
 everything. The file is
 plain `key=value` lines; delete one to get its default back.
+
+### Languages
+
+The game is translated into English, German, Dutch, Flemish, French and
+Bulgarian. The shipped translations past English are a **machine's work** and
+say so at the top of each file; corrections are welcome and cheap to make.
+
+The text lives in `lang/*.txt`, one file per language, plain `key = text` lines
+in UTF-8. `lang/en.txt` defines the keys and is the reference: a language
+missing one shows the English, and a key English does not have is an error.
+`tools/make_lang.py` bakes them into `main/i18n/strings_gen.c`, which is what
+the game ships — a lookup at run time is an array index, not a search.
+
+```
+# fix a line, then:
+python3 tools/make_lang.py
+```
+
+`make check` fails if the generated files and the lang files have drifted
+apart, if a translation's `%`-placeholders do not match English's, or if any
+character in any translation is one the font cannot draw.
+
+**Without a toolchain**, put the same `key = text` lines in
+`/sd/craftminer/lang/<code>.txt` on the card — `de.txt`, `nl-BE.txt`, `bg.txt`
+— and they win over what is built in. One line in the file changes one string;
+everything else stays as it shipped. That is meant for exactly the case these
+translations are in: someone who speaks the language, holding a badge, without
+a build environment.
+
+A translation may reorder the values in a line (`%2$s` before `%1$d`) where the
+language needs a different word order. It cannot change what a value *is*: the
+types come from English, so a lang file on a card can be wrong without being
+dangerous.
+
+Not translated, deliberately: the name CraftMiner, world names (the player
+types those), the key names in the Controls list — `Esc`, `Space`, `Left
+Shift` are what is printed on the badge's own keys — and every log line.
+
+Adding a language means a new `lang/<code>.txt`, a row in `tools/make_lang.py`,
+and, if it needs letters the font has never drawn, a pass through
+`synthengine3D/tools/hershey/README.md`, which covers that end.
 
 ### Day, night and light
 

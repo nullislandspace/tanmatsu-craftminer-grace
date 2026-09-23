@@ -1,0 +1,194 @@
+# CraftMiner -- English, and the list of every string the UI can show.
+#
+# THIS FILE DEFINES THE KEYS. `tools/make_lang.py` turns the keys here into
+# the CM_STR_* enum the code uses, so a key that is not here does not exist,
+# and every other language is checked against this one: a key it lacks falls
+# back to the English below, and a key it invents is an error.
+#
+# Format: `key = text`, one per line, UTF-8, `#` starts a comment. Leading and
+# trailing spaces around the text are dropped -- put \s at either end if you
+# need one. \n is a line break, \\ a backslash.
+#
+# A %-placeholder is filled in by the game and MUST survive translation: the
+# SAME ONES, IN THE SAME ORDER. They cannot be reordered -- the badge's printf
+# is not promised to understand %1$s -- so a line needing another word order
+# needs the English changed too, not the translation bent around it. What each
+# placeholder holds is in the comment above its line, and `make check` fails on
+# any translation whose placeholders differ from this file's.
+#
+# NOT translated, on purpose: the name CraftMiner; world names, which the
+# player types; key names like Esc and Left Shift, which are what is printed
+# on the badge's keys; and every log message, which is for us.
+
+# --- The title screen -------------------------------------------------------
+menu.play = Play
+menu.settings = Settings
+menu.quit = Quit
+
+# --- Choosing a world -------------------------------------------------------
+worlds.title = Worlds
+# %d is the slot number, %s the world's name
+worlds.slot = %d  %s
+# ... and these are for a slot that cannot simply be played
+worlds.slot_newer = %d  (from a newer version)
+worlds.slot_older = %d  (needs upgrading)
+worlds.slot_empty = %d  - empty -
+worlds.damaged = (damaged)
+
+world.play = Play
+world.rename = Rename
+world.delete = Delete
+# %d is the slot number, %u the world's seed
+world.sub = slot %d, seed %u
+
+new.title = New world
+# %d is the slot number
+new.sub = in slot %d
+new.name = Name
+new.seed = Seed
+new.seed_random = random
+new.create = Create world
+new.cancel = Cancel
+# the name a new world is offered, %d is the slot number
+new.default_name = World %d
+
+# --- Typing a name or a seed ------------------------------------------------
+text.title_rename = Rename world
+text.title_name = World name
+text.title_seed = Seed (empty for random)
+text.sub = type, then enter to keep it
+text.hint = backspace to delete, esc to cancel
+
+# --- Deleting a world -------------------------------------------------------
+# %s is the world's name
+delete.title = Delete "%s"?
+delete.sub = this cannot be undone
+delete.no = No, keep it
+delete.yes = Yes, delete it for good
+
+# --- Settings ---------------------------------------------------------------
+settings.title = Settings
+settings.language = Language
+settings.controls = Controls
+settings.graphics = Graphics
+settings.audio = Audio
+settings.display = Display
+
+language.title = Language
+# the language names themselves are NOT translated: each stands in its own
+# language, so a player who cannot read the current one can still find theirs
+
+controls.title = Controls
+controls.gyro = Gyroscope
+controls.reset = Reset to defaults
+controls.hint = up / down to choose, enter to change the key, esc to go back
+
+graphics.title = Graphics
+graphics.view = View distance
+graphics.textures = Textures
+graphics.resolution = Resolution
+graphics.clouds = Clouds
+graphics.camera = Camera
+graphics.hand = Fred's hand
+view.near = Near
+view.medium = Medium
+view.far = Far
+res.half = Half (faster)
+res.full = Full (sharper)
+camera.first = First person
+camera.third = Third person
+hand.left = Left
+hand.right = Right
+
+audio.title = Audio
+audio.sub = no sounds yet: these are kept for when there are
+audio.volume = Volume
+audio.music = Music
+audio.sfx = Sound effects
+
+display.title = Display
+display.sub = shared with the launcher and every other app
+display.screen = Screen
+display.keyboard = Keyboard
+display.leds = LEDs
+
+# --- The pause menu ---------------------------------------------------------
+pause.title = Paused
+pause.resume = Resume
+pause.save = Save
+pause.quit = Save and quit to title
+
+# --- Shared -----------------------------------------------------------------
+common.back = Back
+hint.list = up / down to choose, enter to select, esc to go back
+hint.adjust = up / down to choose, left / right to change, esc to go back
+
+# --- What the menus say back to you -----------------------------------------
+status.newer = Made by a newer CraftMiner: update to play it
+status.older = An older save format: this build cannot upgrade it yet
+status.needs_name = A world needs a name
+status.renamed = Renamed
+status.rename_failed = Could not rename it
+status.deleted = World deleted
+status.delete_failed = Could not delete it all
+status.keys_reset = Every key is back to its default
+
+# --- Loading ----------------------------------------------------------------
+loading.plain = Loading
+loading.world = Loading world
+loading.creating = Creating world
+
+# --- The heads-up display ---------------------------------------------------
+hud.inventory = Inventory
+hud.inventory_hint = cursor keys move   F1-F6 put it on the hotbar   Tab closes
+
+# --- The position overlay ---------------------------------------------------
+# the three %.1f are the player's x, y and z
+info.position = X %.1f   Y %.1f   Z %.1f
+# %s is a compass direction from below, %d the angle in degrees
+info.facing = facing %s (%d)
+# %02d:%02d is the world's clock, %lld the day, counted from 1
+info.clock = %02d:%02d   day %lld
+info.recording = RECORDING (R to stop)
+# the first %d is the tick being played, the second how many there are
+info.replay = replay %d / %d
+dir.n = north
+dir.ne = north-east
+dir.e = east
+dir.se = south-east
+dir.s = south
+dir.sw = south-west
+dir.w = west
+dir.nw = north-west
+
+# --- Screenshots ------------------------------------------------------------
+# %03d is the number the file was given
+shot.saved = Saved screenshots/shot%03d.png
+shot.failed = Screenshot failed
+shot.full = screenshots/ is full (999)
+
+# --- The things a key can be bound to ---------------------------------------
+# These are the Controls list, one row each.
+action.forward = Forward
+action.back = Back
+action.left = Left
+action.right = Right
+action.jump = Jump
+action.sneak = Sneak
+action.attack = Break
+action.use = Place
+action.lookup = Look up
+action.lookdown = Look down
+action.lookleft = Look left
+action.lookright = Look right
+action.slot1 = Slot 1
+action.slot2 = Slot 2
+action.slot3 = Slot 3
+action.slot4 = Slot 4
+action.slot5 = Slot 5
+action.slot6 = Slot 6
+action.inv = Inventory
+action.pause = Pause
+action.drop = Drop
+action.info = Show position
+action.screenshot = Screenshot

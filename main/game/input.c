@@ -11,6 +11,7 @@
 #include "esp_log.h"
 #include "graceloader_imu.h"
 #include "gl_input.h"
+#include "i18n/i18n.h"
 #include "ui/settings.h"
 #include "synthengine3d.h"
 
@@ -160,8 +161,37 @@ void input_init(void) {
     se_bindings_init(&cfg);
 }
 
+// The label a PLAYER sees, in their language. The English in BINDINGS
+// above stays as it is: that column is the engine's, and the id column
+// beside it is what settings.txt writes, so neither may move.
+static cm_str_t const ACTION_STRINGS[CM_ACTION_COUNT] = {
+    [CM_FORWARD]    = CM_STR_ACTION_FORWARD,
+    [CM_BACK]       = CM_STR_ACTION_BACK,
+    [CM_LEFT]       = CM_STR_ACTION_LEFT,
+    [CM_RIGHT]      = CM_STR_ACTION_RIGHT,
+    [CM_JUMP]       = CM_STR_ACTION_JUMP,
+    [CM_SNEAK]      = CM_STR_ACTION_SNEAK,
+    [CM_ATTACK]     = CM_STR_ACTION_ATTACK,
+    [CM_USE]        = CM_STR_ACTION_USE,
+    [CM_LOOK_UP]    = CM_STR_ACTION_LOOKUP,
+    [CM_LOOK_DOWN]  = CM_STR_ACTION_LOOKDOWN,
+    [CM_LOOK_LEFT]  = CM_STR_ACTION_LOOKLEFT,
+    [CM_LOOK_RIGHT] = CM_STR_ACTION_LOOKRIGHT,
+    [CM_SLOT1]      = CM_STR_ACTION_SLOT1,
+    [CM_SLOT2]      = CM_STR_ACTION_SLOT2,
+    [CM_SLOT3]      = CM_STR_ACTION_SLOT3,
+    [CM_SLOT4]      = CM_STR_ACTION_SLOT4,
+    [CM_SLOT5]      = CM_STR_ACTION_SLOT5,
+    [CM_SLOT6]      = CM_STR_ACTION_SLOT6,
+    [CM_INVENTORY]  = CM_STR_ACTION_INV,
+    [CM_PAUSE]      = CM_STR_ACTION_PAUSE,
+    [CM_DROP]       = CM_STR_ACTION_DROP,
+    [CM_INFO]       = CM_STR_ACTION_INFO,
+    [CM_SCREENSHOT] = CM_STR_ACTION_SCREENSHOT,
+};
+
 char const* input_action_label(cm_action_t a) {
-    return (a >= 0 && a < CM_ACTION_COUNT) ? BINDINGS[a].label : "";
+    return (a >= 0 && a < CM_ACTION_COUNT) ? T(ACTION_STRINGS[a]) : "";
 }
 
 char const* input_action_id(cm_action_t a) {

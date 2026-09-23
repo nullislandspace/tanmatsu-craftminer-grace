@@ -1,0 +1,154 @@
+# CraftMiner -- Vlaams
+#
+# Deze vertaling komt van een AI en wacht op iemand die de taal echt spreekt.
+# Ze vertrekt van het Nederlands (lang/nl.txt) en wijkt af waar het Vlaamse
+# woord anders is; staat een regel hier niet, dan geldt gewoon het Engels uit
+# lang/en.txt -- dus wie een verschil ziet, zet die ene regel hieronder.
+# Pas aan en draai `python3 tools/make_lang.py`, of zet een bestand
+# /sd/craftminer/lang/nl-BE.txt op de kaart zonder gereedschap (i18n.h).
+
+menu.play = Spelen
+menu.settings = Instellingen
+menu.quit = Sluiten
+
+worlds.title = Werelden
+worlds.slot = %d  %s
+worlds.slot_newer = %d  (van een nieuwere versie)
+worlds.slot_older = %d  (moet bijgewerkt worden)
+worlds.slot_empty = %d  - leeg -
+worlds.damaged = (beschadigd)
+
+world.play = Spelen
+world.rename = Hernoemen
+world.delete = Wissen
+world.sub = plek %d, zaad %u
+
+new.title = Nieuwe wereld
+new.sub = op plek %d
+new.name = Naam
+new.seed = Zaad
+new.seed_random = willekeurig
+new.create = Wereld maken
+new.cancel = Annuleren
+new.default_name = Wereld %d
+
+text.title_rename = Wereld hernoemen
+text.title_name = Naam van de wereld
+text.title_seed = Zaad (leeg voor willekeurig)
+text.sub = typ, daarna Enter om te bewaren
+text.hint = Backspace wist, Esc annuleert
+
+delete.title = „%s” wissen?
+delete.sub = dit kan niet ongedaan gemaakt worden
+delete.no = Nee, houden
+delete.yes = Ja, definitief wissen
+
+settings.title = Instellingen
+settings.language = Taal
+settings.controls = Besturing
+settings.graphics = Beeld
+settings.audio = Geluid
+settings.display = Scherm
+
+language.title = Taal
+
+controls.title = Besturing
+controls.gyro = Gyroscoop
+controls.reset = Terug naar de standaardwaarden
+controls.hint = omhoog / omlaag kiest, Enter wijzigt de toets, Esc terug
+
+graphics.title = Beeld
+graphics.view = Zichtbaarheid
+graphics.textures = Texturen
+graphics.resolution = Resolutie
+graphics.clouds = Wolken
+graphics.camera = Camera
+graphics.hand = Freds hand
+view.near = Dichtbij
+view.medium = Midden
+view.far = Ver
+res.half = Half (sneller)
+res.full = Vol (scherper)
+camera.first = Eerste persoon
+camera.third = Derde persoon
+hand.left = Links
+hand.right = Rechts
+
+audio.title = Geluid
+audio.sub = nog geen geluiden: deze knoppen wachten erop
+audio.volume = Volume
+audio.music = Muziek
+audio.sfx = Geluidseffecten
+
+display.title = Scherm
+display.sub = gedeeld met de launcher en elke andere app
+display.screen = Scherm
+display.keyboard = Toetsenbord
+display.leds = Leds
+
+pause.title = Gepauzeerd
+pause.resume = Voortdoen
+pause.save = Opslaan
+pause.quit = Opslaan en terug naar de titel
+
+common.back = Terug
+hint.list = omhoog / omlaag kiest, Enter bevestigt, Esc terug
+hint.adjust = omhoog / omlaag kiest, links / rechts wijzigt, Esc terug
+
+status.newer = Gemaakt door een nieuwere CraftMiner: werk bij om te spelen
+status.older = Een ouder opslagformaat: deze versie kan het nog niet bijwerken
+status.needs_name = Een wereld heeft een naam nodig
+status.renamed = Hernoemd
+status.rename_failed = Hernoemen is mislukt
+status.deleted = Wereld gewist
+status.delete_failed = Kon niet alles wissen
+status.keys_reset = Alle toetsen staan weer op standaard
+
+loading.plain = Laden
+loading.world = Wereld laden
+loading.creating = Wereld maken
+
+hud.inventory = Inventaris
+hud.inventory_hint = pijltjestoetsen verplaatsen   F1-F6 zet het op de balk   Tab sluit
+
+info.position = X %.1f   Y %.1f   Z %.1f
+info.facing = kijkt naar %s (%d)
+info.clock = %02d:%02d   dag %lld
+info.recording = OPNAME (R stopt)
+info.replay = herhaling %d / %d
+dir.n = noorden
+dir.ne = noordoosten
+dir.e = oosten
+dir.se = zuidoosten
+dir.s = zuiden
+dir.sw = zuidwesten
+dir.w = westen
+dir.nw = noordwesten
+
+shot.saved = Bewaard: screenshots/shot%03d.png
+shot.failed = Schermafdruk mislukt
+shot.full = screenshots/ zit vol (999)
+
+action.forward = Vooruit
+action.back = Achteruit
+action.left = Naar links
+action.right = Naar rechts
+action.jump = Springen
+action.sneak = Sluipen
+action.attack = Breken
+action.use = Plaatsen
+action.lookup = Omhoog kijken
+action.lookdown = Omlaag kijken
+action.lookleft = Naar links kijken
+action.lookright = Naar rechts kijken
+action.slot1 = Vak 1
+action.slot2 = Vak 2
+action.slot3 = Vak 3
+action.slot4 = Vak 4
+action.slot5 = Vak 5
+action.slot6 = Vak 6
+action.inv = Inventaris
+action.pause = Pauze
+action.drop = Laten vallen
+action.info = Positie tonen
+action.screenshot = Schermafdruk

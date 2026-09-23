@@ -11,6 +11,7 @@
 
 #include "esp_log.h"
 #include "game/input.h"
+#include "i18n/i18n.h"
 #include "se_audio.h"
 #include "se_bindings.h"
 #include "world/vfs_compat.h"
@@ -45,7 +46,13 @@ static void apply_line(char* line) {
     char const* value = eq + 1;
     unsigned long const v = strtoul(value, NULL, 0);
 
-    if (strcmp(key, "view") == 0) {
+    if (strcmp(key, "language") == 0) {
+        // The only setting whose value is a word: "de", "nl-BE". One
+        // this build does not know leaves the language alone, which is
+        // English unless something else has already set it.
+        cm_lang_t lang;
+        if (i18n_language_from_code(value, &lang)) i18n_set_language(lang);
+    } else if (strcmp(key, "view") == 0) {
         s_view = v < SETTINGS_VIEW_COUNT ? (int)v : SETTINGS_VIEW_DEFAULT;
     } else if (strcmp(key, "textures") == 0) {
         s_textured = v != 0;
@@ -103,6 +110,7 @@ void settings_save(void) {
     }
     fputs("# CraftMiner settings. Volume and brightness are the badge's own and live\n"
           "# with the launcher. Keys are BSP scancodes; delete a line to get its default.\n", f);
+    fprintf(f, "language=%s\n", i18n_language_code(i18n_language()));
     fprintf(f, "view=%d\ntextures=%d\nhalf_res=%d\nclouds=%d\nthird_person=%d\nleft_handed=%d\nmusic=%d\neffects=%d\ngyro=%d\n",
             s_view, s_textured, s_half, s_clouds, s_third, s_left, s_music, s_sfx, s_gyro);
     for (int a = 0; a < CM_ACTION_COUNT; a++) {
@@ -132,9 +140,10 @@ void settings_load(char const* dir) {
     // written until something is changed.
     audio_mixer_set_music_enabled(s_music);
     audio_mixer_set_group_enabled(SETTINGS_SFX_GROUP, s_sfx);
-    ESP_LOGI(TAG, "%s: view %d, textures %s, %s resolution, music %s, effects %s, gyroscope %s",
-             from ? from : "no settings file, defaults", s_view, s_textured ? "on" : "off", s_half ? "half" : "full",
-             s_music ? "on" : "off", s_sfx ? "on" : "off", s_gyro ? "on" : "off");
+    ESP_LOGI(TAG, "%s: language %s, view %d, textures %s, %s resolution, music %s, effects %s, gyroscope %s",
+             from ? from : "no settings file, defaults", i18n_language_code(i18n_language()), s_view,
+             s_textured ? "on" : "off", s_half ? "half" : "full", s_music ? "on" : "off", s_sfx ? "on" : "off",
+             s_gyro ? "on" : "off");
 }
 
 // --- The values -------------------------------------------------------------

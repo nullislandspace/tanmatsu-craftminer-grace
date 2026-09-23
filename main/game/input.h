@@ -97,6 +97,8 @@ void input_gyro_set_owed(float dyaw, float dpitch);
 void input_look(cm_actions_t mask, float* dyaw, float* dpitch);
 
 // The action's name, for the controls menu ("Forward", "Jump", ...).
+// In the player's language (i18n.h). The stable id an action is saved
+// by is input_action_id(), which is never translated.
 char const* input_action_label(cm_action_t a);
 
 // The action's stable short id ("fwd", "jump"): what settings.txt keys

@@ -48,6 +48,11 @@
 #include "items/inventory.h"
 #include "items/items.h"
 #include "items/item_entity.h"
+#include "i18n/i18n.h"
+// The engine's own glyph tables, so "can the font draw this?" is
+// answered by the code that will have to draw it (engine-internal on
+// purpose: a check may look where a game may not).
+#include "hershey_text.h"
 
 static int s_fail = 0;
 
@@ -2668,6 +2673,129 @@ static void check_drops(void) {
     CHECK(item_entity_live() == ITEM_ENTITY_MAX, "the live count disagrees with what was made");
 }
 
+// ---------------------------------------------------------------------
+//  Languages (step 6.5)
+//
+//  Two things nobody notices until a player does. First, that the FONT
+//  can draw every character of every translation: the engine's glyph
+//  tables are asked directly, so this is the renderer's own answer, not
+//  a second opinion. Second, that i18n_fmt() puts the values where the
+//  translation says and takes their types from English whatever the
+//  translation says -- the property that lets a lang file on the SD
+//  card be edited by a stranger without the game trusting it.
+// ---------------------------------------------------------------------
+
+static void check_lang(void) {
+    printf("languages: %d strings x %d\n", CM_STR_COUNT, CM_LANG_COUNT);
+
+    // Every character of every string, through the engine's own tables.
+    int tofu = 0;
+    for (int l = 0; l < CM_LANG_COUNT; l++) {
+        for (int s = 0; s < CM_STR_COUNT; s++) {
+            char const* p = CM_STRINGS[l][s];
+            for (;;) {
+                uint32_t  cp;
+                int const used = hershey_utf8_next(p, &cp);
+                if (used == 0) break;
+                p += used;
+                if (cp == 0) {
+                    CHECK(0, "%s / %s: not valid UTF-8", CM_LANG_CODES[l], CM_STR_KEYS[s]);
+                    break;
+                }
+                hershey_glyph_t g;
+                if (!hershey_glyph(cp, &g)) {
+                    CHECK(0, "%s / %s: the font cannot draw U+%04X", CM_LANG_CODES[l],
+                          CM_STR_KEYS[s], (unsigned)cp);
+                    tofu++;
+                }
+            }
+        }
+    }
+    CHECK(tofu == 0, "%d character(s) would come out as empty boxes", tofu);
+
+    // Languages are told apart by their code, and every one has a name.
+    for (int l = 0; l < CM_LANG_COUNT; l++) {
+        cm_lang_t got = (cm_lang_t)-1;
+        CHECK(i18n_language_from_code(CM_LANG_CODES[l], &got), "code %s is not recognised",
+              CM_LANG_CODES[l]);
+        CHECK(got == (cm_lang_t)l, "code %s came back as %d", CM_LANG_CODES[l], (int)got);
+        CHECK(CM_LANG_NAMES[l][0] != '\0', "language %d has no name", l);
+    }
+    cm_lang_t unused = CM_LANG_EN;
+    CHECK(!i18n_language_from_code("xx", &unused), "an unknown code was accepted");
+
+    // The formatter. English first: the ordinary path.
+    char buf[128];
+    i18n_set_language(CM_LANG_EN);
+    i18n_fmt(buf, sizeof buf, CM_STR_WORLD_SUB, 3, 12345u);
+    CHECK(strcmp(buf, "slot 3, seed 12345") == 0, "en world.sub: %s", buf);
+    i18n_fmt(buf, sizeof buf, CM_STR_INFO_CLOCK, 7, 5, (long long)42);
+    CHECK(strcmp(buf, "07:05   day 42") == 0, "en info.clock: %s", buf);
+    i18n_fmt(buf, sizeof buf, CM_STR_WORLDS_SLOT, 2, "Testworld");
+    CHECK(strcmp(buf, "2  Testworld") == 0, "en worlds.slot: %s", buf);
+
+    // Every language, every format string: it must not crash, and the
+    // values must come out somewhere.
+    for (int l = 0; l < CM_LANG_COUNT; l++) {
+        i18n_set_language((cm_lang_t)l);
+        i18n_fmt(buf, sizeof buf, CM_STR_WORLD_SUB, 7, 99u);
+        CHECK(strstr(buf, "7") != NULL && strstr(buf, "99") != NULL,
+              "%s world.sub lost a value: %s", CM_LANG_CODES[l], buf);
+        i18n_fmt(buf, sizeof buf, CM_STR_NEW_DEFAULT_NAME, 4);
+        CHECK(strstr(buf, "4") != NULL, "%s new.default_name lost the number: %s",
+              CM_LANG_CODES[l], buf);
+    }
+    i18n_set_language(CM_LANG_EN);
+
+    // A string with no values at all goes through untouched.
+    i18n_fmt(buf, sizeof buf, CM_STR_MENU_PLAY);
+    CHECK(strcmp(buf, T(CM_STR_MENU_PLAY)) == 0, "a plain string was changed: %s", buf);
+
+    // Too small a buffer truncates and still terminates, like snprintf.
+    char small[8];
+    int const want = i18n_fmt(small, sizeof small, CM_STR_WORLD_SUB, 3, 12345u);
+    CHECK(want == (int)strlen("slot 3, seed 12345"), "truncated call returned %d", want);
+    CHECK(strlen(small) == sizeof small - 1, "truncated to %zu", strlen(small));
+    CHECK(strncmp(small, "slot 3,", 7) == 0, "truncated wrongly: %s", small);
+
+    // And now the part that matters: a translation is DATA. These are
+    // the strings a hand-edited file on the card might hold.
+    char const* const nasties[] = {
+        "%s",          // where English says %d: must still read an int
+        "%9$d",        // a value that does not exist
+        "%",           // a lone per-cent
+        "%d %d %d %d", // more than English has
+        "%%d",         // an escaped one, then nothing
+        "%2$d %2$d",   // the same value twice
+    };
+    for (size_t i = 0; i < sizeof nasties / sizeof nasties[0]; i++) {
+        // CM_STR_NEW_DEFAULT_NAME takes one int; pretend the file says this.
+        char out[64];
+        cm_str_t const id = CM_STR_NEW_DEFAULT_NAME;
+        char const* const saved = CM_STRINGS[CM_LANG_EN][id];
+        (void)saved;
+        i18n_test_override(id, nasties[i]);
+        int const n = i18n_fmt(out, sizeof out, id, 5);
+        CHECK(n >= 0 && n < (int)sizeof out, "%s produced %d bytes", nasties[i], n);
+        CHECK(strlen(out) == (size_t)(n < (int)sizeof out ? n : (int)sizeof out - 1),
+              "%s: length disagrees with the return", nasties[i]);
+        i18n_test_override(id, NULL);
+    }
+    // "%s" where English says %d prints the NUMBER, not a wild pointer.
+    i18n_test_override(CM_STR_NEW_DEFAULT_NAME, "Welt %s");
+    i18n_fmt(buf, sizeof buf, CM_STR_NEW_DEFAULT_NAME, 5);
+    CHECK(strcmp(buf, "Welt 5") == 0, "a wrong conversion was obeyed: %s", buf);
+    i18n_test_override(CM_STR_NEW_DEFAULT_NAME, NULL);
+
+    // Reordering, which is the whole point of doing this ourselves.
+    i18n_test_override(CM_STR_WORLD_SUB, "seed %2$u in slot %1$d");
+    i18n_fmt(buf, sizeof buf, CM_STR_WORLD_SUB, 3, 12345u);
+    CHECK(strcmp(buf, "seed 12345 in slot 3") == 0, "reordered badly: %s", buf);
+    i18n_test_override(CM_STR_WORLD_SUB, NULL);
+    printf("  every character drawable, %d nasty format strings survived\n",
+           (int)(sizeof nasties / sizeof nasties[0]) + 2);
+}
+
 int main(void) {
     check_blocks();
     check_ids();
@@ -2706,6 +2834,7 @@ int main(void) {
     check_light();
     check_replay();
     check_drops();
+    check_lang();
     chunk_store_shutdown();
     if (s_fail) {
         printf("\nworldcheck: %d FAILURE(S)\n", s_fail);
