@@ -16,6 +16,8 @@
 
 #include "world/region.h"
 
+#include "world/blockent.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -200,6 +202,14 @@ static bool region_create(FILE* f, int32_t rx, int32_t rz, region_t* r) {
 
 // --- Reading ----------------------------------------------------------
 
+// A section of a chunk being read. Ids this build does not know are
+// ignored, which is the promise chunk_codec.h makes and the reason the
+// format has not had to change to gain block entities.
+static void take_section(uint8_t id, uint8_t const* data, size_t len, void* user) {
+    (void)user;
+    if (id == SECTION_BLOCK_ENTITIES) blockent_decode_section(data, len);
+}
+
 int region_read_chunk(char const* dir, chunk_t* c, uint8_t const* remap) {
     if (c == NULL) return -1;
     char path[192];
@@ -233,7 +243,7 @@ int region_read_chunk(char const* dir, chunk_t* c, uint8_t const* remap) {
 
     // A payload that will not decode is a lost chunk, not a lost world:
     // report "not there" and let it be generated again.
-    return chunk_decode(buf, e.length, c, remap) ? 1 : 0;
+    return chunk_decode_ex(buf, e.length, c, remap, take_section, NULL) ? 1 : 0;
 }
 
 // --- Writing ----------------------------------------------------------
@@ -244,8 +254,14 @@ bool region_write_chunk(char const* dir, chunk_t const* c) {
     int32_t const rx = region_of(c->cx), rz = region_of(c->cz);
     if (!region_path(path, sizeof(path), dir, rx, rz)) return false;
 
+    // The chunk's block entities -- furnaces, and chests after them --
+    // built first, then handed to the encoder as the section it has
+    // always had a number for and never had a byte in (chunk_codec.h).
+    static uint8_t sections[CHUNK_SECTIONS_MAX];
+    size_t const   sn = blockent_encode_chunk(c->cx, c->cz, sections, sizeof(sections));
+
     static uint8_t buf[CHUNK_PAYLOAD_MAX];
-    size_t const   n = chunk_encode(c, NULL, 0, buf, sizeof(buf));
+    size_t const   n = chunk_encode(c, sn > 0 ? sections : NULL, sn, buf, sizeof(buf));
     if (n == 0) return false;
 
     FILE* f = fopen(path, "r+b");

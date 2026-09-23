@@ -59,6 +59,8 @@ typedef enum {
     SFX_LAND,         // feet hitting the ground after a fall
     SFX_CLICK,        // a menu row, a hotbar change
     SFX_FELL,         // a tree comes down (Part F)
+    SFX_CRAFT,        // something was made in the crafting book
+    SFX_DENY,         // ... and the refusal when it could not be
 
     SFX_COUNT
 } sfx_id_t;

@@ -19,6 +19,7 @@
 #include "shapes/pax_misc.h"
 #include "synthengine3d.h"
 #include "world/chunk.h"
+#include "common/texcache.h"
 #include "world/chunk_render.h"
 
 // Black, and drawn a hair outside the block's own faces so the two do
@@ -176,6 +177,10 @@ void hud_dropped_items(void) {
 
 #define SLOT_W   44
 #define SLOT_GAP 4
+// The Tab screen's slots are bigger than the hotbar's: it is a screen
+// you stop and read, and an icon at 44 px with a count over it is small
+// for a thing you are trying to tell apart from five others.
+#define INV_SLOT_W 60
 #define BAR_Y    (DISPLAY_LOG_H - 56)
 
 static void frame(pax_buf_t* fb, int x, int y, int w, int h, int t, uint32_t argb) {
@@ -213,11 +218,61 @@ static void drumstick(pax_buf_t* fb, int x, int y, uint32_t argb) {
 // sprites (D-03) replace this without the caller changing.
 #define HANDLE_ARGB 0xFF8A6432u
 
-static void slot_icon(pax_buf_t* fb, int x, int y, uint16_t item, item_def_t d) {
-    int const ix = x + 9, iy = y + 9, w = SLOT_W - 18;
+// The PNG an item is drawn with, or NULL if it has none.
+//
+// A block is drawn with the texture it is actually built out of -- the
+// side face, which is the one a player has been looking at all day --
+// so there is no second table to keep in step and a new block brings
+// its own icon. The things that are not blocks have a 16x16 of their
+// own, named after the item (tools/make_textures.py).
+static char const* icon_file(uint16_t item) {
+    if (item_is_block(item)) {
+        int const mat = voxel_face_mat((uint8_t)item, VF_SIDE);
+        return mat < 0 ? NULL : chunk_render_mat_file(mat);
+    }
+    static char name[48];
+    snprintf(name, sizeof(name), "item_%s.png", item_def(item).name);
+    return name;
+}
+
+// Blit a 16x16 texture into a w x w square, nearest neighbour. Holes
+// (SE_TEXEL_CUTOUT) are skipped, so the slot shows through around a
+// pickaxe rather than behind a magenta box.
+static bool icon_tex(char const* file, int x, int y, int w) {
+    if (s_px == NULL || file == NULL) return false;
+    se_texture_t const* t = texcache_get(file);
+    if (t == NULL || t->texels == NULL || t->w <= 0 || t->h <= 0) return false;
+
+    for (int j = 0; j < w; j++) {
+        int const sy = j * t->h / w;
+        int const py = y + j;
+        if (py < 0 || py >= (int)DISPLAY_LOG_H) continue;
+        for (int i = 0; i < w; i++) {
+            int const      sx = i * t->w / w;
+            uint16_t const c  = t->texels[((size_t)sy << t->w_log2) + (size_t)sx];
+            if (c == SE_TEXEL_CUTOUT) continue;
+            int const px = x + i;
+            if (px < 0 || px >= (int)DISPLAY_LOG_W) continue;
+            // The texture is native-order RGB565 and so is the frame
+            // buffer, unless the panel wants it the other way round.
+            direct_565_vrun(s_px, px, py, py, s_rev ? (uint16_t)((c >> 8) | (c << 8)) : c);
+        }
+    }
+    return true;
+}
+
+static void slot_icon_sized(pax_buf_t* fb, int x, int y, int slot_w, uint16_t item, item_def_t d) {
+    int const pad = slot_w / 5;
+    int const ix = x + pad, iy = y + pad, w = slot_w - 2 * pad;
+
+    // A picture of the thing, if there is one. This is what replaces
+    // the flat average colour every item used to be (D-03): three stone
+    // tools were three grey squares, and every block was a shade of
+    // brown or grey you had to learn.
+    if (icon_tex(icon_file(item), ix, iy, w)) return;
 
     if (d.tool == TOOL_NONE) {
-        box(fb, ix, iy, w, w, d.argb);  // a block, or a plain item
+        box(fb, ix, iy, w, w, d.argb);  // no texture: the old flat colour
         return;
     }
 
@@ -243,7 +298,10 @@ static void slot_icon(pax_buf_t* fb, int x, int y, uint16_t item, item_def_t d) 
             break;
         default: box(fb, ix + 2, iy + 2, w - 4, 8, d.argb); break;
     }
-    (void)item;
+}
+
+static void slot_icon(pax_buf_t* fb, int x, int y, uint16_t item, item_def_t d) {
+    slot_icon_sized(fb, x, y, SLOT_W, item, d);
 }
 
 void hud_player(pax_buf_t* fb, player_t const* p) {
@@ -312,8 +370,9 @@ void hud_inventory(pax_buf_t* fb, player_t const* p) {
     hud_begin(fb);
 
     int const cols = INV_HOTBAR, rows = INV_ROWS + 1;
-    int const gw   = cols * SLOT_W + (cols - 1) * SLOT_GAP;
-    int const gh   = rows * SLOT_W + (rows - 1) * SLOT_GAP;
+    int const sw   = INV_SLOT_W;
+    int const gw   = cols * sw + (cols - 1) * SLOT_GAP;
+    int const gh   = rows * sw + (rows - 1) * SLOT_GAP;
     int const gx   = ((int)DISPLAY_LOG_W - gw) / 2;
     int const gy   = ((int)DISPLAY_LOG_H - gh) / 2 - 10;
 
@@ -333,29 +392,37 @@ void hud_inventory(pax_buf_t* fb, player_t const* p) {
         int const col = i % INV_HOTBAR;
         int const row = inv_screen_row(i);  // the same mapping the cursor moves by
 
-        int const x = gx + col * (SLOT_W + SLOT_GAP);
-        int const y = gy + row * (SLOT_W + SLOT_GAP);
+        int const x = gx + col * (sw + SLOT_GAP);
+        int const y = gy + row * (sw + SLOT_GAP);
 
-        box(fb, x, y, SLOT_W, SLOT_W, 0xFF1A1A20u);
+        box(fb, x, y, sw, sw, 0xFF1A1A20u);
         bool const cur = (i == p->inv.cursor);
         bool const sel = i < INV_HOTBAR && (i == p->inv.selected);
-        frame(fb, x, y, SLOT_W, SLOT_W, cur ? 3 : 1, cur ? 0xFFFFD040u : sel ? 0xFFFFFFFFu : 0xFF505058u);
+        frame(fb, x, y, sw, sw, cur ? 3 : 1, cur ? 0xFFFFD040u : sel ? 0xFFFFFFFFu : 0xFF505058u);
 
         inv_slot_t const* sl = &p->inv.slot[i];
         if (sl->item == 0) continue;
-        slot_icon(fb, x, y, sl->item, item_def(sl->item));
+        slot_icon_sized(fb, x, y, sw, sl->item, item_def(sl->item));
         if (sl->count > 1) {
             char n[8];
             snprintf(n, sizeof(n), "%d", sl->count);
-            pax_vec2f const sz = rendertext_size(NULL, 16.0f, n);
-            float const     tx = (float)(x + SLOT_W - 5) - sz.x, ty = (float)(y + SLOT_W - 6) - sz.y;
-            rendertext_draw(fb, 0xFF000000u, NULL, 16.0f, tx + 1.0f, ty + 1.0f, n);
-            rendertext_draw(fb, 0xFFFFFFFFu, NULL, 16.0f, tx, ty, n);
+            pax_vec2f const sz = rendertext_size(NULL, 18.0f, n);
+            float const     tx = (float)(x + sw - 5) - sz.x, ty = (float)(y + sw - 6) - sz.y;
+            rendertext_draw(fb, 0xFF000000u, NULL, 18.0f, tx + 1.0f, ty + 1.0f, n);
+            rendertext_draw(fb, 0xFFFFFFFFu, NULL, 18.0f, tx, ty, n);
         }
     }
 
-    rendertext_draw(fb, 0xFFB0B0B8u, NULL, 16.0f, (float)(gx - 4), (float)(gy + gh + 4),
-                    T(CM_STR_HUD_INVENTORY_HINT));
+    // CENTRED ON THE SCREEN, not on the panel: the line is wider than
+    // the grid, and hung off the panel's left edge it ran off the right
+    // of the display (the user's catch). Centring gives it the whole
+    // 800 px, and worldcheck measures it in all 32 languages.
+    {
+        char const* const  hint = T(CM_STR_HUD_INVENTORY_HINT);
+        pax_vec2f const    sz   = rendertext_size(NULL, 16.0f, hint);
+        rendertext_draw(fb, 0xFFB0B0B8u, NULL, 16.0f, ((float)DISPLAY_LOG_W - sz.x) * 0.5f,
+                        (float)(gy + gh + 4), hint);
+    }
 }
 
 void hud_mine_progress(pax_buf_t* fb, float progress) {

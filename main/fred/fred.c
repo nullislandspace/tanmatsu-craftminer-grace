@@ -18,7 +18,7 @@
 #include "world/chunk_render.h"
 
 static bool       s_ready;
-static mesh_t     s_head, s_body, s_arm, s_leg, s_pick, s_axe, s_shovel, s_cube, s_sprite, s_torch;
+static mesh_t     s_head, s_body, s_arm, s_fp_arm, s_leg, s_pick, s_axe, s_shovel, s_cube, s_sprite, s_torch;
 static mesh_mat_t s_mats[FM_COUNT];
 
 // The head of a tool, by level.
@@ -39,6 +39,7 @@ void fred_init(void) {
     fred_build_head(&s_head);
     fred_build_body(&s_body);
     fred_build_arm(&s_arm);
+    fred_build_fp_arm(&s_fp_arm);
     fred_build_leg(&s_leg);
     fred_build_pick(&s_pick);
     fred_build_axe(&s_axe);
@@ -89,6 +90,7 @@ void fred_shutdown(void) {
     mesh_free(&s_head);
     mesh_free(&s_body);
     mesh_free(&s_arm);
+    mesh_free(&s_fp_arm);
     mesh_free(&s_leg);
     mesh_free(&s_pick);
     mesh_free(&s_axe);
@@ -240,8 +242,8 @@ void fred_submit_fp_arm(float swing, fred_hold_t const* hold, float bob, uint8_t
     xform_t const cam  = {camera_basis(), camera_eye(), 1.0f};
     mat3_t const  in   = mat3_rot_y(-0.3f * side);
     mat3_t const  up   = mat3_rot_x(-1.45f - 0.7f * swing);
-    xform_t const arm0 = joint(&cam, v3_scale(v3(0.6f * side, -0.5f + bob, 0.9f), FP_K), mat3_mul(&in, &up));
+    xform_t const arm0 = joint(&cam, v3_scale(v3(0.6f * side, -0.62f + bob, 0.9f), FP_K), mat3_mul(&in, &up));
     xform_t const arm  = {arm0.r, arm0.pos, 0.75f * FP_K};
-    mesh_submit(&s_arm, &arm, mats, FM_COUNT);
+    mesh_submit(&s_fp_arm, &arm, mats, FM_COUNT);
     submit_held(&arm, hold, mats, light);
 }

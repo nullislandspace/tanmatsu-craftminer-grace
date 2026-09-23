@@ -19,6 +19,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "i18n/strings_gen.h"  // cm_str_t: the name the player reads
 #include "world/blocks.h"
 
 // The items that are not blocks. The first is BLK_COUNT, so the two id
@@ -40,10 +41,12 @@ enum {
 
 typedef struct {
     char const* name;        // stable id, as blocks have one
+    cm_str_t    label;       // what the player reads, in their language (i18n.h)
     uint8_t     stack_max;   // 1 for a tool, ITEM_STACK_MAX for most things
     uint8_t     tool;        // tool_t this counts as, TOOL_NONE for anything else
     uint8_t     tool_level;  // 1 wood, 2 stone, 3 iron
     uint16_t    durability;  // uses before it breaks; 0 = never wears
+    uint16_t    fuel;        // ticks it burns in a furnace; 0 = it does not (game/furnace.h)
     uint32_t    argb;        // the icon, until items have sprites of their own
 } item_def_t;
 
@@ -64,6 +67,15 @@ static inline uint8_t item_block(uint16_t id) {
 // saved inventory survives items being added or renumbered: it stores
 // names, the way level.cmw's palette does for blocks (D-31).
 uint16_t item_by_name(char const* name);
+
+// What to call `id` on screen, in the player's language. The stable
+// `name` is the id a save file keys on and is never translated; this is
+// the other one. Every item a player can carry has a label, and
+// worldcheck fails the build over one that does not -- a nameless row
+// in the crafting book is not a thing anybody would notice by playing.
+static inline cm_str_t item_label(uint16_t id) {
+    return item_def(id).label;
+}
 
 // How many ticks `block` takes to break while holding `tool_item`.
 //

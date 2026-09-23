@@ -142,7 +142,7 @@ loading.creating = Creating world
 
 # --- The heads-up display ---------------------------------------------------
 hud.inventory = Inventory
-hud.inventory_hint = cursor keys move   F1-F6 put it on the hotbar   Tab closes
+hud.inventory_hint = arrows move   F1-F6 to the hotbar   C crafts   Tab closes
 
 # --- The position overlay ---------------------------------------------------
 # the three %.1f are the player's x, y and z
@@ -169,6 +169,95 @@ shot.saved = Saved screenshots/shot%03d.png
 shot.failed = Screenshot failed
 shot.full = screenshots/ is full (999)
 
+# --- Crafting ---------------------------------------------------------------
+craft.title = Crafting
+# the same book, opened at a crafting table
+craft.title_table = Crafting table
+# %s is what has been typed into the search box so far
+craft.search = Search: %s
+craft.hint = type to search   enter to craft   esc to close
+craft.empty = Nothing to make yet
+craft.empty_sub = Recipes appear as you pick up the materials they need
+craft.no_match = Nothing matches
+# the value column of a row you CAN make: %d is how many the recipe yields
+craft.value_make = x%d
+# ... and of one you cannot
+craft.value_missing = missing
+# one ingredient of the selected recipe, under the list: %s is what it is,
+# then how many the player has and how many the recipe needs. KEEP IT SHORT --
+# several of these sit on one line together (main/ui/craft_ui.c)
+craft.ing = %s %d/%d
+# shown for a moment after crafting: %d made, %s what it was
+craft.made = Made %d %s
+craft.full = No room for it
+
+# --- What a recipe needs, opened on a recipe that cannot be made yet --------
+craft.detail_sub = what it takes
+craft.detail_hint = esc or left goes back
+# the right-hand column of one ingredient's line: how many the player has, and
+# how many the recipe needs. TWO NUMBERS AND NOT A SENTENCE -- this sits in a
+# narrow column and a clause here runs off the panel
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+# Every block and item the player can carry. These are what the crafting
+# search box matches -- folded down to plain ASCII first, since the badge has
+# one QWERTY keyboard and no way to type another alphabet (main/i18n/fold.h).
+item.grass = Grass
+item.dirt = Dirt
+item.stone = Stone
+item.cobblestone = Cobblestone
+item.sand = Sand
+item.water = Water
+item.log = Log
+item.planks = Planks
+item.leaves = Leaves
+item.coal_ore = Coal ore
+item.glass = Glass
+item.torch = Torch
+item.flower_red = Red flower
+item.flower_yellow = Yellow flower
+item.tall_grass = Tall grass
+item.bedrock = Bedrock
+item.gravel = Gravel
+item.sign = Sign
+item.crafting_table = Crafting table
+item.furnace = Furnace
+item.coal = Coal
+item.stick = Stick
+item.pickaxe_wood = Wooden pickaxe
+item.pickaxe_stone = Stone pickaxe
+item.axe_wood = Wooden axe
+item.axe_stone = Stone axe
+item.shovel_wood = Wooden shovel
+item.shovel_stone = Stone shovel
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Furnace
+furnace.input = Input
+furnace.fuel = Fuel
+furnace.output = Output
+furnace.empty = - empty -
+# a slot with something in it: %d how many, %s what
+furnace.slot = %d %s
+furnace.hint = enter puts in or takes out   esc closes
+# %d is how far through the current item, 0 to 100
+furnace.smelting = smelting, %d%%
+furnace.no_input = nothing in it to smelt
+furnace.no_fuel = nothing to burn
+furnace.full = the output is full
+furnace.took = Took %d %s
+# --- ... and choosing what goes in it ---------------------------------------
+furnace.pick_input = What to smelt
+furnace.pick_fuel = What to burn
+furnace.pick_none_input = Nothing here can be smelted
+furnace.pick_none_fuel = Nothing here burns
+furnace.pick_hint = enter chooses   esc goes back
+# the right-hand column of a stack you could put in: what it becomes
+furnace.becomes = makes %s
+# ... or, for fuel, how many items it would smelt
+furnace.burns = smelts %d
+
 # --- The things a key can be bound to ---------------------------------------
 # These are the Controls list, one row each.
 action.forward = Forward
@@ -194,3 +283,4 @@ action.pause = Pause
 action.drop = Drop
 action.info = Show position
 action.screenshot = Screenshot
+action.craft = Crafting

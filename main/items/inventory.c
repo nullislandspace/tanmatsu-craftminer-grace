@@ -11,10 +11,26 @@ void inv_clear(inventory_t* inv) {
     inv->selected = 0;
 }
 
+void inv_mark_seen(inventory_t* inv, uint16_t item) {
+    if (inv == NULL || item == 0 || item >= ITEM_COUNT) return;
+    inv->seen[item >> 5] |= (uint32_t)1u << (item & 31u);
+}
+
+bool inv_seen(inventory_t const* inv, uint16_t item) {
+    if (inv == NULL || item == 0 || item >= ITEM_COUNT) return false;
+    return (inv->seen[item >> 5] & ((uint32_t)1u << (item & 31u))) != 0;
+}
+
 int inv_add(inventory_t* inv, uint16_t item, int count, uint16_t wear) {
     if (item == 0 || count <= 0) return count > 0 ? count : 0;
     item_def_t const d   = item_def(item);
     int const        cap = d.stack_max < 1 ? 1 : d.stack_max;
+
+    // Held once is held forever, for the recipe book. Marked HERE, on
+    // the way in, because this is the one door everything comes
+    // through. Marked even if nothing fits: the player has seen it --
+    // it was in their hands long enough to bounce off a full pack.
+    inv_mark_seen(inv, item);
 
     // PARTIAL STACKS FIRST, every one of them, before any empty slot is
     // touched. The other order leaves a player with five slots holding
@@ -86,6 +102,33 @@ int inv_count(inventory_t const* inv, uint16_t item) {
         if (inv->slot[i].item == item) n += inv->slot[i].count;
     }
     return n;
+}
+
+bool inv_take(inventory_t* inv, uint16_t item, int count) {
+    if (inv == NULL || item == 0) return count <= 0;
+    if (count <= 0) return true;
+    if (inv_count(inv, item) < count) return false;  // all or nothing
+
+    // Fullest partial stacks first: emptying the small ones would leave
+    // the pack full of holes after a few crafts.
+    while (count > 0) {
+        int best = -1;
+        for (int i = 0; i < INV_SLOTS; i++) {
+            if (inv->slot[i].item != item || inv->slot[i].count == 0) continue;
+            if (best < 0 || inv->slot[i].count > inv->slot[best].count) best = i;
+        }
+        if (best < 0) return false;  // inv_count lied; cannot happen
+
+        inv_slot_t* s    = &inv->slot[best];
+        int const   take = count < (int)s->count ? count : (int)s->count;
+        s->count         = (uint8_t)(s->count - take);
+        count -= take;
+        if (s->count == 0) {
+            s->item = 0;
+            s->wear = 0;
+        }
+    }
+    return true;
 }
 
 void inv_swap(inventory_t* inv, int a, int b) {

@@ -38,6 +38,8 @@ block 16 barrier
 block 17 bedrock
 block 18 gravel
 block 19 sign
+block 20 crafting_table
+block 21 furnace
 item coal
 item stick
 item pickaxe_wood

@@ -346,8 +346,26 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
                 if (k == K_SIGN) emit_sign(m, X, Y, Z);
                 if (k == K_PLANT && mode == VOX_MESH_FANCY) emit_plant(m, X, Y, Z, (uint8_t)voxel_face_mat(b, VF_SIDE));
                 if (k == K_TORCH) {
-                    float const cx = (float)X + 0.5f, cz = (float)Z + 0.5f, r = 1.0f / 16.0f;
-                    emit_box(m, v3(cx - r, (float)Y, cz - r), v3(cx + r, (float)Y + 0.625f, cz + r), VM_TORCH);
+                    // Upright in the middle of the cell, or shifted to
+                    // one wall and lifted, which is what a torch on a
+                    // wall looks like without the mesher having to
+                    // tilt anything. A greedy voxel mesher emits
+                    // axis-aligned boxes; a rotated stick would be a
+                    // second kind of geometry for one block.
+                    uint8_t const how = g->data != NULL ? g->data[CIDX(x, y, z)] : TORCH_FLOOR;
+                    float const   r   = 1.0f / 16.0f;
+                    float         cx = (float)X + 0.5f, cz = (float)Z + 0.5f, base = (float)Y;
+                    if (how != TORCH_FLOOR) {
+                        base += 0.2f;  // brackets hold a torch above the floor
+                        switch (how) {
+                            case TORCH_WALL_NX: cx -= 0.30f; break;
+                            case TORCH_WALL_PX: cx += 0.30f; break;
+                            case TORCH_WALL_NZ: cz -= 0.30f; break;
+                            case TORCH_WALL_PZ: cz += 0.30f; break;
+                            default: break;
+                        }
+                    }
+                    emit_box(m, v3(cx - r, base, cz - r), v3(cx + r, base + 0.625f, cz + r), VM_TORCH);
                 }
             }
         }

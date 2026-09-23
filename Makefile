@@ -76,11 +76,11 @@ HOSTCFLAGS  := -O1 -Wall -Wextra -Werror=implicit-function-declaration \
 
 PURE_SRCS       := main/math/xform.c main/math/mesh.c main/voxel/voxel_mesh.c \
                    main/world/blocks.c main/world/chunk.c main/common/rng.c main/common/tags.c \
-                   main/world/worldgen.c main/world/farlands.c main/world/chunk_codec.c main/world/region.c \
+                   main/world/worldgen.c main/world/farlands.c main/world/chunk_codec.c main/world/region.c main/world/blockent.c \
                    main/world/vfs_compat.c main/world/light.c main/world/worldstore.c main/world/datadir.c main/world/chunkmesh.c main/world/chunk_worker.c \
-                   main/game/physics.c main/game/raycast.c main/game/interact.c main/game/daytime.c main/game/replay.c \
-                   main/items/items.c main/items/inventory.c main/items/item_entity.c \
-                   main/i18n/i18n.c main/i18n/strings_gen.c \
+                   main/game/physics.c main/game/raycast.c main/game/interact.c main/game/furnace.c main/game/daytime.c main/game/replay.c \
+                   main/items/items.c main/items/inventory.c main/items/item_entity.c main/items/recipes.c \
+                   main/i18n/i18n.c main/i18n/strings_gen.c main/i18n/fold.c \
                    main/audio/midi_seq.c \
                    synthengine3D/src/nbt.c
 MESHCHECK_SRCS  := tools/meshcheck.c $(PURE_SRCS)
@@ -116,12 +116,22 @@ $(LANG_GEN_C): $(LANG_SRCS) tools/make_lang.py
 $(LANG_GEN_H): $(LANG_GEN_C)
 	@test -f $@ || python3 tools/make_lang.py
 
+# The search box's fold table (main/i18n/fold.h): the same inputs, so
+# the same kind of rule. Its generator refuses to emit a table with a
+# hole in it, which is what keeps a new language's alphabet from
+# quietly becoming unsearchable.
+FOLD_GEN_H  := main/i18n/fold_table.h
+
+$(FOLD_GEN_H): $(LANG_SRCS) tools/make_fold.py
+	python3 tools/make_fold.py
+
 .PHONY: lang
-lang: $(LANG_GEN_C) $(LANG_GEN_H)
+lang: $(LANG_GEN_C) $(LANG_GEN_H) $(FOLD_GEN_H)
 
 .PHONY: langcheck
 langcheck:
 	python3 tools/make_lang.py --check
+	python3 tools/make_fold.py --check
 
 # The pure set really is pure: no engine, no RTOS, no ESP-IDF.
 .PHONY: hostpurity
@@ -131,14 +141,14 @@ hostpurity:
 # The greedy mesher: closed, consistently wound, outward parts; volume
 # equals the solid cells and surface area equals the exposed faces.
 .PHONY: meshcheck
-meshcheck: $(LANG_GEN_C) $(LANG_GEN_H)
+meshcheck: $(LANG_GEN_C) $(LANG_GEN_H) $(FOLD_GEN_H)
 	mkdir -p $(BUILD)/host
 	$(HOSTCC) $(HOSTCFLAGS) $(MESHCHECK_SRCS) -lm -o $(BUILD)/host/meshcheck
 	$(BUILD)/host/meshcheck
 
 # The world, generation, physics, picking and crafting.
 .PHONY: worldcheck
-worldcheck: $(LANG_GEN_C) $(LANG_GEN_H)
+worldcheck: $(LANG_GEN_C) $(LANG_GEN_H) $(FOLD_GEN_H)
 	mkdir -p $(BUILD)/host
 	$(HOSTCC) $(HOSTCFLAGS) $(WORLDCHECK_SRCS) -lm -o $(BUILD)/host/worldcheck
 	$(BUILD)/host/worldcheck

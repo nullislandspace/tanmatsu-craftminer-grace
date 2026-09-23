@@ -49,6 +49,10 @@
 #include "items/inventory.h"
 #include "items/items.h"
 #include "items/item_entity.h"
+#include "items/recipes.h"
+#include "game/furnace.h"
+#include "world/blockent.h"
+#include "i18n/fold.h"
 #include "i18n/i18n.h"
 #include "audio/midi_seq.h"
 // The engine's own glyph tables, so "can the font draw this?" is
@@ -2486,6 +2490,21 @@ static void check_items(void) {
     CHECK(dirt_shovel < dirt_hand, "a shovel does not speed up dirt");
     CHECK(item_break_ticks(BLK_BARRIER, ITEM_PICK_STONE) < 0, "the edge of the world is breakable");
 
+    // AND BY HOW MUCH. The user's complaint was that the wrong tool was
+    // not "a lot slower" -- it was 2x for wood and 3x for stone, which
+    // next to a fist is nothing. The multiplier is 2 x the tool level,
+    // and these are the numbers that say so rather than an ordering
+    // that would still pass at 1.1x.
+    int const stone_wood = item_break_ticks(BLK_STONE, ITEM_PICK_WOOD);
+    CHECK(stone_hand / stone_wood == 2, "a wooden pickaxe is %dx a fist, wanted 2x", stone_hand / stone_wood);
+    CHECK(stone_hand / stone_pick == 4, "a stone pickaxe is %dx a fist, wanted 4x", stone_hand / stone_pick);
+
+    // A block the Use key opens rather than places against, and the
+    // registry is what says so -- main.c only decides what it opens.
+    CHECK(block_usable(BLK_CRAFTING_TABLE), "a crafting table cannot be opened");
+    CHECK(!block_usable(BLK_STONE), "stone opens something");
+    CHECK(!block_usable(BLK_PLANKS), "planks open something");
+
     // Too soft a tool still breaks the block; it just yields nothing.
     CHECK(!item_can_harvest(BLK_STONE, 0), "bare hands harvest stone");
     CHECK(item_can_harvest(BLK_STONE, ITEM_PICK_WOOD), "a wooden pickaxe cannot harvest stone");
@@ -2549,6 +2568,535 @@ static void check_items(void) {
 // The Tab screen draws the hotbar at the BOTTOM and the storage rows
 // above it, the reverse of slot order. The cursor has to move the way
 // the screen looks, which it did not: up from the hotbar went nowhere.
+// ---------------------------------------------------------------------
+//  Crafting (Part C)
+//
+//  The grid is gone, so the old promise -- "every recipe resolves at
+//  every legal grid offset; no two collide" -- went with it. Nothing
+//  infers a recipe from a pile of ingredients any more, which is why a
+//  pickaxe and an axe may both want three planks and two sticks. What
+//  has to be true instead is below.
+// ---------------------------------------------------------------------
+
+// ---------------------------------------------------------------------
+//  Block entities, and the furnace that runs on them
+//
+//  The chunk format has had a number for these since Part W and never a
+//  byte in one, so this section is the first thing that has ever proved
+//  the section machinery works at all.
+// ---------------------------------------------------------------------
+
+static void check_blockent(void) {
+    printf("block entities: blocks that remember\n");
+
+    blockent_clear();
+    CHECK(blockent_count() == 0, "the pool did not start empty");
+    CHECK(blockent_at(0, 0, 0) == NULL, "an empty pool found something");
+
+    blockent_t* a = blockent_add(10, 64, -20, BE_FURNACE);
+    CHECK(a != NULL, "could not make a furnace record");
+    CHECK(blockent_at(10, 64, -20) == a, "the record is not where it was put");
+    CHECK(blockent_at(10, 65, -20) == NULL, "a record answered for the cell above it");
+    CHECK(blockent_count() == 1, "the pool holds %d records, wanted 1", blockent_count());
+
+    // Two cells one apart in each axis are three different records,
+    // which is the bug a position hash would have.
+    blockent_add(11, 64, -20, BE_FURNACE);
+    blockent_add(10, 64, -21, BE_FURNACE);
+    CHECK(blockent_count() == 3, "three cells did not make three records");
+
+    blockent_remove(11, 64, -20);
+    CHECK(blockent_at(11, 64, -20) == NULL, "a removed record is still there");
+    CHECK(blockent_count() == 2, "removing one took %d", 3 - blockent_count());
+
+    // FULL IS REFUSED, NOT SILENTLY DROPPED. A chest that quietly did
+    // not become a chest is a chest somebody puts their things in.
+    blockent_clear();
+    for (int i = 0; i < BE_MAX; i++) {
+        CHECK(blockent_add(i, 64, 0, BE_CHEST) != NULL, "the pool refused record %d of %d", i, BE_MAX);
+    }
+    CHECK(blockent_count() == BE_MAX, "the pool holds %d, wanted %d", blockent_count(), BE_MAX);
+    CHECK(blockent_add(9999, 64, 0, BE_CHEST) == NULL, "a full pool accepted another record");
+
+    // Eviction takes a chunk's records and NOTHING ELSE.
+    blockent_clear();
+    blockent_add(0, 64, 0, BE_FURNACE);      // chunk (0, 0)
+    blockent_add(3, 64, 5, BE_FURNACE);      // chunk (0, 0)
+    blockent_add(CH_W + 1, 64, 0, BE_CHEST); // chunk (1, 0)
+    CHECK(blockent_count_in(0, 0) == 2, "two records in chunk 0,0 counted as %d", blockent_count_in(0, 0));
+    blockent_drop_chunk(0, 0);
+    CHECK(blockent_count_in(0, 0) == 0, "evicting chunk 0,0 left records behind");
+    CHECK(blockent_count() == 1, "evicting one chunk took the other chunk's records");
+
+    // --- The round trip, which is the whole point ---------------------
+    blockent_clear();
+    blockent_t* f = blockent_add(5, 70, 9, BE_FURNACE);
+    f->slot[BE_FURNACE_INPUT]  = (inv_slot_t){BLK_LOG, 7, 0};
+    f->slot[BE_FURNACE_FUEL]   = (inv_slot_t){ITEM_COAL, 2, 0};
+    f->slot[BE_FURNACE_OUTPUT] = (inv_slot_t){ITEM_COAL, 3, 0};
+    f->burn_left               = 900;
+    f->burn_max                = 1600;
+    f->cook                    = 77;
+    f->stamp                   = 123456;
+    blockent_t* c = blockent_add(6, 70, 9, BE_CHEST);
+    c->slot[0]                 = (inv_slot_t){ITEM_PICK_WOOD, 1, 42};
+    c->slot[26]                = (inv_slot_t){BLK_COBBLE, 64, 0};
+
+    static uint8_t sec[CHUNK_SECTIONS_MAX];
+    size_t const   n = blockent_encode_chunk(0, 0, sec, sizeof(sec));
+    CHECK(n > 0, "two records would not encode");
+    CHECK(sec[0] == SECTION_BLOCK_ENTITIES, "the section has the wrong id");
+    printf("  a furnace and a chest encode to %u bytes\n", (unsigned)n);
+
+    blockent_clear();
+    // Past the u8 id and the u32 length: the CONTENTS, as
+    // chunk_decode_ex hands them over.
+    blockent_decode_section(sec + 5, n - 5);
+    CHECK(blockent_count() == 2, "%d records came back, wanted 2", blockent_count());
+
+    blockent_t const* f2 = blockent_at(5, 70, 9);
+    CHECK(f2 != NULL, "the furnace did not come back");
+    if (f2 != NULL) {
+        CHECK(f2->kind == BE_FURNACE, "the furnace came back as kind %d", f2->kind);
+        CHECK(f2->slot[BE_FURNACE_INPUT].item == BLK_LOG && f2->slot[BE_FURNACE_INPUT].count == 7,
+              "the furnace's input did not survive");
+        CHECK(f2->slot[BE_FURNACE_OUTPUT].count == 3, "the furnace's output did not survive");
+        CHECK(f2->burn_left == 900 && f2->cook == 77 && f2->stamp == 123456,
+              "the furnace's fire did not survive: burn %u cook %u stamp %u", f2->burn_left, f2->cook,
+              f2->stamp);
+    }
+    blockent_t const* c2 = blockent_at(6, 70, 9);
+    CHECK(c2 != NULL, "the chest did not come back");
+    if (c2 != NULL) {
+        CHECK(c2->slot[0].item == ITEM_PICK_WOOD && c2->slot[0].wear == 42, "a worn tool did not survive a chest");
+        CHECK(c2->slot[26].count == 64, "the chest's last slot did not survive");
+    }
+
+    // A TRUNCATED SECTION MUST STOP, NOT WALK OFF THE END. Every
+    // truncation of it, one byte at a time -- the same treatment the
+    // MIDI files get (F-72), and for the same reason: this is a file
+    // off somebody's SD card.
+    for (size_t cut = 5; cut < n; cut++) {
+        blockent_clear();
+        blockent_decode_section(sec + 5, cut - 5);
+        CHECK(blockent_count() <= 2, "a %u-byte section produced %d records", (unsigned)cut, blockent_count());
+    }
+    blockent_clear();
+    printf("  survives all %u truncations\n", (unsigned)(n - 5));
+}
+
+static void check_furnace(void) {
+    printf("the furnace: it never ticks, it catches up\n");
+
+    // What burns, and what does not.
+    CHECK(furnace_is_fuel(ITEM_COAL), "coal does not burn");
+    CHECK(furnace_is_fuel(BLK_LOG), "a log does not burn");
+    CHECK(furnace_is_fuel(BLK_PLANKS), "planks do not burn");
+    CHECK(furnace_is_fuel(ITEM_STICK), "a stick does not burn");
+    CHECK(furnace_is_fuel(ITEM_PICK_WOOD), "a wooden pickaxe does not burn");
+    CHECK(!furnace_is_fuel(ITEM_PICK_STONE), "a stone pickaxe burns");
+    CHECK(!furnace_is_fuel(BLK_COBBLE), "cobblestone burns");
+    CHECK(!furnace_is_fuel(BLK_SAND), "sand burns");
+
+    // What smelts.
+    CHECK(furnace_smelts_to(BLK_LOG) == ITEM_COAL, "a log does not become coal");
+    CHECK(furnace_smelts_to(BLK_SAND) == BLK_GLASS, "sand does not become glass");
+    CHECK(furnace_smelts_to(BLK_COBBLE) == BLK_STONE, "cobblestone does not become stone");
+    CHECK(furnace_smelts_to(ITEM_COAL) == 0, "coal smelts into something");
+
+    blockent_clear();
+    blockent_t* f = blockent_add(0, 64, 0, BE_FURNACE);
+    f->slot[BE_FURNACE_INPUT] = (inv_slot_t){BLK_SAND, 4, 0};
+    f->slot[BE_FURNACE_FUEL]  = (inv_slot_t){ITEM_COAL, 1, 0};
+    f->stamp                  = 0;
+
+    // Nothing has happened yet.
+    furnace_catch_up(f, 0);
+    CHECK(f->slot[BE_FURNACE_OUTPUT].count == 0, "it smelted something in no time at all");
+
+    // Half an item in.
+    furnace_catch_up(f, FURNACE_COOK_TICKS / 2);
+    CHECK(f->slot[BE_FURNACE_OUTPUT].count == 0, "half an item produced a whole one");
+    CHECK(furnace_progress_pct(f) == 50, "half way through reads as %d%%", furnace_progress_pct(f));
+    CHECK(furnace_busy(f), "it is not burning with fuel and sand in it");
+
+    // One whole item.
+    furnace_catch_up(f, FURNACE_COOK_TICKS);
+    CHECK(f->slot[BE_FURNACE_OUTPUT].item == BLK_GLASS && f->slot[BE_FURNACE_OUTPUT].count == 1,
+          "one cook produced %d of item %u", f->slot[BE_FURNACE_OUTPUT].count, f->slot[BE_FURNACE_OUTPUT].item);
+    CHECK(f->slot[BE_FURNACE_INPUT].count == 3, "the sand was not consumed");
+
+    // And then the rest of it, all at once. One lump of coal is 1600
+    // ticks and an item takes 200, so it sees all four through with
+    // fuel to spare.
+    furnace_catch_up(f, 1000000);
+    CHECK(f->slot[BE_FURNACE_OUTPUT].count == 4, "four sand made %d glass", f->slot[BE_FURNACE_OUTPUT].count);
+    CHECK(f->slot[BE_FURNACE_INPUT].item == 0, "there is sand left after smelting all of it");
+    CHECK(!furnace_busy(f), "it is still burning with nothing to smelt");
+    CHECK(furnace_idle_reason(f) == FURNACE_IDLE_NO_INPUT, "an empty furnace gives reason %d",
+          furnace_idle_reason(f));
+
+    // FUEL RUNS OUT. Two items of work, one item of fuel: a stick is
+    // 100 ticks, which is half a cook.
+    blockent_clear();
+    f = blockent_add(0, 64, 0, BE_FURNACE);
+    f->slot[BE_FURNACE_INPUT] = (inv_slot_t){BLK_SAND, 2, 0};
+    f->slot[BE_FURNACE_FUEL]  = (inv_slot_t){ITEM_STICK, 1, 0};
+    furnace_catch_up(f, 1000000);
+    CHECK(f->slot[BE_FURNACE_OUTPUT].count == 0, "half a stick's worth of fire finished an item");
+    CHECK(f->slot[BE_FURNACE_INPUT].count == 2, "the sand was eaten by a fire that went out");
+    CHECK(furnace_idle_reason(f) == FURNACE_IDLE_NO_FUEL, "a cold furnace gives reason %d",
+          furnace_idle_reason(f));
+
+    // FUEL IS NOT BURNED FOR NOTHING. A furnace with fuel and no input
+    // still has its fuel when you come back.
+    blockent_clear();
+    f = blockent_add(0, 64, 0, BE_FURNACE);
+    f->slot[BE_FURNACE_FUEL] = (inv_slot_t){ITEM_COAL, 3, 0};
+    furnace_catch_up(f, 1000000);
+    CHECK(f->slot[BE_FURNACE_FUEL].count == 3, "an idle furnace burned %d coal for nothing",
+          3 - f->slot[BE_FURNACE_FUEL].count);
+
+    // A FULL OUTPUT STOPS IT, and does not eat the input.
+    blockent_clear();
+    f = blockent_add(0, 64, 0, BE_FURNACE);
+    f->slot[BE_FURNACE_INPUT]  = (inv_slot_t){BLK_SAND, 10, 0};
+    f->slot[BE_FURNACE_FUEL]   = (inv_slot_t){ITEM_COAL, 10, 0};
+    f->slot[BE_FURNACE_OUTPUT] = (inv_slot_t){BLK_GLASS, ITEM_STACK_MAX, 0};
+    furnace_catch_up(f, 1000000);
+    CHECK(f->slot[BE_FURNACE_INPUT].count == 10, "a full output still ate the input");
+    CHECK(furnace_idle_reason(f) == FURNACE_IDLE_FULL, "a full furnace gives reason %d", furnace_idle_reason(f));
+
+    // A STAMP FROM THE FUTURE is not four billion ticks of free work.
+    // (A world restored from a backup; the debug key that moves the
+    // clock; a test that rewinds.)
+    blockent_clear();
+    f = blockent_add(0, 64, 0, BE_FURNACE);
+    f->slot[BE_FURNACE_INPUT] = (inv_slot_t){BLK_SAND, 8, 0};
+    f->slot[BE_FURNACE_FUEL]  = (inv_slot_t){ITEM_COAL, 8, 0};
+    f->stamp                  = 5000;
+    furnace_catch_up(f, 100);
+    CHECK(f->slot[BE_FURNACE_OUTPUT].count == 0, "a clock that went backwards smelted %d",
+          f->slot[BE_FURNACE_OUTPUT].count);
+    CHECK(f->stamp == 100, "the stamp did not follow the clock back");
+
+    // THE LOOP IS PER EVENT, NOT PER TICK. A furnace opened after a
+    // week of world time must not cost a week of iterations -- this is
+    // the one thing that would make the lazy design worse than ticking.
+    blockent_clear();
+    f = blockent_add(0, 64, 0, BE_FURNACE);
+    f->slot[BE_FURNACE_INPUT] = (inv_slot_t){BLK_SAND, 64, 0};
+    f->slot[BE_FURNACE_FUEL]  = (inv_slot_t){ITEM_COAL, 64, 0};
+    clock_t const t0 = clock();
+    furnace_catch_up(f, 0xFFFFFFFEu);
+    double const ms = 1000.0 * (double)(clock() - t0) / CLOCKS_PER_SEC;
+    CHECK(ms < 50.0, "catching up on 4 billion ticks took %.1f ms", ms);
+    CHECK(f->slot[BE_FURNACE_OUTPUT].count == 64, "64 sand and plenty of coal made %d glass",
+          f->slot[BE_FURNACE_OUTPUT].count);
+    printf("  4 billion ticks of catching up in %.2f ms, 64 glass out\n", ms);
+
+    blockent_clear();
+}
+
+static void check_recipes(void) {
+    printf("crafting: the recipe table\n");
+
+    int const n = recipe_count();
+    CHECK(n > 0, "there are no recipes at all");
+
+    for (int i = 0; i < n; i++) {
+        recipe_t const* r = recipe_at(i);
+        char const*     w = item_def(r->out).name;
+
+        CHECK(r->out != 0 && r->out < ITEM_COUNT, "recipe %d makes item %u, which does not exist", i, r->out);
+        CHECK(r->out_n >= 1, "recipe for %s makes none of it", w);
+        CHECK(r->out_n <= item_def(r->out).stack_max, "recipe for %s makes %u, more than a stack holds", w,
+              r->out_n);
+        CHECK(r->station < RS_COUNT, "recipe for %s is made at station %u, which does not exist", w, r->station);
+        CHECK(r->n_in >= 1 && r->n_in <= RECIPE_IN_MAX, "recipe for %s names %u ingredients", w, r->n_in);
+        CHECK(item_label(r->out) != 0, "recipe for %s makes something with no name on screen", w);
+
+        for (int k = 0; k < r->n_in; k++) {
+            uint16_t const id = r->in[k].item;
+            CHECK(id != 0 && id < ITEM_COUNT, "recipe for %s wants item %u, which does not exist", w, id);
+            CHECK(r->in[k].count >= 1, "recipe for %s wants none of %s", w, item_def(id).name);
+            CHECK(item_label(id) != 0, "recipe for %s wants %s, which has no name on screen", w,
+                  item_def(id).name);
+            // The same thing twice in one recipe would make
+            // recipe_can_make count it twice and be wrong about both.
+            for (int j = 0; j < k; j++) {
+                CHECK(r->in[j].item != id, "recipe for %s names %s twice", w, item_def(id).name);
+            }
+            CHECK(id != r->out, "recipe for %s is made of itself", w);
+        }
+
+        // Distinct output AND station. Two rows making the same thing
+        // in the same place is a row the book would show twice, and no
+        // way for a player to tell which one they picked.
+        for (int j = 0; j < i; j++) {
+            recipe_t const* o = recipe_at(j);
+            CHECK(!(o->out == r->out && o->station == r->station), "two recipes make %s at station %u", w,
+                  r->station);
+        }
+    }
+
+    // A reversible recipe has to be undoable into things that exist,
+    // which is the whole of what the disassembly bench will ask of it.
+    for (int i = 0; i < n; i++) {
+        recipe_t const* r = recipe_at(i);
+        if ((r->flags & RF_REVERSIBLE) == 0) continue;
+        CHECK(r->station != RS_FURNACE, "%s is smelted and marked reversible", item_def(r->out).name);
+        for (int k = 0; k < r->n_in; k++) {
+            CHECK(item_def(r->in[k].item).name[0] != 0, "%s reverses into something nameless",
+                  item_def(r->out).name);
+        }
+    }
+    printf("  %d recipes, all made of things that exist\n", n);
+}
+
+static void check_discovery(void) {
+    printf("crafting: what the player knows\n");
+
+    inventory_t inv;
+    inv_clear(&inv);
+
+    // An empty book. This is the state a new world starts in, and the
+    // user asked for exactly it.
+    int known = 0;
+    for (int i = 0; i < recipe_count(); i++) {
+        if (recipe_known(recipe_at(i), &inv)) known++;
+    }
+    CHECK(known == 0, "a player who has held nothing already knows %d recipes", known);
+
+    // ONE ingredient reveals a recipe -- not all of them. Picking up a
+    // log has to tell you what a log is for.
+    inv_add(&inv, BLK_LOG, 1, 0);
+    CHECK(inv_seen(&inv, BLK_LOG), "a log was picked up and not remembered");
+    for (int i = 0; i < recipe_count(); i++) {
+        recipe_t const* r    = recipe_at(i);
+        bool            uses = false;
+        for (int k = 0; k < r->n_in; k++) {
+            if (r->in[k].item == BLK_LOG) uses = true;
+        }
+        CHECK(recipe_known(r, &inv) == uses, "%s: known=%d but uses a log=%d", item_def(r->out).name,
+              (int)recipe_known(r, &inv), (int)uses);
+    }
+
+    // Held once is known forever: spending it all does not take the
+    // recipe away again.
+    CHECK(inv_take(&inv, BLK_LOG, 1), "could not take back the one log");
+    CHECK(inv_count(&inv, BLK_LOG) == 0, "the log is still there after being taken");
+    CHECK(inv_seen(&inv, BLK_LOG), "spending the last log forgot what it was for");
+
+    // Even a pickup that does not fit counts: it was in their hands.
+    inventory_t full;
+    inv_clear(&full);
+    for (int i = 0; i < INV_SLOTS; i++) {
+        full.slot[i].item  = BLK_STONE;
+        full.slot[i].count = ITEM_STACK_MAX;
+    }
+    CHECK(inv_add(&full, ITEM_COAL, 1, 0) == 1, "a full pack accepted coal");
+    CHECK(inv_seen(&full, ITEM_COAL), "coal bounced off a full pack and was forgotten");
+    printf("  empty at the start; one ingredient is enough; spending it does not forget\n");
+}
+
+static void check_crafting(void) {
+    printf("crafting: making things\n");
+
+    // Find the recipes by output rather than by index, so inserting a
+    // row above them does not silently change what is being tested.
+    recipe_t const *planks = NULL, *sticks = NULL, *torch = NULL;
+    for (int i = 0; i < recipe_count(); i++) {
+        recipe_t const* r = recipe_at(i);
+        if (r->out == BLK_PLANKS) planks = r;
+        if (r->out == ITEM_STICK) sticks = r;
+        if (r->out == BLK_TORCH) torch = r;
+    }
+    CHECK(planks != NULL && sticks != NULL && torch != NULL, "the starting recipes are not all there");
+    if (planks == NULL || sticks == NULL || torch == NULL) return;
+
+    inventory_t inv;
+    inv_clear(&inv);
+
+    // Nothing carried: makes nothing, and takes nothing doing it.
+    CHECK(recipe_can_make(planks, &inv, 8) == 0, "planks can be made out of nothing");
+    CHECK(recipe_make(planks, &inv, 1) == 0, "planks were made out of nothing");
+
+    inv_add(&inv, BLK_LOG, 3, 0);
+    CHECK(recipe_can_make(planks, &inv, 8) == 3, "3 logs should be 3 lots of planks");
+    CHECK(recipe_make(planks, &inv, 2) == 2, "two lots of planks were refused");
+    CHECK(inv_count(&inv, BLK_LOG) == 1, "the wrong number of logs was consumed");
+    CHECK(inv_count(&inv, BLK_PLANKS) == 8, "2 x 4 planks did not arrive");
+
+    // Minecraft's numbers, as the user asked for.
+    CHECK(planks->out_n == 4 && planks->in[0].count == 1, "a log is not 4 planks");
+    CHECK(sticks->out_n == 4 && sticks->in[0].count == 2, "2 planks are not 4 sticks");
+    CHECK(torch->out_n == 4, "a torch recipe does not make 4");
+
+    // Asking for more than the materials allow makes as many as it can
+    // and stops, rather than failing outright.
+    CHECK(recipe_make(planks, &inv, 10) == 1, "the last log did not become the last planks");
+    CHECK(inv_count(&inv, BLK_LOG) == 0, "logs left over after making as many planks as possible");
+
+    // A RECIPE WITH TWO INGREDIENTS, all the way through. The torch
+    // was reported as taking the materials and giving nothing back
+    // (the cause turned out to be elsewhere -- player.c reopening the
+    // screen every tick, so enter crafted the FIRST row rather than the
+    // one under the cursor) but "two ingredients out, one output in"
+    // had never actually been exercised, so it is now.
+    inv_clear(&inv);
+    inv_add(&inv, ITEM_COAL, 3, 0);
+    inv_add(&inv, ITEM_STICK, 2, 0);
+    CHECK(recipe_can_make(torch, &inv, 9) == 2, "3 coal and 2 sticks should be 2 lots of torches, got %d",
+          recipe_can_make(torch, &inv, 9));
+    CHECK(recipe_make(torch, &inv, 1) == 1, "a torch with everything to hand was refused");
+    CHECK(inv_count(&inv, BLK_TORCH) == 4, "one torch recipe gave %d torches, wanted 4",
+          inv_count(&inv, BLK_TORCH));
+    CHECK(inv_count(&inv, ITEM_COAL) == 2, "the torch took %d coal, wanted 1", 3 - inv_count(&inv, ITEM_COAL));
+    CHECK(inv_count(&inv, ITEM_STICK) == 1, "the torch took %d sticks, wanted 1",
+          2 - inv_count(&inv, ITEM_STICK));
+
+    // ... and again, onto the stack it already made.
+    CHECK(recipe_make(torch, &inv, 1) == 1, "a second torch was refused");
+    CHECK(inv_count(&inv, BLK_TORCH) == 8, "two torch recipes gave %d torches, wanted 8",
+          inv_count(&inv, BLK_TORCH));
+    CHECK(recipe_make(torch, &inv, 1) == 0, "a third torch was made with no sticks left");
+    CHECK(inv_count(&inv, ITEM_COAL) == 1, "the refused third torch still took coal");
+
+    // A missing ingredient is REPORTED, not just refused: this is the
+    // "so a user knows what to look for" the user asked for.
+    inv_clear(&inv);
+    inv_add(&inv, ITEM_COAL, 1, 0);
+    int short_of = -1;
+    for (int k = 0; k < torch->n_in; k++) {
+        if (torch->in[k].item == ITEM_STICK) short_of = k;
+    }
+    CHECK(short_of >= 0, "a torch does not want a stick");
+    if (short_of >= 0) {
+        CHECK(recipe_missing(torch, &inv, short_of) == 1, "a torch with no stick is not short one stick");
+    }
+
+    // A FULL PACK MUST NOT EAT THE MATERIALS. Every slot taken, and
+    // the ingredient sitting in a stack DEEP ENOUGH TO SURVIVE being
+    // drawn from -- otherwise consuming it frees its own slot and the
+    // output lands there, which is what the first draft of this check
+    // accidentally tested.
+    inv_clear(&inv);
+    for (int i = 0; i < INV_SLOTS; i++) {
+        inv.slot[i].item  = BLK_STONE;
+        inv.slot[i].count = ITEM_STACK_MAX;
+    }
+    inv.slot[0].item  = BLK_PLANKS;
+    inv.slot[0].count = ITEM_STACK_MAX;
+    CHECK(recipe_can_make(sticks, &inv, 1) >= 1, "the planks are there but cannot be used");
+    CHECK(recipe_make(sticks, &inv, 1) == 0, "sticks were made with nowhere to put them");
+    CHECK(inv_count(&inv, BLK_PLANKS) == ITEM_STACK_MAX, "planks were eaten by a craft that could not finish");
+    CHECK(inv_count(&inv, ITEM_STICK) == 0, "sticks appeared in a pack with no room for them");
+    printf("  quantities are Minecraft's; a full pack refuses without eating the materials\n");
+}
+
+// ---------------------------------------------------------------------
+//  The search box's fold (i18n/fold.h)
+//
+//  The badge has one QWERTY and the game speaks 32 languages, so this
+//  is what makes the crafting search box work at all. The check that
+//  matters is COVERAGE OF THE WHOLE DOMAIN -- every character of every
+//  string of every language -- not a handful of samples.
+// ---------------------------------------------------------------------
+
+static void check_fold(void) {
+    printf("crafting: folding 32 languages onto one keyboard\n");
+
+    cm_lang_t const was = i18n_language();
+
+    int holes = 0, chars = 0;
+    for (int l = 0; l < CM_LANG_COUNT; l++) {
+        i18n_set_language((cm_lang_t)l);
+        for (int k = 0; k < CM_STR_COUNT; k++) {
+            char const* p = i18n_text((cm_str_t)k);
+            uint32_t    cp;
+            while ((p = fold_utf8_next(p, &cp)) != NULL) {
+                chars++;
+                if (!fold_known(cp)) {
+                    if (holes < 8) {
+                        printf("  FAIL: %s has U+%04X, which nothing folds\n", i18n_language_code((cm_lang_t)l),
+                               (unsigned)cp);
+                    }
+                    holes++;
+                    s_fail++;
+                }
+            }
+        }
+    }
+    CHECK(holes == 0, "%d characters in the shipped strings have no fold", holes);
+
+    // Every name a player can search for survives the fold as
+    // something they can actually type: a name that folds away to
+    // nothing is a row that can never be found.
+    for (int l = 0; l < CM_LANG_COUNT; l++) {
+        i18n_set_language((cm_lang_t)l);
+        for (uint16_t id = 1; id < ITEM_COUNT; id++) {
+            if (id == BLK_AIR || id == BLK_BARRIER) continue;
+            cm_str_t const lab = item_label(id);
+            CHECK(lab != 0, "%s has no name on screen", item_def(id).name);
+            if (lab == 0) continue;
+            char folded[FOLD_MAX];
+            fold_text(i18n_text(lab), folded, sizeof(folded));
+            CHECK(folded[0] != '\0', "%s in %s folds away to nothing", item_def(id).name,
+                  i18n_language_code((cm_lang_t)l));
+            for (char const* c = folded; *c; c++) {
+                CHECK((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9'),
+                      "%s in %s folds to '%s', which is not typable", item_def(id).name,
+                      i18n_language_code((cm_lang_t)l), folded);
+            }
+        }
+    }
+    i18n_set_language(was);
+
+    // Folding is idempotent -- the needle is folded once and the
+    // haystack every frame, and the two have to meet.
+    struct {
+        char const* in;
+        char const* want;
+    } const cases[] = {
+        {"Кирка", "kirka"}, {"Kömür", "komur"},  {"Dřevo", "drevo"},
+        {"Łopata", "lopata"}, {"Ξύλο", "xylo"},  {"Straße", "strasse"},
+        {"Iron Pickaxe", "ironpickaxe"},         {"Щит", "shchit"},
+    };
+    for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+        char a[FOLD_MAX], b[FOLD_MAX];
+        fold_text(cases[i].in, a, sizeof(a));
+        CHECK(strcmp(a, cases[i].want) == 0, "'%s' folded to '%s', wanted '%s'", cases[i].in, a, cases[i].want);
+        fold_text(a, b, sizeof(b));
+        CHECK(strcmp(a, b) == 0, "folding '%s' twice gave '%s' then '%s'", cases[i].in, a, b);
+    }
+
+    // Matching: a substring in the folded form, an empty needle
+    // matching everything, and punctuation and spaces never in the way.
+    CHECK(fold_match("Iron Pickaxe", "ironpick"), "'iron pick' does not find the iron pickaxe");
+    CHECK(fold_match("Кирка", ""), "an empty search box hides things");
+    CHECK(!fold_match("Stone", "xyz"), "the search box matches things it should not");
+
+    // A truncated and a malformed UTF-8 string must terminate, not
+    // loop: a lang file off the SD card is a stranger's file (i18n.h).
+    char out[FOLD_MAX];
+    fold_text("\xD0", out, sizeof(out));
+    fold_text("\xE2\x82", out, sizeof(out));
+    fold_text("\x80\x80\x80", out, sizeof(out));
+    fold_text("a\xFF" "b", out, sizeof(out));
+    CHECK(strcmp(out, "ab") == 0, "a stray byte took its neighbours with it: '%s'", out);
+
+    // A needle longer than the buffer must truncate, not overrun.
+    char big[FOLD_MAX * 4];
+    memset(big, 'x', sizeof(big) - 1);
+    big[sizeof(big) - 1] = '\0';
+    fold_text(big, out, sizeof(out));
+    CHECK(strlen(out) == sizeof(out) - 1, "a long name folded to %u characters, not %u", (unsigned)strlen(out),
+          (unsigned)(sizeof(out) - 1));
+
+    printf("  %d characters across %d languages, every one of them foldable\n", chars, CM_LANG_COUNT);
+}
+
 static void check_inv_cursor(void) {
     printf("the inventory cursor\n");
     inventory_t inv;
@@ -3023,6 +3571,188 @@ static struct {
     {"settings.", 260.0f},
 };
 
+// ---------------------------------------------------------------------
+//  Lines that have to fit where they are drawn
+//
+//  check_label_widths above measures LABELS against their value column.
+//  This measures everything else: the values themselves, the hint lines
+//  and the free-standing ones, against the room each actually has.
+//
+//  It exists because the labels were not the problem the second time.
+//  The user found "have 0, need 2 more" running out of the crafting
+//  panel and off the right of the screen, and the inventory's legend
+//  doing the same -- in ENGLISH, which is the shortest language here.
+//  A check that only looked at labels could not see either.
+//
+//  A format string is measured with its blanks filled in the worst way
+//  the game could fill them: every number 999 and every name the
+//  LONGEST ITEM NAME IN THAT LANGUAGE, since that is what these lines
+//  are made of.
+// ---------------------------------------------------------------------
+
+static float text_width_at(char const* s, float h) {
+    float const scale = (h * HERSHEY_SCALE) / HERSHEY_BASE;
+    int         w     = 0;
+    for (;;) {
+        uint32_t  cp;
+        int const used = hershey_utf8_next(s, &cp);
+        if (used == 0) break;
+        s += used;
+        if (cp != 0) w += (int)((float)hershey_advance(cp) * scale);
+    }
+    return (float)w;
+}
+
+// The longest thing a %s in one of these lines can be filled with.
+static char const* longest_item_label(void) {
+    char const* worst = "";
+    float       wmax  = 0.0f;
+    for (uint16_t id = 1; id < ITEM_COUNT; id++) {
+        if (id == BLK_AIR || id == BLK_BARRIER) continue;
+        cm_str_t const lab = item_label(id);
+        if (lab == 0) continue;
+        char const* const t = i18n_text(lab);
+        float const       w = text_width_at(t, 28.0f);
+        if (w > wmax) {
+            wmax  = w;
+            worst = t;
+        }
+    }
+    return worst;
+}
+
+// Fill a format string the worst way the game can fill it.
+static void expand_worst(char const* fmt, char* out, size_t cap) {
+    char const* const name = longest_item_label();
+    size_t            n    = 0;
+    for (char const* p = fmt; *p != '\0' && n + 1 < cap; p++) {
+        if (*p != '%') {
+            out[n++] = *p;
+            continue;
+        }
+        p++;
+        if (*p == '\0') break;
+        char const* ins = NULL;
+        if (*p == 'd' || *p == 'u' || *p == 'i') {
+            ins = "64";  // ITEM_STACK_MAX: no count is ever larger
+        } else if (*p == 's') {
+            ins = name;
+        } else if (*p == '%') {
+            ins = "%";
+        } else {
+            continue;  // a width or a flag: not worth modelling
+        }
+        for (char const* q = ins; *q != '\0' && n + 1 < cap; q++) out[n++] = *q;
+    }
+    out[n] = '\0';
+}
+
+// The room a line gets, worked out the way se_ui.c works it out:
+//     panel_x = (800 - 800f) / 2
+//     text_x  = panel_x + SE_UI_TEXT_INSET + SE_UI_CHEVRON_GUTTER
+// so a label has (800f - 50 - 28) and a value (800f - 50 - dx - 28).
+#define PANEL_ROOM(f)         ((f) * 800.0f - 50.0f - 28.0f)
+#define VALUE_ROOM(f, dx)     (PANEL_ROOM(f) - (dx))
+
+static struct {
+    char const* key;
+    float       h;   // the height it is drawn at
+    float       px;  // the room it has
+} const TEXT_BUDGETS[] = {
+    // The inventory screen's legend, centred on the whole display.
+    {"hud.inventory_hint", 16.0f, 800.0f - 32.0f},
+
+    // The crafting book: the list's value column, and its footer.
+    {"craft.value_make", 28.0f, VALUE_ROOM(0.72f, 300.0f)},
+    {"craft.value_missing", 28.0f, VALUE_ROOM(0.72f, 300.0f)},
+    // Several of these share one line. The share is worked out from the
+    // recipe table below, not guessed here, so a recipe with another
+    // ingredient in it tightens this automatically.
+    {"craft.ing", 14.0f, 0.0f},
+    {"craft.hint", 14.0f, PANEL_ROOM(0.72f)},
+    {"craft.search", 18.0f, PANEL_ROOM(0.72f)},
+    {"craft.made", 14.0f, PANEL_ROOM(0.72f)},
+    {"craft.full", 14.0f, PANEL_ROOM(0.72f)},
+    {"craft.empty_sub", 14.0f, PANEL_ROOM(0.72f)},
+    {"craft.empty", 28.0f, PANEL_ROOM(0.72f)},
+    {"craft.no_match", 28.0f, PANEL_ROOM(0.72f)},
+
+    // ... and the "what it takes" panel, which is where it went wrong.
+    {"craft.detail_have", 28.0f, VALUE_ROOM(0.78f, 300.0f)},
+    {"craft.detail_sub", 18.0f, PANEL_ROOM(0.78f)},
+    {"craft.detail_hint", 14.0f, PANEL_ROOM(0.78f)},
+
+    // The furnace: three rows with a value column, a subtitle that says
+    // what it is doing, and the picker over the player's own stacks.
+    {"furnace.slot", 28.0f, VALUE_ROOM(0.86f, 200.0f)},
+    {"furnace.empty", 28.0f, VALUE_ROOM(0.86f, 200.0f)},
+    {"furnace.input", 28.0f, 200.0f},
+    {"furnace.fuel", 28.0f, 200.0f},
+    {"furnace.output", 28.0f, 200.0f},
+    {"furnace.smelting", 18.0f, PANEL_ROOM(0.86f)},
+    {"furnace.no_input", 18.0f, PANEL_ROOM(0.86f)},
+    {"furnace.no_fuel", 18.0f, PANEL_ROOM(0.86f)},
+    {"furnace.full", 18.0f, PANEL_ROOM(0.86f)},
+    {"furnace.took", 18.0f, PANEL_ROOM(0.86f)},
+    {"furnace.hint", 14.0f, PANEL_ROOM(0.86f)},
+    {"furnace.becomes", 14.0f, PANEL_ROOM(0.72f)},
+    {"furnace.burns", 14.0f, PANEL_ROOM(0.72f)},
+    {"furnace.pick_hint", 14.0f, PANEL_ROOM(0.72f)},
+    {"furnace.pick_none_input", 28.0f, PANEL_ROOM(0.72f)},
+    {"furnace.pick_none_fuel", 28.0f, PANEL_ROOM(0.72f)},
+};
+
+static void check_text_fits(void) {
+    printf("text: does every line fit where it is drawn\n");
+
+    cm_lang_t const was = i18n_language();
+    float       worst_slack = 1e9f;
+    char const* worst_key   = "";
+    char const* worst_lang  = "";
+
+    for (int li = 0; li < CM_LANG_COUNT; li++) {
+        i18n_set_language((cm_lang_t)li);
+        for (size_t bi = 0; bi < sizeof(TEXT_BUDGETS) / sizeof(TEXT_BUDGETS[0]); bi++) {
+            char const* const key = TEXT_BUDGETS[bi].key;
+
+            int found = -1;
+            for (int k = 0; k < CM_STR_COUNT; k++) {
+                if (strcmp(CM_STR_KEYS[k], key) == 0) found = k;
+            }
+            CHECK(found >= 0, "no string called %s -- the budget table has gone stale", key);
+            if (found < 0) continue;
+
+            char filled[256];
+            expand_worst(i18n_text((cm_str_t)found), filled, sizeof(filled));
+            float const w = text_width_at(filled, TEXT_BUDGETS[bi].h);
+
+            // A budget of 0 means "share the panel with the others on
+            // its line", which for the ingredient footer is one per
+            // ingredient of the fattest recipe there is.
+            float room = TEXT_BUDGETS[bi].px;
+            if (room == 0.0f) {
+                int most = 1;
+                for (int ri = 0; ri < recipe_count(); ri++) {
+                    if (recipe_at(ri)->n_in > most) most = recipe_at(ri)->n_in;
+                }
+                room = PANEL_ROOM(0.72f) / (float)most;
+            }
+            float const slack = room - w;
+            CHECK(slack >= 0.0f, "%s/%s: \"%s\" is %.0f px, room is %.0f",
+                  i18n_language_code((cm_lang_t)li), key, filled, (double)w, (double)room);
+            if (slack < worst_slack) {
+                worst_slack = slack;
+                worst_key   = key;
+                worst_lang  = i18n_language_code((cm_lang_t)li);
+            }
+        }
+    }
+    i18n_set_language(was);
+    printf("  %d lines x %d languages; tightest %.0f px to spare (%s, %s)\n",
+           (int)(sizeof(TEXT_BUDGETS) / sizeof(TEXT_BUDGETS[0])), CM_LANG_COUNT, (double)worst_slack,
+           worst_key, worst_lang);
+}
+
 static void check_label_widths(void) {
     printf("menu labels: do they fit beside their values\n");
 
@@ -3096,11 +3826,18 @@ int main(void) {
     check_felling();
     check_items();
     check_inv_cursor();
+    check_recipes();
+    check_blockent();
+    check_furnace();
+    check_discovery();
+    check_crafting();
+    check_fold();
     check_light();
     check_replay();
     check_drops();
     check_lang();
     check_label_widths();
+    check_text_fits();
     check_midi();
     chunk_store_shutdown();
     if (s_fail) {

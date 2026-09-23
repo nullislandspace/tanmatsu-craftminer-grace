@@ -45,7 +45,15 @@ static struct {
     [VM_SIGN_0]        = {"sign_kurt.png", 0xFFA4804Eu},
     [VM_SIGN_1]        = {"sign_wolfie.png", 0xFFA4804Eu},
     [VM_SIGN_2]        = {"sign_flob.png", 0xFFA4804Eu},
+    [VM_TABLE_TOP]     = {"table_top.png", 0xFF9C7A4Au},
+    [VM_TABLE_SIDE]    = {"table_side.png", 0xFF8E6E44u},
+    [VM_FURNACE_FRONT] = {"furnace_front.png", 0xFF6E6E70u},
+    [VM_FURNACE_TOP]   = {"furnace_top.png", 0xFF707072u},
 };
+
+char const* chunk_render_mat_file(int mat) {
+    return (mat >= 0 && mat < VM_COUNT) ? MAT_FILES[mat].file : NULL;
+}
 
 static mesh_mat_t s_tex_mats[VM_COUNT];
 static uint32_t   s_mean[VM_COUNT];

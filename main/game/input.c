@@ -48,6 +48,7 @@ static se_binding_def_t const BINDINGS[CM_ACTION_COUNT] = {
     [CM_DROP]       = {CM_DROP, "Drop", "drop", BSP_INPUT_SCANCODE_G},
     [CM_INFO]       = {CM_INFO, "Show position", "info", BSP_INPUT_SCANCODE_BACKSPACE},
     [CM_SCREENSHOT] = {CM_SCREENSHOT, "Screenshot", "screenshot", BSP_INPUT_SCANCODE_0},
+    [CM_CRAFT]      = {CM_CRAFT, "Crafting", "craft", BSP_INPUT_SCANCODE_C},
 };
 
 // The navigation key a scancode ALSO arrives as, where there is one.
@@ -188,6 +189,7 @@ static cm_str_t const ACTION_STRINGS[CM_ACTION_COUNT] = {
     [CM_DROP]       = CM_STR_ACTION_DROP,
     [CM_INFO]       = CM_STR_ACTION_INFO,
     [CM_SCREENSHOT] = CM_STR_ACTION_SCREENSHOT,
+    [CM_CRAFT]      = CM_STR_ACTION_CRAFT,
 };
 
 char const* input_action_label(cm_action_t a) {

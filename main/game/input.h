@@ -50,10 +50,11 @@ typedef enum {
     CM_DROP,
     CM_INFO,        // the coordinates-and-heading overlay
     CM_SCREENSHOT,  // save what is on screen to screenshots/ on the card
+    CM_CRAFT,       // open the crafting book (ui/craft_ui.h)
     CM_ACTION_COUNT
 } cm_action_t;
 
-// The per-tick mask. 23 actions, so a uint32 with room to spare.
+// The per-tick mask. 24 actions, so a uint32 with room to spare.
 typedef uint32_t cm_actions_t;
 
 static inline bool act_held(cm_actions_t m, cm_action_t a) {

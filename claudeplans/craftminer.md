@@ -190,9 +190,10 @@ extern block_def_t const BLOCKS[BLK_COUNT];
 `vox_grid_t` is untouched (F-07). Adding a block is one row, one 16x16 PNG and
 one `metadata.json` line.
 
-`item_def_t` (name, stack_max, place_block, tool/level, durability, food values,
-icon-or-NULL) and `recipe_t` (w, h, in[9], out, out_n, shapeless, station) follow
-the same shape. `entity_def_t` is a type vtable (`tick`, `submit`, `interact`,
+`item_def_t` (name, label, stack_max, place_block, tool/level, durability, food
+values, icon-or-NULL) follows the same shape. `recipe_t` was sketched here as
+(w, h, in[9], out, out_n, shapeless, station) and **Part C replaced it with an
+ingredient multiset** once the grid went away. `entity_def_t` is a type vtable (`tick`, `submit`, `interact`,
 `on_death`) over a fixed `entity_t` pool, so adding a mob is one file plus one
 row.
 
@@ -557,7 +558,7 @@ headers — enforced by a grep rule in `make check`.
 | Mesher validity | The donor `meshcheck` cases (closed, consistently wound, outward, volume = cells, area = exposed faces) plus: no face between two solids; border cells emit nothing outside the chunk AABB (a streaming-only bug the showreel could not have); every triangle's `dir` matches its computed normal and the direction groups are contiguous. |
 | AABB sweeps | 10000 random (start, velocity) pairs: never ends inside a solid; zero velocity is a fixed point; no tunnelling to 40 m/s; a 1.0-block step-up succeeds and 1.5 does not; a 0.6-wide body fits a 1-wide gap and not a 0.5 one. |
 | DDA picking | 10000 random rays against a brute-force march at 1/64 block: same block, same face normal, reach honoured, normal points at the cell a placement would fill. |
-| Crafting | Every recipe resolves at every legal grid offset; no two collide; every output and every `drop_item` exists. |
+| Crafting | Distinct output + station per recipe; every ingredient, output and `drop_item` exists; every reversible recipe round-trips; discovery, auto-crafting and the search fold, each in its own row (Part C). **The old promise -- "resolves at every grid offset; no two collide" -- is retired with the grid it was written for**: nothing infers a recipe from ingredients any more, so a pickaxe and an axe are free to want the same three planks and two sticks. |
 | Water | A pool, counted per material and per direction: the surface is one merged quad up and one down, the water has no side or bottom faces at all, the stone under it keeps its top face, and a pool with a block over it draws no water at all (D-86). |
 | Menu labels | Every settings-row label, in all 32 languages, is narrower than the value column it sits beside -- measured with the engine's own glyph advances at the menu's row height (F-76). |
 | Music | Every file in `assets/music` loads, has notes, and ENDS inside twenty minutes at the real sample rate; a rewind replays it identically; every truncation of it still terminates. Junk, a header with no tracks and an SMPTE division are all refused. |
@@ -902,6 +903,201 @@ frame time than the fell.
 
 ---
 
+## Part C: crafting, containers and the recipe book
+
+Designed with the user on 2026-09-23, before step 8 started, and almost every
+line of it departs from Minecraft on purpose. Their brief opens with the
+reason: *"Placing stuff in a grid like the original minecraft seems a bit
+tedious and pointless (especially since we only have a keyboard but no mouse or
+touch screen). Let's use a recipe book instead."*
+
+The badge has a keyboard and no pointer. A 3x3 grid is a pointer interface
+wearing a keyboard costume, and everything below follows from not building one.
+
+### A recipe is a multiset, not a grid
+
+```c
+typedef struct { uint16_t item; uint8_t count; } ingredient_t;
+
+typedef struct {
+    uint16_t     out;      uint8_t out_n;
+    uint8_t      station;  // RS_INVENTORY / RS_TABLE / RS_FURNACE
+    uint8_t      flags;    // RF_REVERSIBLE
+    ingredient_t in[RECIPE_IN_MAX];  uint8_t n_in;
+} recipe_t;
+```
+
+No `w`, no `h`, no `in[9]`, no offsets, no shapeless flag. Part L sketched
+`recipe_t (w, h, in[9], out, out_n, shapeless, station)` back when step 8 meant
+a grid; with a recipe book the shape is not merely unused, it is **unobservable**
+-- there is no surface on which a player could ever see or express it.
+
+**This retires a rule this document has carried since the first week.** Part H
+promised the host check proves *"every recipe resolves at every legal grid
+offset; no two collide"*. In Minecraft a pickaxe and an axe are both three
+material and two sticks, and only the shape separates them, so with a grid that
+rule is load-bearing. The user asked for Minecraft's resource counts, so the
+collision is real and arrives with the first tool.
+
+It does not matter, because **nothing in CraftMiner ever infers a recipe from a
+pile of ingredients.** Forward, the player names the recipe. Backward, the
+disassembly bench starts from the item, which is equally known. The requirement
+that replaces it is the one that is actually true: distinct output *and*
+station per recipe, every ingredient and output exists, every reversible recipe
+round-trips.
+
+Quantities are Minecraft's, as asked.
+
+### Discovery is stored as every item ever held
+
+The user's rule: a recipe appears in the book once the player has picked up at
+least one of the materials it needs. Stored **the other way round** -- a bit per
+item, set by `inv_add`, and a recipe is known when any one of its ingredients'
+bits is set.
+
+Three reasons, and the first is the one that decides it:
+
+1. A recipe bitmask would make **recipe numbering permanent**, the way block ids
+   are permanent (D-74, `tools/ids.txt`), and every recipe inserted in a later
+   build would need a migration or would silently shift what every existing
+   player knows. Item names are already the thing saves key on -- inventories,
+   dropped items and replays all store them.
+2. A recipe added by a later build is then correctly **already known** to a
+   player who has handled its ingredients, rather than locked behind materials
+   they have had in a chest for a month.
+3. It is smaller, and it is a more meaningful thing to have in a save file.
+
+Saved in `level.cmw` as a list of item names, beside the inventory.
+
+### Three stations, and the furnace has three slots
+
+`RS_INVENTORY` is the short list the user specified -- planks, sticks, torches,
+a crafting table -- reachable from the Tab screen anywhere. `RS_TABLE` is
+everything else. `RS_FURNACE` is smelting.
+
+**The furnace was designed twice.** The first version here was a recipe book
+filtered to smelting: pick *Iron ingot*, it queues the work, walk away. The
+user replaced it the same day with the real thing -- *"The furnace has three
+slots (input, output, fuel). When selecting the output slot, the item(s) go
+into our inventory, for input and fuel slots the inventory pops up so we can
+select an item stack to put into that slot."*
+
+They were right, and the reason is worth keeping: a recipe book answers *"what
+can I make"*, and that is not the question anybody has in front of a furnace.
+The question there is *"what is in it and what is it doing"*, and three rows
+answer it at a glance where a filtered book never could.
+
+**The picker is what makes it work without a pointer.** Nothing is ever
+dragged: selecting Input or Fuel opens a list of the player's own stacks,
+narrowed to what fits the slot, with a right-hand column saying what each one
+would BECOME (*makes Glass*) or how far it would go (*smelts 8*). That column
+is a thing a mouse-and-grid furnace cannot tell you at all, which makes this
+better than the interface it replaces rather than a substitute for it.
+
+**Fuel is anything that burns**, as asked -- logs, planks, sticks, wooden tools,
+and coal. It is a column in the ITEM table (`item_def_t.fuel`, in ticks), so a
+new wooden thing brings its burn time with it instead of needing a line in the
+furnace.
+
+**Wood becomes coal, not charcoal** (the user's simplification): one fewer item
+that burns exactly like another one.
+
+### Reversal is one bit, not a special case
+
+*"Doesn't work for basic resources like iron ingots turning into ore or sticks
+turning into planks"* is `RF_REVERSIBLE`, a column in the table. Tools, the
+crafting table, the chest, the furnace, the disassembly bench and the trashcan
+carry it. Log-to-planks, planks-to-sticks, torches and every smelt do not.
+
+A worn tool returns its **full** ingredient list (the user's call, asked
+explicitly). Salvage-and-recraft is therefore a repair that costs the one-time
+coal in the bench's own recipe, and that is the intended price.
+
+### Lazy time: the furnace and the trashcan never tick
+
+The user's rule for the trashcan -- *"Items in it expire (get deleted) after 10
+in-game minutes (calculated the next time we open it)"* -- is the right
+mechanism for the furnace as well. Both do their arithmetic from
+`now - last_touched` **when opened**, and store nothing but that stamp.
+
+No per-tick furnace list, no catch-up pass, no work at all for a furnace in a
+chunk nobody has visited -- and it is automatically correct across a chunk being
+evicted and reloaded, a world being closed for a week, and the clock being
+stepped by the N key. Crop growth in step 9 should use the same trick wherever
+it can.
+
+Ten in-game minutes is **12000 ticks of playing** (the user's call: not the
+in-world clock, where a minute is a sixtieth of a 20-minute day and ten of them
+would be three seconds).
+
+### Containers need the block-entity section, which has never been written
+
+`SECTION_BLOCK_ENTITIES` has been reserved in the chunk format since Part W was
+written and **nothing has ever put a byte in it**: `region.c` calls
+`chunk_encode(c, NULL, 0, ...)`. A chest is what finally needs it, and so
+`world/blockent.{c,h}` is the real cost of step 8.
+
+A **fixed global pool keyed by world position**, not a list allocated per chunk,
+because the decode runs on the core-1 worker and Part K's contract is that the
+worker does not allocate. A chunk's save walks the pool for cells inside it. The
+pool is bounded, and placing a container when it is full fails with a message
+rather than losing one quietly.
+
+Steps 11, 12 and 13 all land on the same machinery: a crop's stage fits in the
+state byte, but a cow does not.
+
+### The search box, on a keyboard that has one alphabet
+
+The user's catch, and it would have broken the feature in 25 of the 32
+languages: **the Tanmatsu has one fixed QWERTY**, so a player reading
+*Кирка* cannot type К -- and it is not only the non-Latin scripts, since Turkish
+*Kömür*, Polish *Łopata* and Czech *Dřevo* are equally untypable.
+
+So the filter never matches what is on the screen. It matches a folded form of
+it: `i18n/fold.{c,h}`, UTF-8 in, lowercase ASCII out, applied to **both** sides.
+Accented Latin folds to its base letter, Cyrillic and Greek transliterate
+(`Кирка` -> `kirka`, `щ` -> `shch`, `χ` -> `ch`). The item's **stable English
+name matches too, always**, so `pick` works in every language -- which is also
+the way out for someone who sets the language to Greek by accident and cannot
+read their way back.
+
+One letter, not a digraph: `ö` -> `o`, the user's call. A German would type
+*loeffel* and a Turk *komur*, only one of those can win, and the single base
+letter is right for more of the 32 than the digraph is.
+
+**The check is what makes the table trustworthy**, and it is the same shape as
+the font's "every character of every string is drawable" from 6.5: worldcheck
+asserts the fold **covers the whole domain** -- every character occurring in any
+item name in any of the 32 languages has an entry, and every entry lands in
+ASCII. A translation using a letter the fold does not know fails `make check` on
+the machine that builds it, not on a card where a recipe simply cannot be found.
+
+### Tools: three tiers, and a wrong tool that is actually slow
+
+*"Mining with the wrong tool is a lot slower."* It was not, and no hardness
+number has to change to fix it: the right tool divided the time by
+`tool_level + 1`, which is 2x for wood and 3x for stone -- a rounding error next
+to swinging a fist. It becomes `2 x tool_level`: hand 1x, wood 2x, stone 4x,
+iron 6x. A stone block is 7.5 seconds by hand and 1.25 with an iron pickaxe.
+
+Iron ore **refuses to break** without a stone pickaxe (the user's call, over the
+existing breaks-but-drops-nothing rule, which is Minecraft's). That needs
+`BF_TOOL_REQUIRED` and it needs to *say so* on the HUD, because a swing that
+does nothing at all and explains nothing reads as a bug -- which is the entire
+reason Minecraft chose the other rule.
+
+### What the host checks prove
+
+| Check | What it proves |
+|---|---|
+| Recipe table | Distinct output + station; every ingredient and output exists; every reversible recipe round-trips to its own ingredient list; no recipe needs more than `RECIPE_IN_MAX` kinds. |
+| Discovery | An empty set knows nothing; picking up one ingredient reveals exactly the recipes naming it; the set survives a save and a reload by name. |
+| Auto-craft | A plan for a target the player cannot make directly is found, executed, and leaves the inventory exactly as the plan said; a target that is genuinely unreachable is refused without consuming anything; depth and cycles are bounded. |
+| The fold | Covers the whole domain (above); folding is idempotent; a folded needle found in a folded haystack matches what a player would expect for a sample of each script. |
+| Containers | A chest survives encode, evict, decode; the pool full is refused, not lost; a trashcan's expiry is computed from the stamp and not from when it was opened; a furnace's queue completes across a reload. |
+
+---
+
 ## Part D: step-by-step plan with status tracking
 
 **Status values:** `todo` / `in progress` / `done` / `blocked (why)` /
@@ -972,7 +1168,12 @@ frame time than the fell.
 | 7.2 | Signs along the edge: "Kurt was here", "Wolfie was here" | done | 2026-09-22, asked for by the user; signs themselves are 7.0. One chunk in four of the last ordinary chunk column gets a sign, 0-2 blocks from the edge, on dry ground, facing east: 26 along 2048 blocks of edge in worldcheck's seed. |
 | | **Accept:** the far-lands host section; `shots scene=farlands` for a look; generation and frame cost measured at the wall | **done** | 2026-09-22: worldcheck's "far lands" section passes; shots of the wall from 30 and 12 blocks on the badge; 134 ms a chunk, 11 fps at Medium walking up to it. Left for the user: a look at it in play. |
 | **8+** | **The game** | | |
-| 8 | Crafting: grid, recipe table, crafting table, furnace | todo | |
+| **8** | **Crafting: a recipe book, containers, iron** (Part C) | | 2026-09-23: designed with the user, who replaced the grid with a searchable recipe book. Delivered in stages, their call, so the book's feel can be judged before the rest is built on it. |
+| 8.1 | `items/recipes.{c,h}`, the discovery set, `i18n/fold.{c,h}`, inventory crafting and the book | done | 2026-09-23: recipes as ingredient multisets; discovery stored as every item ever held; the search box folding 32 languages onto one QWERTY (F-78). Three fixes straight from the user's first play: an empty pack on a new world, the opening keystroke no longer lands in the search box, and a recipe that says "missing" now opens a panel saying what is missing. Then four more from the second: a crafting table shows the inventory recipes too (one-way), Tab no longer opens the inventory behind an open screen, and two lines that ran off the screen (F-81). And F-80, which was two reports and one bug. |
+| 8.2 | The crafting table and the wood and stone tools | done | 2026-09-23: block 20, its two textures, and the seven recipes. `BF2_USABLE` -- the Use key OPENS a block rather than placing against it, and which blocks do is a registry flag while what each one opens is main.c's business. **Tool speeds fixed**: the right tool divided by `level + 1`, so wood was 2x a bare fist and stone 3x -- the user's "mining with the wrong tool is a lot slower" simply was not true. Now `2 x level`: hand 1x, wood 2x, stone 4x, iron 6x, and no hardness number had to move. Iron moved out to 8.4, since ingots need the furnace. |
+| 8.3 | `world/blockent.{c,h}` -- the chunk format's unused block-entity section -- and the **furnace** | done | 2026-09-23: pulled forward from 8.4 the moment the user found that iron needs smelting and coal needs finding, so a furnace early is what makes wood into fuel. `world/blockent.{c,h}`: a fixed pool of 192 records keyed by world position, written into `SECTION_BLOCK_ENTITIES` -- **a section the format has had a number for since Part W and never had a byte in**. `game/furnace.{c,h}` never ticks; it catches up from `now - stamp` when opened, in a loop that runs once per EVENT rather than once per tick (4 billion ticks in 0.01 ms, host-measured). Smelting: log to coal, sand to glass, cobblestone to stone -- the last two unasked for, but glass and stone had no way of being obtained at all. Two real catches on the way, both in F-77. |
+| 8.4 | Chests, the trashcan, the disassembly bench, iron, auto-crafting of intermediates | todo | |
+| 8.5 | Item names and the crafting UI in all 32 languages | todo | |
 | 9 | Farming: tilled soil, wheat, carrots, seeds, saplings, growth on the tick | todo | |
 | 10 | Cooking and the hunger loop | todo | |
 | 11 | Animals: pigs, cows, chickens; breeding; dogs (wild, tamed with steak) | todo | |
@@ -992,11 +1193,105 @@ frame time than the fell.
 | 27 | **The player's data out of the app's directory** | done | 2026-09-22, the user's catch (D-80): worlds, settings.txt, replays and screenshots move from `/sd/apps/at.cavac.craftminer` to `/sd/craftminer`, which the launcher does not manage. `world/datadir.c` moves what an earlier build left there on the first start -- a rename per entry, never over an existing one, nothing on a second start -- host-tested. Test-kit shots go to `/sd/craftminer/test`. |
 | 26 | **Screenshots** | done | 2026-09-22, asked for by the user: a new action, `Screenshot`, **0** by default and rebindable, saves the frame as the player sees it (HUD included) to `/sd/craftminer/screenshots/shotNNN.png` with the test kit's PNG writer; a "Saved ..." line shows for 2.5 s on the frames after, so it is never in the picture. |
 | 25 | **The depth plane in internal SRAM, and a key sort** | done | 2026-09-22, the user's call (D-77). Engine option `SE_SCENE_DEPTH16_INTERNAL`: at quarter resolution a plain 16-bit depth plane (188 KB) in internal SRAM, cleared each frame (0.29 ms), instead of the stamped PSRAM plane; the flat list it displaced went to PSRAM. Depth order is now a radix sort of 32-bit keys in internal SRAM plus one gather, not a qsort of the records. Same scenes as F-66: flight 13.97 -> 16.30 fps, near walk 10.22 -> 12.36, Far walk 7.08 -> 7.99 (F-67). |
+| 29 | **Torches on walls** | done | 2026-09-23, asked for by the user. The mesher can now see each cell's block-data field -- a third plane beside cells and lights, carrying `st_data()` already extracted, because `voxel_mesh.c` may not include `chunk.h` -- and the torch reads it: upright in the middle of its cell, or shifted 0.30 to whichever wall was pointed at and lifted 0.20 off the floor. No tilt: a greedy voxel mesher emits axis-aligned boxes, and a rotated stick would be a second kind of geometry for one block. Placing picks the wall from the face that was struck, refuses the underside of a block (nothing here hangs) and refuses a wall that is not solid -- the first placement in this game to say no for a reason other than the cell being full. meshcheck pins where the stick ends up, not merely that something was drawn. **Known gap:** breaking the block a torch leans on leaves it floating; that wants block-update propagation, which leaves-decay and falling sand will want too, so it is worth building once rather than special-casing here. |
+| 30 | **Item icons, a bigger inventory, and the arm** | done | 2026-09-23, asked for by the user: the slots were flat average colours (D-03's placeholder) and three stone tools were three grey squares. A block is now drawn with **its own side texture** -- one table of files, no second copy, and a new block brings its icon with it -- and the eight things that are not blocks got drawn 16x16s with cut-out backgrounds. Tab slots 44 -> 60 px. The first-person arm got a mesh of its own, the sleeve running back past the camera: its flat cut end had been sitting just inside the bottom of the frustum, which is what made it read as a severed arm hanging in the air. |
 | 28 | **Water you can see into, and swim in** (D-86) | done | 2026-09-23, the user: water was an opaque cube, so putting your eyes under it broke the picture, and there was no swimming. Their rule, and it is the whole of it: **do not draw the sides or the bottom of a water block, and draw its top only when the block above is air.** That became `K_LIQUID`. Two things follow that the rule does not say out loud and the picture needs: a liquid must stop HIDING its neighbours, or the lake bed is never meshed and the surface is a lid over nothing; and the surface needs a second, downward-facing copy, emitted by the air cell above it, because an axis-aligned face is visible only from the side its normal points at -- which is exactly why it vanished as the eye went under. `water.png` became a cut-out checkerboard (the engine's one-bit alpha, the leaves' mechanism) so you see through the surface both ways. Swimming is buoyancy in `player.c`: jump rises, sneak dives, and the numbers come from `phys_gravity`'s recurrence rather than from feel. meshcheck pins the rule per material and per direction, and caught a real bug on the way -- the extra slice let a border cell act as an owner and doubled every face at a section seam. **And the blue.** The user's read of it was right and mine was wrong: the renderer already touches the brightness of every pixel, so the tint belongs there. `se_scene_set_tint()` scales the red and green of every triangle by one factor and the blue by another; the sky and the fog go to a dark blue and the sun, moon, clouds and stars are not drawn from under the surface. |
 
 ---
 
 ## Part E: findings and decisions log
+
+- **F-81** 2026-09-23: **the width check only measured labels, so it passed
+  while the user was looking at the bug.** F-76 added `check_label_widths()`
+  after three settings screens turned out to be overlapping their own text in a
+  dozen languages -- and it measured each LABEL against its value column, which
+  was the failure of the day. The failure this time was the VALUE: "have 0,
+  need 2 more" ran out of the crafting panel and off the right of the screen,
+  and the inventory's legend did the same, **in English**, which is the
+  shortest language the game ships.
+
+  `check_text_fits()` measures the other side: values, hints and free-standing
+  lines against the room each actually gets, worked out the way `se_ui.c` works
+  it out, with every format string filled in the worst way the game can fill it
+  -- every count a full stack, every `%s` the longest item name in that
+  language. It found **five more of the same bug immediately**, two of them on
+  the furnace screen, which the user had not reached yet: `64 Wooden pickaxe`
+  wanted 326 px in a 190 px column and `makes Wooden pickaxe` 367 px in 198.
+  The furnace picker lost its value column as a result -- what a stack would do
+  moved to the footer, which is 14 px and has the whole panel.
+
+  The lesson is not "measure text". It is that **a check written for one
+  failure tends to measure exactly that failure and nothing next to it**, and
+  the cheapest time to widen it is the next time something in the same family
+  goes wrong. 30 lines x 32 languages now, tightest 33 px.
+
+- **F-80** 2026-09-23: **two bugs the user reported turned out to be one**, and
+  the lesson is worth more than the fix. They saw *"sometimes the cursor keys
+  don't work in crafting and furnace menus"* and *"crafting torches took the
+  items from my inventory without adding torches"* -- which read as an input
+  bug and an inventory bug, in different files, neither reproducible on the
+  host.
+
+  `player_t.used_block` says "the player opened something THIS TICK". It was
+  set and cleared in the branch of `player_tick` that handles using a block --
+  and once a screen is open the player is frozen, so that branch is never
+  reached again and **the flag stayed set forever**. main.c dutifully reopened
+  the screen every tick. Opening one resets its cursor to the first row, empties
+  its search box and swallows the keystroke that opened it, so: the arrows did
+  nothing, typing did nothing, and enter crafted whatever was FIRST in the list
+  instead of what was under the cursor. Hence materials gone and the wrong thing
+  back.
+
+  Only when the screen was opened by USING a block, never by the Craft key --
+  which is exactly the "sometimes".
+
+  **A field that means "this tick" is cleared at the top of the tick**, not
+  where it happens to be written. It is now, and main.c also refuses to open a
+  screen that is already showing: two locks, because the failure is invisible
+  and the symptom points somewhere else entirely. The two-ingredient craft path
+  the report blamed was then exercised end to end in worldcheck and was correct
+  all along -- which is the other half of the lesson, since the obvious suspect
+  cost nothing to clear and would have cost a day to keep suspecting.
+
+- **F-77** 2026-09-23: **two ways a furnace could have quietly eaten your
+  things**, both found while building it and neither by playing.
+
+  1. **A chunk is only written to the card when `CF_EDITED` is set, and only
+     `world_set()` sets it.** Smelting changes what is inside a block without
+     changing any block, so a furnace full of coal would have been thrown away
+     on the next eviction -- and the player would not have found out until they
+     walked back to it, by which time there is nothing to debug. Fixed with
+     `chunk_mark_edited()` and `blockent_touch()`, which every put and take
+     calls; the comment on `blockent_touch` says why it exists, because the next
+     container will need it and nothing about the call site suggests it.
+  2. **Breaking a container dropped the container and not its contents.** Fixed
+     in `interact_break`, which now spawns every slot before the record goes.
+
+  Neither is the kind of bug a test suite finds by accident, and both are
+  unrecoverable for the player, so they are written down rather than merely
+  fixed.
+
+- **F-78** 2026-09-23: **the badge has one QWERTY and the game speaks 32
+  languages**, which the user spotted as soon as a search box was proposed:
+  *"the Tanmatsu always has the same QWERTY keyboard, how will this work with
+  other languages?"* A Bulgarian player reading *Кирка* cannot type К -- and
+  neither can a Turk type the o-umlaut in *Kömür*, a Pole the stroked l in
+  *Łopata* or a Czech the r-caron in *Dřevo*, so it is not only the non-Latin
+  scripts. `i18n/fold.{c,h}` folds both sides of the match down to plain ASCII;
+  `tools/make_fold.py` derives the table from every character in every lang file
+  and **refuses to emit one with a hole in it**; worldcheck walks 73568
+  characters across the 32 languages and asserts every one folds. One letter,
+  not a digraph (the user's call): a German would type *loeffel* and a Turk
+  *komur*, and only one of those can win.
+
+- **F-79** 2026-09-23: **`symcheck` caught a missing source file**, not a
+  missing loader export. `main/game/furnace.c` went into the Makefile's pure
+  list and `hostpurity.sh` and not into `CMakeLists.txt`, so the host checks
+  passed, the app linked, and five `furnace_*` symbols were left for graceloader
+  to resolve -- which it could not, and the app would have started and died in
+  silence exactly as F-74 did. The check written for one failure caught a
+  different one on the same path.
+
 
 ### Findings (F-n), each with date and source
 

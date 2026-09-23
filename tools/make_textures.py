@@ -551,6 +551,190 @@ def cm_planks():
     return cm_rgb(lum, (164, 128, 78))
 
 
+def cm_planks_lum(tag):
+    """The plank pattern on its own, so a block that is MADE of planks
+    can put something on top of it rather than inventing its own wood."""
+    gen = cm_gen(tag)
+    lum = gen.integers(-7, 8, (B, B)).astype(float)
+    for board in range(4):
+        y0 = board * 4
+        lum[y0 : y0 + 4, :] += int(gen.integers(-8, 9))
+        lum[y0 + 3, :] -= 30
+        j = (board * 7 + 3) % B
+        lum[y0 : y0 + 3, j] -= 24
+        for x in gen.integers(0, B, 3):
+            lum[y0 + int(gen.integers(0, 3)), x] -= 12
+    return lum, gen
+
+
+def cm_table_top():
+    """The crafting table seen from above: planks with a 3x3 grid burnt
+    into them, which is the one picture of crafting everybody knows --
+    even though this game has no grid to fill in (Part C)."""
+    lum, _ = cm_planks_lum(30)
+    # Two lines each way at thirds of the block, and a border, so the
+    # nine cells read at the size a block actually gets drawn.
+    for at in (5, 10):
+        lum[at, 1:15] -= 46
+        lum[1:15, at] -= 46
+    lum[0, :] -= 26
+    lum[15, :] -= 26
+    lum[:, 0] -= 26
+    lum[:, 15] -= 26
+    return cm_rgb(lum, (164, 128, 78))
+
+
+def cm_table_side():
+    """... and from the side: the same planks with a tool rack on them,
+    dark pegs under a rail."""
+    lum, gen = cm_planks_lum(31)
+    lum[4, 1:15] -= 34                     # the rail
+    for x in (3, 7, 11):                   # what hangs off it
+        lum[5:9, x] -= 40
+        lum[8, x - 1 : x + 2] -= 28
+    lum += gen.integers(-4, 5, (B, B))
+    return cm_rgb(lum, (152, 118, 72))
+
+
+def cm_stone_lum(tag):
+    """The stone pattern on its own, for blocks BUILT of stone."""
+    gen = cm_gen(tag)
+    lum = 10 * pnoise(B, B, 1.2, 1.2, gen) + gen.integers(-8, 9, (B, B))
+    for _ in range(3):
+        x, y = gen.integers(0, B, 2)
+        n = int(gen.integers(2, 5))
+        for k in range(n):
+            lum[y % B, (x + k) % B] -= 20
+            y += int(gen.integers(0, 2))
+    return lum, gen
+
+
+def cm_furnace_top():
+    """... and its lid, with a rim so the block reads as a box from
+    above rather than as a patch of floor."""
+    lum, _ = cm_stone_lum(33)
+    lum[0:2, :] += 12
+    lum[14:16, :] -= 16
+    lum[:, 0:2] += 8
+    lum[:, 14:16] -= 12
+    lum[4:12, 4:12] -= 10
+    return cm_rgb(lum, (112, 112, 114))
+
+
+def cm_furnace_front():
+    """The face with the fire in it: an arched opening, three bars
+    across, and the dark of the firebox behind them."""
+    lum, gen = cm_stone_lum(34)
+    # The opening: rows 5..13, inset, with the top two corners cut so it
+    # arches rather than sitting there as a rectangle.
+    for y in range(5, 14):
+        for x in range(3, 13):
+            corner = (y == 5 and (x < 5 or x > 10)) or (y == 6 and (x < 4 or x > 11))
+            if corner:
+                continue
+            lum[y, x] = -66 + int(gen.integers(-6, 7))
+    for x in range(3, 13):                 # the grate
+        for y in (8, 11):
+            lum[y, x] += 26
+    lum[13, 3:13] += 14                    # the lip it all sits on
+    return cm_rgb(lum, (114, 114, 116))
+
+
+# --- Item icons -------------------------------------------------------
+#
+# The things that are NOT blocks need a picture of their own: a block can
+# be drawn in the inventory with its own texture, and coal cannot. 16x16
+# with a cut-out background (alpha < 128 is a hole, se_texture.h), so the
+# slot shows through around them.
+
+def _icon():
+    return np.zeros((B, B, 4), np.uint8)
+
+
+def _dot(img, x, y, rgb):
+    if 0 <= x < B and 0 <= y < B:
+        img[y, x, 0] = rgb[0]
+        img[y, x, 1] = rgb[1]
+        img[y, x, 2] = rgb[2]
+        img[y, x, 3] = 255
+
+
+def _rect(img, x0, y0, x1, y1, rgb):
+    for y in range(y0, y1):
+        for x in range(x0, x1):
+            _dot(img, x, y, rgb)
+
+
+def _shade(rgb, d):
+    return tuple(int(max(0, min(255, c + d))) for c in rgb)
+
+
+HANDLE = (138, 98, 56)
+
+
+def _tool_handle(img):
+    """Corner to corner, two texels wide, as every tool has."""
+    for i in range(10):
+        _dot(img, 3 + i, 13 - i, HANDLE)
+        _dot(img, 4 + i, 13 - i, _shade(HANDLE, -26))
+
+
+def cm_item_pickaxe(rgb):
+    img = _icon()
+    _tool_handle(img)
+    # A wide head with both points turned down.
+    for i in range(7):
+        _dot(img, 6 + i, 4, rgb)
+        _dot(img, 6 + i, 5, _shade(rgb, -22))
+    _rect(img, 5, 5, 7, 8, rgb)
+    _rect(img, 11, 5, 13, 8, rgb)
+    _dot(img, 5, 4, _shade(rgb, 20))
+    return img
+
+
+def cm_item_axe(rgb):
+    img = _icon()
+    _tool_handle(img)
+    # A wedge on one side of the top of the handle.
+    for i in range(5):
+        _rect(img, 6, 3 + i, 11 - (i // 2), 4 + i, rgb)
+    _rect(img, 6, 3, 8, 8, _shade(rgb, 18))
+    return img
+
+
+def cm_item_shovel(rgb):
+    img = _icon()
+    _tool_handle(img)
+    _rect(img, 8, 3, 12, 8, rgb)
+    _rect(img, 8, 3, 12, 4, _shade(rgb, 22))
+    _rect(img, 8, 7, 12, 8, _shade(rgb, -22))
+    return img
+
+
+def cm_item_coal():
+    """Three lumps, because one reads as a hole in the slot."""
+    img = _icon()
+    gen = cm_gen(40)
+    for cx, cy, r in ((6, 7, 3), (10, 5, 2), (10, 10, 2)):
+        for y in range(cy - r, cy + r + 1):
+            for x in range(cx - r, cx + r + 1):
+                if (x - cx) ** 2 + (y - cy) ** 2 <= r * r:
+                    lum = int(gen.integers(-10, 11))
+                    _dot(img, x, y, _shade((44, 44, 50), lum))
+    _dot(img, 5, 6, (96, 96, 104))
+    _dot(img, 9, 4, (86, 86, 94))
+    return img
+
+
+def cm_item_stick():
+    img = _icon()
+    for i in range(11):
+        _dot(img, 3 + i, 13 - i, HANDLE)
+        _dot(img, 4 + i, 13 - i, _shade(HANDLE, -30))
+    _dot(img, 3, 14, _shade(HANDLE, -30))
+    return img
+
+
 def cm_alpha(rgb, holes):
     """RGB plus a hole mask -> RGBA: the engine draws alpha < 128 as a
     hole (cut-out transparency), everything else opaque."""
@@ -834,6 +1018,18 @@ TEXTURES = {
     "leaves_fast.png": cm_leaves_fast,
     "bedrock.png": cm_bedrock,
     "gravel.png": cm_gravel,
+    "item_coal.png": cm_item_coal,
+    "item_stick.png": cm_item_stick,
+    "item_pickaxe_wood.png": lambda: cm_item_pickaxe((176, 128, 64)),
+    "item_pickaxe_stone.png": lambda: cm_item_pickaxe((144, 152, 160)),
+    "item_axe_wood.png": lambda: cm_item_axe((192, 136, 72)),
+    "item_axe_stone.png": lambda: cm_item_axe((160, 168, 176)),
+    "item_shovel_wood.png": lambda: cm_item_shovel((160, 120, 56)),
+    "item_shovel_stone.png": lambda: cm_item_shovel((136, 143, 152)),
+    "furnace_front.png": cm_furnace_front,
+    "furnace_top.png": cm_furnace_top,
+    "table_top.png": cm_table_top,
+    "table_side.png": cm_table_side,
     "sign_kurt.png": lambda: cm_sign(SIGN_TEXTS[0]),
     "sign_wolfie.png": lambda: cm_sign(SIGN_TEXTS[1]),
     "sign_flob.png": lambda: cm_sign(SIGN_TEXTS[2]),

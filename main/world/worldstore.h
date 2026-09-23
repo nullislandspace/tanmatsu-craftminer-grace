@@ -111,6 +111,11 @@ typedef struct {
     bool       has_inv;
     inv_slot_t inv[INV_SLOTS];
     int32_t    inv_selected;
+    // Every item this player has ever held: what the crafting book
+    // knows (items/recipes.h). Saved by NAME, like the slots above and
+    // for the same reason -- so that adding, renumbering or renaming a
+    // RECIPE never has to touch a save file (Part C).
+    uint32_t   seen[INV_SEEN_WORDS];
 } player_state_t;
 
 // What is lying on the ground: every dropped item in the world, saved

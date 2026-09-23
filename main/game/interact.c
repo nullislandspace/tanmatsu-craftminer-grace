@@ -6,6 +6,7 @@
 
 #include "common/rng.h"
 #include "items/item_entity.h"
+#include "world/blockent.h"
 #include "world/chunk.h"
 
 // Which tool the current fell is being done with. A parameter would
@@ -121,6 +122,18 @@ break_result_t interact_break(int32_t x, int32_t y, int32_t z, uint16_t tool_ite
         return r;
     }
 
+    // A container gives back what is in it BEFORE it stops existing.
+    // Breaking a furnace full of iron and getting an empty furnace is
+    // the sort of loss a player never forgives and cannot undo.
+    blockent_t* be = blockent_at(x, y, z);
+    if (be != NULL) {
+        for (int i = 0; i < BE_SLOTS; i++) {
+            inv_slot_t const* sl = &be->slot[i];
+            if (sl->item != 0 && sl->count > 0) item_entity_spawn(x, y, z, sl->item, sl->count, sl->wear);
+        }
+        blockent_remove(x, y, z);
+    }
+
     world_set(x, y, z, BLK_AIR, 0);
     drop_for(b, x, y, z, tool_item);
     r.felled  = 1;
@@ -157,6 +170,43 @@ bool interact_place(ray_hit_t const* hit, uint8_t block, phys_body_t const* avoi
         if (over_x && over_y && over_z) return false;
     }
 
-    world_set(x, y, z, block, ST_PLACED);
+    // --- Which way up does it go, and will it stay there? ------------
+    //
+    // A torch is the first block whose SHAPE depends on how it was
+    // placed: upright on the floor, or against whichever wall the
+    // player pointed at (voxel_mesh.h, TORCH_*). It also needs
+    // something to hold it, which is the first placement this game has
+    // ever refused for a reason other than the cell being full.
+    uint8_t state = ST_PLACED;
+    if (block_kind(block) == K_TORCH) {
+        uint8_t how;
+        switch (hit->face) {
+            case MESH_DIR_PY: how = TORCH_FLOOR; break;
+            case MESH_DIR_PX: how = TORCH_WALL_NX; break;
+            case MESH_DIR_NX: how = TORCH_WALL_PX; break;
+            case MESH_DIR_PZ: how = TORCH_WALL_NZ; break;
+            case MESH_DIR_NZ: how = TORCH_WALL_PZ; break;
+            // The underside of a block. Nothing here hangs, so rather
+            // than drop a torch on the floor somewhere the player did
+            // not point at, this does nothing.
+            default: return false;
+        }
+        // Whatever it leans on has to be there. Aiming at the side of a
+        // flower and getting a torch floating in the air is worse than
+        // the click doing nothing.
+        int32_t const sx = how == TORCH_WALL_NX ? x - 1 : how == TORCH_WALL_PX ? x + 1 : x;
+        int32_t const sz = how == TORCH_WALL_NZ ? z - 1 : how == TORCH_WALL_PZ ? z + 1 : z;
+        int32_t const sy = how == TORCH_FLOOR ? y - 1 : y;
+        if (!block_solid(world_block(sx, sy, sz))) return false;
+        state = (uint8_t)(ST_PLACED | (uint8_t)(how << ST_DATA_SHIFT));
+    }
+
+    // A block that remembers things needs somewhere to remember them,
+    // and if the pool is full it must not be placed at all: a furnace
+    // with no record behind it would look like a furnace and behave
+    // like a wall.
+    if (block_keeps_record(block) && blockent_add(x, y, z, block_record_kind(block)) == NULL) return false;
+
+    world_set(x, y, z, block, state);
     return true;
 }

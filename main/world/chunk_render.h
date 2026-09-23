@@ -113,3 +113,8 @@ void chunk_render_stats(int* chunks_drawn, int* sections_drawn, int* resident, i
 // while the camera is standing still means the residency radius and the
 // eviction radius are fighting each other.
 int chunk_render_evicted(void);
+
+// The texture file a material is drawn with, or NULL. The inventory
+// uses it to draw a block as ITSELF rather than as the flat average
+// colour that stood in for it (D-03) -- one table of files, not two.
+char const* chunk_render_mat_file(int mat);

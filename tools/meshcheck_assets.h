@@ -17,8 +17,33 @@
 #define VG 6  // test grids: 6 x 6 x 6 cells inside a border of air
 static uint8_t s_vg[(VG + 2) * (VG + 2) * (VG + 2)];
 
+static size_t vg_index(int x, int y, int z) {
+    return (size_t)(((z + 1) * (VG + 2) + (x + 1)) * (VG + 2) + (y + 1));
+}
+
 static uint8_t* vg_cell(int x, int y, int z) {
-    return &s_vg[((z + 1) * (VG + 2) + (x + 1)) * (VG + 2) + (y + 1)];
+    return &s_vg[vg_index(x, y, z)];
+}
+
+// The span a mesh covers along one axis. Used to ask WHERE a torch
+// ended up, which is the whole of what its data field decides.
+static void mesh_axis_range(mesh_t const* m, int axis, float* lo, float* hi) {
+    float a = 1e30f, b = -1e30f;
+    for (int i = 0; i < m->vn; i++) {
+        float const v = axis == 0 ? m->v[i].x : axis == 1 ? m->v[i].y : m->v[i].z;
+        if (v < a) a = v;
+        if (v > b) b = v;
+    }
+    if (lo != NULL) *lo = a;
+    if (hi != NULL) *hi = b;
+}
+
+static void mesh_x_range(mesh_t const* m, float* lo, float* hi) {
+    mesh_axis_range(m, 0, lo, hi);
+}
+
+static void mesh_y_range(mesh_t const* m, float* lo, float* hi) {
+    mesh_axis_range(m, 1, lo, hi);
 }
 
 static float vg_volume(mesh_t const* m) {
@@ -189,6 +214,69 @@ static void check_voxel_mesher(void) {
         CHECK(water_faces == 0, "voxel: a roofed pool still drew %d water tris", water_faces);
         mesh_free(&m);
     }
+    // A TORCH, on the floor and on a wall. The shape follows the
+    // block's data field, which is the first thing in this game whose
+    // geometry depends on how it was placed -- so the check is where
+    // the stick actually ENDS UP, not merely that something was drawn.
+    vg_clear();
+    *vg_cell(2, 0, 2) = BLK_TORCH;
+    {
+        static uint8_t data[sizeof(s_vg)];
+        memset(data, 0, sizeof(data));
+
+        float lo, hi, base;
+        mesh_t m;
+
+        // Upright: centred on the cell, standing on the floor.
+        mesh_init(&m);
+        vox_grid_t const floor_g = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1, .data = data};
+        voxel_mesh_build(&m, &floor_g, VOX_MESH_FANCY);
+        mesh_x_range(&m, &lo, &hi);
+        mesh_y_range(&m, &base, NULL);
+        printf("voxel: a torch on the floor: %d tris, x %.3f..%.3f, base y %.3f\n", m.tn, (double)lo, (double)hi,
+               (double)base);
+        CHECK(fabsf((lo + hi) * 0.5f - 2.5f) < 1e-4f, "voxel: an upright torch is not centred in its cell");
+        CHECK(fabsf(base - 0.0f) < 1e-4f, "voxel: an upright torch does not stand on the floor");
+        int const upright_tris = m.tn;
+        mesh_free(&m);
+
+        // On the wall at -x: shifted to that edge and lifted off the
+        // floor, with the same box and so the same triangle count.
+        data[vg_index(2, 0, 2)] = TORCH_WALL_NX;
+        mesh_init(&m);
+        voxel_mesh_build(&m, &floor_g, VOX_MESH_FANCY);
+        mesh_x_range(&m, &lo, &hi);
+        mesh_y_range(&m, &base, NULL);
+        printf("voxel: a torch on the -x wall: %d tris, x %.3f..%.3f, base y %.3f\n", m.tn, (double)lo,
+               (double)hi, (double)base);
+        CHECK(m.tn == upright_tris, "voxel: a wall torch is %d tris against an upright one's %d", m.tn,
+              upright_tris);
+        CHECK(fabsf((lo + hi) * 0.5f - 2.2f) < 1e-4f, "voxel: a -x wall torch sits at x %.3f, expected 2.200",
+              (double)((lo + hi) * 0.5f));
+        CHECK(base > 0.1f, "voxel: a wall torch starts at y %.3f -- it should be held above the floor",
+              (double)base);
+        mesh_free(&m);
+
+        // ... and the opposite wall is the mirror of it.
+        data[vg_index(2, 0, 2)] = TORCH_WALL_PX;
+        mesh_init(&m);
+        voxel_mesh_build(&m, &floor_g, VOX_MESH_FANCY);
+        mesh_x_range(&m, &lo, &hi);
+        CHECK(fabsf((lo + hi) * 0.5f - 2.8f) < 1e-4f, "voxel: a +x wall torch sits at x %.3f, expected 2.800",
+              (double)((lo + hi) * 0.5f));
+        mesh_free(&m);
+
+        // With no data plane at all -- which is what the coarse levels
+        // pass -- every torch is upright, and nothing reads off the end.
+        data[vg_index(2, 0, 2)] = TORCH_WALL_PZ;
+        mesh_init(&m);
+        vox_grid_t const nodata = {.cells = s_vg, .w = VG, .h = VG, .d = VG, .step = 1};
+        voxel_mesh_build(&m, &nodata, VOX_MESH_FANCY);
+        mesh_x_range(&m, &lo, &hi);
+        CHECK(fabsf((lo + hi) * 0.5f - 2.5f) < 1e-4f, "voxel: without a data plane a torch is not upright");
+        mesh_free(&m);
+    }
+
     // A plant: two crossed quads, each from both sides; none when fast.
     vg_clear();
     *vg_cell(2, 0, 2) = BLK_FLOWER_RED;

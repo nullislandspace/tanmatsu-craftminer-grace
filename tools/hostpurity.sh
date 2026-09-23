@@ -41,6 +41,10 @@ PURE=(
     main/audio/midi_seq.c   main/audio/midi_seq.h
     main/items/item_entity.c main/items/item_entity.h
     main/i18n/i18n.c        main/i18n/i18n.h
+    main/i18n/fold.c        main/i18n/fold.h
+    main/items/recipes.c    main/items/recipes.h
+    main/world/blockent.c   main/world/blockent.h
+    main/game/furnace.c     main/game/furnace.h
 )
 
 # Headers a pure module must not reach for. psram.h is the sanctioned

@@ -50,6 +50,20 @@ typedef enum {
 // canopy you can see into, glass hides glass.
 #define BF_SEE_SELF    (1u << 7)
 
+// The Use key OPENS this block instead of placing against it: a
+// crafting table, and later a furnace, a chest and the benches. The
+// player only reports which block was used -- what a screen is and
+// how to show one is main.c's business, not the registry's.
+//
+// It is a second flag word because the first is full: eight bits,
+// eight flags, and BF_SEE_SELF took the last one.
+#define BF2_USABLE     (1u << 0)
+
+// The block keeps a side record: three slots and a fire for a furnace,
+// twenty-seven for a chest (world/blockent.h). Placing one takes a
+// record from the pool and breaking one gives it back, contents first.
+#define BF2_RECORD     (1u << 1)
+
 // Tool classes. `tool_level` is 0 hand, 1 wood, 2 stone, 3 iron.
 typedef enum {
     TOOL_NONE = 0,
@@ -94,6 +108,7 @@ typedef struct {
     uint8_t     light;       // light emitted, 0..15 (world/light.h)
     uint8_t     growth_max;  // BF_CROP: the highest growth stage
     uint8_t     sound;       // block_sound_t: what it sounds like (audio/sfx.h)
+    uint8_t     flags2;      // BF2_*
 } block_def_t;
 
 // The block ids -- AND THEY ARE PERMANENT (D-74).
@@ -142,7 +157,9 @@ enum {
     // there is no sign item. Its text follows from where it stands
     // (voxel_mesh.h, voxel_sign_text).
     BLK_SIGN = 19,
-    // New blocks here: BLK_SOMETHING = 20, and a line in tools/ids.txt.
+    BLK_CRAFTING_TABLE = 20,
+    BLK_FURNACE        = 21,
+    // New blocks here: BLK_SOMETHING = 22, and a line in tools/ids.txt.
     BLK_COUNT
 };
 
@@ -172,3 +189,15 @@ static inline bool block_replaceable(uint8_t id) {
 static inline bool block_fellable(uint8_t id) {
     return (block_def(id)->flags & BF_FELLABLE) != 0;
 }
+static inline bool block_usable(uint8_t id) {
+    return (block_def(id)->flags2 & BF2_USABLE) != 0;
+}
+
+static inline bool block_keeps_record(uint8_t id) {
+    return (block_def(id)->flags2 & BF2_RECORD) != 0;
+}
+
+// The be_kind_t a block's record is. Not in the table: blockent.h
+// includes this header, so the number cannot be named here without a
+// cycle -- and there are few enough of these for a line each.
+uint8_t block_record_kind(uint8_t id);

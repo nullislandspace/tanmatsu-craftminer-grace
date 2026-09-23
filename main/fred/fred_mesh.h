@@ -48,6 +48,17 @@ typedef enum {
 void fred_build_head(mesh_t* m);
 void fred_build_body(mesh_t* m);
 void fred_build_arm(mesh_t* m);
+
+// THE SAME ARM, FOR FIRST PERSON, and longer at the shoulder.
+//
+// Third person looks at a whole miner, so his arm ends where his
+// shoulder is. First person looks along it -- and the flat cap where
+// the arm was cut off sat just inside the bottom of the view, which is
+// what made it read as a severed arm hanging in the air rather than as
+// the player's own (the user's catch). This one runs back past the
+// camera, so the cap is off the screen and there is nothing to see the
+// end of.
+void fred_build_fp_arm(mesh_t* m);
 void fred_build_leg(mesh_t* m);
 void fred_build_pick(mesh_t* m);
 // CraftMiner has three tools; the showreel's miner only needed the

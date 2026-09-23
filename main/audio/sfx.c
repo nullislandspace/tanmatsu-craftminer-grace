@@ -74,6 +74,10 @@ static sfx_def_t const SFX[SFX_COUNT] = {
     [SFX_LAND]   = {"land",   O_SINE, 95,  60,  0.45f, 0.55f, F_LPF, 700,  300,  0.80f, 0.002f, 0.140f, 0.38f, 0.12f},
     [SFX_CLICK]  = {"click",  O_SQUARE, 1250, 0, 0.35f, 0.00f, F_NONE, 0, 0, 0.0f, 0.001f, 0.030f, 0.22f, 0.00f},
     [SFX_FELL]   = {"fell",   O_SINE, 0, 0, 0.00f, 1.00f, F_LPF, 500,  160,  0.70f, 0.010f, 0.700f, 0.45f, 0.10f},
+    // Two notes up: the sound of a thing existing that did not before.
+    [SFX_CRAFT]  = {"craft",  O_SQUARE, 520, 780, 0.45f, 0.06f, F_LPF, 2600, 3200, 0.60f, 0.004f, 0.170f, 0.30f, 0.02f},
+    // ... and down, short and flat, for a recipe that cannot be made.
+    [SFX_DENY]   = {"deny",   O_SQUARE, 300, 190, 0.40f, 0.00f, F_LPF, 1200, 700,  0.70f, 0.003f, 0.110f, 0.28f, 0.00f},
 };
 
 // --- The voice --------------------------------------------------------

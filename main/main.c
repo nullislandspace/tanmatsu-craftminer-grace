@@ -49,6 +49,8 @@
 #include "testkit/report.h"
 #include "testkit/showtime.h"
 #include "ui/icons.h"
+#include "ui/craft_ui.h"
+#include "ui/furnace_ui.h"
 #include "ui/menu.h"
 #include "ui/settings.h"
 #include "ui/title.h"
@@ -835,6 +837,7 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     s_player.hunger = s_saved.hunger;
     if (s_saved.has_inv) {
         memcpy(s_player.inv.slot, s_saved.inv, sizeof(s_player.inv.slot));
+        memcpy(s_player.inv.seen, s_saved.seen, sizeof(s_player.inv.seen));
         s_player.inv.selected = (int)s_saved.inv_selected;
     }
     s_player.inv.open = false;
@@ -1051,6 +1054,7 @@ static void save_world(char const* why) {
     s_saved.placed = s_saved.placed || s_player_ready;
     s_saved.has_inv = true;
     memcpy(s_saved.inv, s_player.inv.slot, sizeof(s_saved.inv));
+    memcpy(s_saved.seen, s_player.inv.seen, sizeof(s_saved.seen));
     s_saved.inv_selected = s_player.inv.selected;
     int64_t const now    = (int64_t)time(NULL);
     if (now > 0) s_meta.last_played = now;
@@ -1258,6 +1262,15 @@ static void on_update(float dt, void* user) {
         if (want_sync != chunk_worker_synchronous()) chunk_worker_set_synchronous(want_sync);
     }
 
+    // The crafting book. A screen like the menus, but it changes only
+    // the inventory, so it needs no command back: it does its own work
+    // and main.c's part is to freeze the player while it is up.
+    if (craft_ui_active()) craft_ui_update(&s_player.inv);
+    // The furnace runs on the world's own clock, not on wall time: it
+    // never ticks, it catches up (game/furnace.h).
+    if (furnace_ui_active()) furnace_ui_update(&s_player.inv, (uint32_t)s_meta.time_of_day);
+    s_player.ui_open = craft_ui_active() || furnace_ui_active();
+
     // The menus. Whatever changes the world or the game's running state
     // comes back as a command and is acted on here, in one place.
     if (menu_active()) {
@@ -1388,6 +1401,20 @@ static void on_update(float dt, void* user) {
             }
             player_tick(&s_player, mask, input_pressed());
             cm_audio_player_tick(&s_player);  // footsteps and landings, AFTER the tick
+            // A block the player opened. The registry says WHICH blocks
+            // open something (BF2_USABLE); what each one opens is here.
+            // Only if it is not already showing: OPENING a screen
+            // resets its cursor and empties its search box, so a
+            // repeated "use" must not reach it. player.c clears
+            // used_block every tick now, and this is the second lock on
+            // the same door -- it was worth two.
+            if (s_player.used_block == BLK_CRAFTING_TABLE && !craft_ui_active()) {
+                s_player.inv.open = false;
+                craft_ui_open(RS_TABLE);
+            } else if (s_player.used_block == BLK_FURNACE && !furnace_ui_active()) {
+                s_player.inv.open = false;
+                furnace_ui_open(s_player.aim.x, s_player.aim.y, s_player.aim.z);
+            }
             s_meta.time_of_day++;  // the world's clock is its own ticks (D-51)
         }
         s_ticks_last_frame = n;
@@ -1456,6 +1483,16 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
         menu_event(ev);
         return;
     }
+    // ... and so does the crafting book, because every letter typed
+    // goes into its search box.
+    if (craft_ui_active()) {
+        craft_ui_event(ev);
+        return;
+    }
+    if (furnace_ui_active()) {
+        furnace_ui_event(ev);
+        return;
+    }
     if (ev->type != INPUT_EVENT_TYPE_SCANCODE) return;
     uint16_t const sc = ev->args_scancode.scancode;
     if ((sc & BSP_INPUT_SCANCODE_RELEASE_MODIFIER) != 0) return;
@@ -1476,6 +1513,15 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
         }
         save_world("pausing");
         menu_open_pause();
+        return;
+    }
+
+    // The crafting book, on its own binding. An event and not a polled
+    // binding, like the overlay below: opening a screen happens once,
+    // when the key goes down.
+    if (sc == input_key(CM_CRAFT)) {
+        s_player.inv.open = false;  // one full-screen thing at a time
+        craft_ui_open(RS_INVENTORY);
         return;
     }
 
@@ -1802,6 +1848,8 @@ static void on_render(pax_buf_t* fb, void* user) {
         hud_mine_progress(fb, player_mine_progress(&s_player));
         hud_player(fb, &s_player);
         hud_inventory(fb, &s_player);
+        if (craft_ui_active()) craft_ui_draw(fb, &s_player.inv);
+        if (furnace_ui_active()) furnace_ui_draw(fb, &s_player.inv);
         if (s_info || replay_recording()) {
             draw_info(fb);
         } else if (showtime_now() < s_shot_msg_until) {

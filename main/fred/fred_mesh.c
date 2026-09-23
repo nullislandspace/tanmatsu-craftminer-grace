@@ -48,6 +48,16 @@ void fred_build_arm(mesh_t* m) {
     mesh_box(m, v3(-0.09f, -FRED_ARM_H, -0.09f), v3(0.09f, -0.30f, 0.09f), FM_SKIN, 1.0f);
 }
 
+void fred_build_fp_arm(mesh_t* m) {
+    mesh_init(m);
+    m->name = "fred_fp_arm";
+    // The sleeve runs to +0.55 rather than stopping at the shoulder:
+    // rotated forward for first person that puts the open end behind
+    // the camera and below the view, where its cap cannot be seen.
+    mesh_box(m, v3(-0.1f, -0.30f, -0.1f), v3(0.1f, 0.55f, 0.1f), FM_SHIRT, 1.0f);
+    mesh_box(m, v3(-0.09f, -FRED_ARM_H, -0.09f), v3(0.09f, -0.30f, 0.09f), FM_SKIN, 1.0f);
+}
+
 void fred_build_leg(mesh_t* m) {
     mesh_init(m);
     m->name = "fred_leg";

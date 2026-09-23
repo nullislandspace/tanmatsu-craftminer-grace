@@ -26,7 +26,8 @@
 #define BOX_CELLS (FINE_CELLS > COARSE_CELLS ? FINE_CELLS : COARSE_CELLS)
 
 size_t chunkmesh_scratch_bytes(void) {
-    return 2 * BOX_CELLS;
+    // cells, lights, block data -- the third only for the fine levels.
+    return 3 * BOX_CELLS;
 }
 
 // The mesher's indexing, from voxel_mesh.h: cell (x, y, z), each from
@@ -50,7 +51,8 @@ size_t chunkmesh_scratch_bytes(void) {
 #define LIGHT_NEAR_MASK   0xCEu
 #define LIGHT_COARSE_MASK 0xCCu
 
-static void fill_fine(uint8_t* cells, uint8_t* lights, int32_t cx, int32_t cz, int sect, uint8_t lmask) {
+static void fill_fine(uint8_t* cells, uint8_t* lights, uint8_t* states, int32_t cx, int32_t cz, int sect,
+                      uint8_t lmask) {
     int32_t const wx0 = cx * CH_W, wz0 = cz * CH_D;
     int const     wy0 = sect * CH_SECT;
     for (int z = -1; z <= CH_D; z++) {
@@ -65,6 +67,8 @@ static void fill_fine(uint8_t* cells, uint8_t* lights, int32_t cx, int32_t cz, i
                 }
                 cells[BOX(CH_W, CH_SECT, x, y, z)]  = b;
                 lights[BOX(CH_W, CH_SECT, x, y, z)] = world_light(wx0 + x, wy, wz0 + z) & lmask;
+                states[BOX(CH_W, CH_SECT, x, y, z)] =
+                    (wy < 0 || wy >= CH_H) ? 0 : st_data(world_state(wx0 + x, wy, wz0 + z));
             }
         }
     }
@@ -173,7 +177,8 @@ bool chunkmesh_build(int32_t cx, int32_t cz, int lod, int sect, uint8_t* scratch
         };
         voxel_mesh_build(out, &g, VOX_MESH_FAST);
     } else {
-        fill_fine(scratch, scratch + BOX_CELLS, cx, cz, sect, lod == LOD_FANCY ? LIGHT_NEAR_MASK : LIGHT_COARSE_MASK);
+        fill_fine(scratch, scratch + BOX_CELLS, scratch + 2 * BOX_CELLS, cx, cz, sect,
+                  lod == LOD_FANCY ? LIGHT_NEAR_MASK : LIGHT_COARSE_MASK);
         vox_grid_t const g = {
             .cells = scratch,
             .w     = CH_W,
@@ -185,6 +190,7 @@ bool chunkmesh_build(int32_t cx, int32_t cz, int lod, int sect, uint8_t* scratch
             .step  = 1,
             .skirt = false,
             .lights = s_lighting ? scratch + BOX_CELLS : NULL,
+            .data = scratch + 2 * BOX_CELLS,
         };
         voxel_mesh_build(out, &g, lod == LOD_FANCY ? VOX_MESH_FANCY : VOX_MESH_FAST);
     }

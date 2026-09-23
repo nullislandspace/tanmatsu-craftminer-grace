@@ -31,8 +31,20 @@ typedef struct {
     uint16_t wear;   // uses spent, for a tool; 0 otherwise
 } inv_slot_t;
 
+// One bit per item id: every item the player has EVER held. It lives
+// here because inv_add is where every acquisition funnels -- a pickup,
+// a drop collected, a craft, the starting kit -- so nothing has to
+// remember to mark it anywhere else.
+//
+// What it is for is crafting discovery (items/recipes.h): a recipe
+// appears in the book once the player has picked up at least one of the
+// materials it needs. Storing the ITEMS rather than the RECIPES is what
+// keeps recipe numbering free to change (Part C).
+#define INV_SEEN_WORDS ((ITEM_COUNT + 31) / 32)
+
 typedef struct {
     inv_slot_t slot[INV_SLOTS];
+    uint32_t   seen[INV_SEEN_WORDS];
     int        selected;  // 0..INV_HOTBAR-1
     // The Tab screen. Open, it takes the movement keys for navigation
     // and the player stands still -- picking things up while reading a
@@ -60,6 +72,19 @@ bool inv_wear_held(inventory_t* inv, int uses);
 
 // How many of `item` are carried in total.
 int inv_count(inventory_t const* inv, uint16_t item);
+
+// Take `count` of `item` out, from the fullest partial stacks first so
+// the inventory does not fragment. ALL OR NOTHING: false, and nothing
+// removed, if there are not that many -- a caller half-way through a
+// recipe must never be left with the materials gone and no output.
+bool inv_take(inventory_t* inv, uint16_t item, int count);
+
+// Has the player ever held `item`? See INV_SEEN_WORDS above.
+bool inv_seen(inventory_t const* inv, uint16_t item);
+
+// Mark `item` as held. inv_add does this itself; the starting kit and
+// the save loader call it directly.
+void inv_mark_seen(inventory_t* inv, uint16_t item);
 
 // Swap two slots. How a stack gets from the Tab screen onto the
 // hotbar, and it is a swap rather than a move so the hotbar slot's

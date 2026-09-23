@@ -211,7 +211,37 @@ static void write_inventory(NbtWriter* w, player_state_t const* p) {
         nbt_write_int32(w, "wear", s->wear);
         nbt_write_end(w);
     }
+
+    // What the crafting book knows, by name. An item this build has
+    // dropped simply does not come back, and one it has added is not
+    // there yet -- both of which are the right answer.
+    nbt_write_compound(w, "known");
+    int known = 0;
+    for (uint16_t id = 1; id < ITEM_COUNT; id++) {
+        if ((p->seen[id >> 5] & ((uint32_t)1u << (id & 31u))) == 0) continue;
+        char key[12];
+        snprintf(key, sizeof(key), "%d", known++);
+        nbt_write_string(w, key, item_def(id).name);
+    }
     nbt_write_end(w);
+
+    nbt_write_end(w);
+}
+
+static void read_known(NbtReader* r, player_state_t* p) {
+    char name[NAME_BUF];
+    for (;;) {
+        int const type = nbt_read_tag(r, name, sizeof(name));
+        if (type == NBT_END || type < 0 || r->error) break;
+        if (type == NBT_STRING) {
+            char buf[NAME_BUF];
+            nbt_read_string(r, buf, sizeof(buf));
+            uint16_t const id = item_by_name(buf);
+            if (id != 0 && id < ITEM_COUNT) p->seen[id >> 5] |= (uint32_t)1u << (id & 31u);
+        } else {
+            nbt_skip_payload(r, type);
+        }
+    }
 }
 
 static void read_slot(NbtReader* r, inv_slot_t* out) {
@@ -244,6 +274,7 @@ static void read_slot(NbtReader* r, inv_slot_t* out) {
 
 static void read_inventory(NbtReader* r, player_state_t* p) {
     memset(p->inv, 0, sizeof(p->inv));
+    memset(p->seen, 0, sizeof(p->seen));
     p->inv_selected = 0;
     p->has_inv      = true;
     char name[NAME_BUF];
@@ -253,6 +284,8 @@ static void read_inventory(NbtReader* r, player_state_t* p) {
         if (type == NBT_INT32 && strcmp(name, "selected") == 0) {
             int32_t const v = nbt_read_int32(r);
             p->inv_selected = (v >= 0 && v < INV_HOTBAR) ? v : 0;
+        } else if (type == NBT_COMPOUND && strcmp(name, "known") == 0) {
+            read_known(r, p);
         } else if (type == NBT_COMPOUND) {
             // The slot's index is its name; anything past this build's
             // slot count is read and discarded.

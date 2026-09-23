@@ -65,16 +65,13 @@ void player_reset(player_t* p) {
     p->mining     = false;
     p->mine_ticks = 0;
 
+    // NOTHING. The starting kit is gone, the day a crafting table can
+    // make what was in it (the user's call, 2026-09-23): punch a tree,
+    // make planks, make a table, make a pickaxe. An empty pack is also
+    // what makes the crafting book's discovery rule mean anything --
+    // with the kit in hand, half of it was already known on the first
+    // frame.
     inv_clear(&p->inv);
-    // A starting kit, until crafting exists (step 8). Tools so that
-    // durability and break speed can be felt, blocks so that placing
-    // can be. Remove this the day a crafting table can make them.
-    inv_add(&p->inv, ITEM_PICK_STONE, 1, 0);
-    inv_add(&p->inv, ITEM_AXE_STONE, 1, 0);
-    inv_add(&p->inv, ITEM_SHOVEL_STONE, 1, 0);
-    inv_add(&p->inv, BLK_COBBLE, 64, 0);
-    inv_add(&p->inv, BLK_PLANKS, 64, 0);
-    inv_add(&p->inv, BLK_TORCH, 32, 0);
 }
 
 float player_mine_progress(player_t const* p) {
@@ -84,16 +81,38 @@ float player_mine_progress(player_t const* p) {
 }
 
 void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
+    // ONE TICK'S WORTH, CLEARED FIRST. It used to be cleared further
+    // down, in the branch that does the actual using -- which the
+    // frozen branch below returns before ever reaching. So the moment a
+    // crafting table opened a screen, the flag stayed set, and main.c
+    // reopened that screen on EVERY TICK: the cursor snapped back to
+    // the first row, the search box emptied, and every keystroke was
+    // swallowed as the one that opened it. The arrow keys looked dead
+    // and enter crafted whatever happened to be first in the list
+    // rather than what was under the cursor, which is how it took the
+    // materials and gave back something else (the user found both
+    // halves of this; they are one bug).
+    //
+    // A field that says "this tick" is cleared at the top of the tick.
+    p->used_block = BLK_AIR;
+
     // --- The inventory screen ----------------------------------------
     //
     // Open, it takes the movement and look keys for navigation and the
     // player stands still. Reading a grid while still walking is how
     // you end up in the lava you were standing next to.
-    if (act_held(pressed, CM_INVENTORY)) {
+    // NOT while a full-screen UI is up: Tab opened the inventory behind
+    // the crafting book, which then had two screens taking the same
+    // keys (the user found it immediately).
+    if (!p->ui_open && act_held(pressed, CM_INVENTORY)) {
         p->inv.open = !p->inv.open;
         p->mining   = false;
     }
-    if (p->inv.open) {
+    // The crafting book freezes the player the same way, and takes the
+    // navigation keys itself -- so this branch does nothing but hold
+    // him still and let him fall.
+    if (p->ui_open) p->mining = false;
+    if (p->inv.open || p->ui_open) {
         p->prev_x     = p->body.x;
         p->prev_y     = p->body.y;
         p->prev_z     = p->body.z;
@@ -104,12 +123,12 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
                        (act_held(pressed, CM_LEFT) || act_held(pressed, CM_LOOK_LEFT) ? 1 : 0);
         int const dy = (act_held(pressed, CM_BACK) || act_held(pressed, CM_LOOK_DOWN) ? 1 : 0) -
                        (act_held(pressed, CM_FORWARD) || act_held(pressed, CM_LOOK_UP) ? 1 : 0);
-        if (dx || dy) inv_move_cursor(&p->inv, dx, dy);
+        if (!p->ui_open && (dx || dy)) inv_move_cursor(&p->inv, dx, dy);
 
         // A hotbar key SWAPS the cursor's stack into that slot -- the
         // one operation the screen has to support, since without it
         // everything past the sixth slot is unreachable.
-        for (int i = 0; i < INV_HOTBAR; i++) {
+        for (int i = 0; i < INV_HOTBAR && !p->ui_open; i++) {
             if (act_held(pressed, (cm_action_t)(CM_SLOT1 + i))) inv_swap(&p->inv, p->inv.cursor, i);
         }
 
@@ -276,12 +295,20 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
         p->mining = false;
     }
 
-    // --- Placing, which is a tap -------------------------------------
+    // --- Using and placing, which are the same tap -------------------
+    //
+    // A block that OPENS something wins over placing against it, or a
+    // table with planks in hand could never be opened at all -- which
+    // is Minecraft's rule too, and the reason sneaking exists there.
     if (p->aim_valid && act_held(pressed, CM_USE)) {
-        uint8_t const block = item_block(held);
-        if (block != BLK_AIR && interact_place(&p->aim, block, &p->body)) {
-            inv_consume_held(&p->inv);
-            sfx_play_place(block);
+        if (block_usable(p->aim.block)) {
+            p->used_block = p->aim.block;
+        } else {
+            uint8_t const block = item_block(held);
+            if (block != BLK_AIR && interact_place(&p->aim, block, &p->body)) {
+                inv_consume_held(&p->inv);
+                sfx_play_place(block);
+            }
         }
     }
 

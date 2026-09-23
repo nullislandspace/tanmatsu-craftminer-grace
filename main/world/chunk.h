@@ -298,6 +298,12 @@ uint8_t world_state(int32_t x, int32_t y, int32_t z);
 // chunk that is not resident.
 void world_set(int32_t x, int32_t y, int32_t z, uint8_t block, uint8_t state);
 
+// Mark a chunk as differing from what is on the card, WITHOUT changing
+// a block. What a block entity's contents changing means (blockent.h,
+// blockent_touch): the chunk has to be written before it is evicted,
+// and no cell in it moved.
+void chunk_mark_edited(int32_t cx, int32_t cz);
+
 // Every mesh that could show the cell (x, y, z) is out of date: its
 // section, the section next door when it sits on a section's edge, and
 // the neighbouring chunk when it sits on a chunk's. Bumps edit_seq on

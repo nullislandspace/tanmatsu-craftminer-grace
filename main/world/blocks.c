@@ -15,7 +15,8 @@
 
 #include "world/blocks.h"
 
-#include "items/items.h"  // the ITEM_* ids the drop column names
+#include "items/items.h"    // the ITEM_* ids the drop column names
+#include "world/blockent.h"  // the BE_* kinds the record column names
 
 #define M3(t, s, b) \
     { (t), (s), (b) }
@@ -131,6 +132,31 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                      .hardness = HARDNESS_UNBREAKABLE,
                      .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_STONE},
 
+    // The one block a player has to make before they can make anything
+    // else (Part C). Wood, so an axe is the tool and it comes back when
+    // broken -- a table left in a cave is not lost.
+    [BLK_CRAFTING_TABLE] = {.name     = "crafting_table", .drop_item = BLK_CRAFTING_TABLE, .drop_min = 1, .drop_max = 1,
+                            .kind     = K_CUBE,
+                            .mat      = M3(VM_TABLE_TOP, VM_TABLE_SIDE, VM_PLANKS),
+                            .hardness = 50,
+                            .tool     = TOOL_AXE,
+                            .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_WOOD,
+                            .flags2   = BF2_USABLE},
+
+    // Stone, so it wants a pickaxe, and it keeps a block entity for
+    // its three slots and its fire (world/blockent.h). THE OPENING IS
+    // ON ALL FOUR SIDES: there is no facing bit in the state byte yet,
+    // and a furnace you can always recognise is worth more than one
+    // whose single front happens to face the wall you built it into.
+    [BLK_FURNACE] = {.name       = "furnace", .drop_item = BLK_FURNACE, .drop_min = 1, .drop_max = 1,
+                     .kind       = K_CUBE,
+                     .mat        = M3(VM_FURNACE_TOP, VM_FURNACE_FRONT, VM_FURNACE_TOP),
+                     .hardness   = 180,
+                     .tool       = TOOL_PICK,
+                     .tool_level = 1,
+                     .flags      = BF_SOLID | BF_OPAQUE, .sound = SND_STONE,
+                     .flags2     = BF2_USABLE | BF2_RECORD},
+
     [BLK_GRAVEL] = {.name     = "gravel", .drop_item = BLK_GRAVEL, .drop_min = 1, .drop_max = 1,
                     .kind     = K_CUBE,
                     .mat      = M1(VM_GRAVEL),
@@ -142,3 +168,14 @@ block_def_t const BLOCKS[BLK_COUNT] = {
     // nothing, since there is no sign item yet (D-79).
     [BLK_SIGN] = {.name = "sign", .kind = K_SIGN, .mat = M1(VM_PLANKS), .hardness = 40, .tool = TOOL_AXE, .sound = SND_WOOD},
 };
+
+// Which kind of record each block keeps. A function rather than a
+// column, because blockent.h includes this file's header and a be_kind_t
+// in block_def_t would be a cycle. One line per block, and a block
+// carrying BF2_RECORD without a line here is caught by worldcheck.
+uint8_t block_record_kind(uint8_t id) {
+    switch (id) {
+        case BLK_FURNACE: return BE_FURNACE;
+        default: return BE_NONE;
+    }
+}

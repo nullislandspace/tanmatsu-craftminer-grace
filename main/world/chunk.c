@@ -3,6 +3,8 @@
 // =====================================================================
 
 #include "world/chunk.h"
+
+#include "world/blockent.h"
 #include <string.h>
 #include "common/psram.h"
 #include "world/light.h"
@@ -58,10 +60,23 @@ bool chunk_store_init(void) {
         s_slots[i].cstate = CS_FREE;
         for (int m = 0; m < CH_MESH_N; m++) mesh_init(&s_slots[i].lod[m]);
     }
+
+    // The block-entity pool lives and dies with the resident set: a
+    // furnace's record is only ever wanted while its chunk is in one of
+    // these slots (world/blockent.h).
+    if (!blockent_init()) {
+        cm_free(s_slab);
+        cm_free(s_meshes);
+        s_slab       = NULL;
+        s_meshes     = NULL;
+        s_slab_bytes = 0;
+        return false;
+    }
     return true;
 }
 
 void chunk_store_shutdown(void) {
+    blockent_shutdown();
     for (int i = 0; i < CH_SLOT_COUNT; i++) free_slot_meshes(&s_slots[i]);
     cm_free(s_slab);
     cm_free(s_meshes);
@@ -95,6 +110,7 @@ size_t chunk_store_mesh_bytes(int* meshes, int* chunks) {
 }
 
 void chunk_store_clear(void) {
+    blockent_clear();
     for (int i = 0; i < CH_SLOT_COUNT; i++) {
         chunk_t* c = &s_slots[i];
         free_slot_meshes(c);
@@ -135,6 +151,13 @@ chunk_t* chunk_claim(int32_t cx, int32_t cz) {
     // is what stops this from happening in practice.
     if (c->cstate == CS_LOADING || c->cstate == CS_SAVING) return NULL;
     if (c->cstate == CS_READY && (c->flags & CF_EDITED) != 0) return NULL;
+
+    // EVICTION. Whatever was in this slot is leaving, and its block
+    // entities go with it -- they are already on the card, since an
+    // edited chunk cannot be claimed away (the line above), and a
+    // furnace kept in the pool after its chunk left would be a furnace
+    // in a place the world no longer has.
+    if (c->cstate != CS_FREE) blockent_drop_chunk(c->cx, c->cz);
 
     free_slot_meshes(c);
     c->lod_stale = CH_MESH_ALL;
@@ -238,6 +261,11 @@ void world_mark_dirty(int32_t x, int32_t y, int32_t z) {
     if (lx == CH_W - 1) touch(chunk_find(cx + 1, cz), (int)y);
     if (lz == 0) touch(chunk_find(cx, cz - 1), (int)y);
     if (lz == CH_D - 1) touch(chunk_find(cx, cz + 1), (int)y);
+}
+
+void chunk_mark_edited(int32_t cx, int32_t cz) {
+    chunk_t* c = chunk_find(cx, cz);
+    if (c != NULL) c->flags |= CF_EDITED;
 }
 
 void world_set(int32_t x, int32_t y, int32_t z, uint8_t block, uint8_t state) {

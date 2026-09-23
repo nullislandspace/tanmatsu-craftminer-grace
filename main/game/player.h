@@ -103,6 +103,19 @@ typedef struct {
     bool      in_air_last;  // for a landing sound, later
     ray_hit_t aim;          // what the crosshair found this tick
     bool      aim_valid;
+
+    // The Use key was pressed on a block that opens something (a
+    // crafting table; later a furnace or a chest). The block's id, or
+    // BLK_AIR for "nothing was used this tick". REPORTED, not acted on:
+    // player.c has no business knowing what a screen is, and main.c
+    // already owns every other screen in the game.
+    uint8_t   used_block;
+
+    // A full-screen UI is up -- the crafting book (ui/craft_ui.h).
+    // Mirrored here once a frame by main.c rather than reached for,
+    // because player.c has no business knowing what a pax_buf_t is.
+    // The effect is the inventory screen's: stand still, keep falling.
+    bool      ui_open;
 } player_t;
 
 // How far through breaking the aimed block, 0..1. Zero when not mining.

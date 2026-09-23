@@ -119,6 +119,68 @@ typedef enum {
     CM_STR_SHOT_SAVED,                  // shot.saved
     CM_STR_SHOT_FAILED,                 // shot.failed
     CM_STR_SHOT_FULL,                   // shot.full
+    CM_STR_CRAFT_TITLE,                 // craft.title
+    CM_STR_CRAFT_TITLE_TABLE,           // craft.title_table
+    CM_STR_CRAFT_SEARCH,                // craft.search
+    CM_STR_CRAFT_HINT,                  // craft.hint
+    CM_STR_CRAFT_EMPTY,                 // craft.empty
+    CM_STR_CRAFT_EMPTY_SUB,             // craft.empty_sub
+    CM_STR_CRAFT_NO_MATCH,              // craft.no_match
+    CM_STR_CRAFT_VALUE_MAKE,            // craft.value_make
+    CM_STR_CRAFT_VALUE_MISSING,         // craft.value_missing
+    CM_STR_CRAFT_ING,                   // craft.ing
+    CM_STR_CRAFT_MADE,                  // craft.made
+    CM_STR_CRAFT_FULL,                  // craft.full
+    CM_STR_CRAFT_DETAIL_SUB,            // craft.detail_sub
+    CM_STR_CRAFT_DETAIL_HINT,           // craft.detail_hint
+    CM_STR_CRAFT_DETAIL_HAVE,           // craft.detail_have
+    CM_STR_ITEM_GRASS,                  // item.grass
+    CM_STR_ITEM_DIRT,                   // item.dirt
+    CM_STR_ITEM_STONE,                  // item.stone
+    CM_STR_ITEM_COBBLESTONE,            // item.cobblestone
+    CM_STR_ITEM_SAND,                   // item.sand
+    CM_STR_ITEM_WATER,                  // item.water
+    CM_STR_ITEM_LOG,                    // item.log
+    CM_STR_ITEM_PLANKS,                 // item.planks
+    CM_STR_ITEM_LEAVES,                 // item.leaves
+    CM_STR_ITEM_COAL_ORE,               // item.coal_ore
+    CM_STR_ITEM_GLASS,                  // item.glass
+    CM_STR_ITEM_TORCH,                  // item.torch
+    CM_STR_ITEM_FLOWER_RED,             // item.flower_red
+    CM_STR_ITEM_FLOWER_YELLOW,          // item.flower_yellow
+    CM_STR_ITEM_TALL_GRASS,             // item.tall_grass
+    CM_STR_ITEM_BEDROCK,                // item.bedrock
+    CM_STR_ITEM_GRAVEL,                 // item.gravel
+    CM_STR_ITEM_SIGN,                   // item.sign
+    CM_STR_ITEM_CRAFTING_TABLE,         // item.crafting_table
+    CM_STR_ITEM_FURNACE,                // item.furnace
+    CM_STR_ITEM_COAL,                   // item.coal
+    CM_STR_ITEM_STICK,                  // item.stick
+    CM_STR_ITEM_PICKAXE_WOOD,           // item.pickaxe_wood
+    CM_STR_ITEM_PICKAXE_STONE,          // item.pickaxe_stone
+    CM_STR_ITEM_AXE_WOOD,               // item.axe_wood
+    CM_STR_ITEM_AXE_STONE,              // item.axe_stone
+    CM_STR_ITEM_SHOVEL_WOOD,            // item.shovel_wood
+    CM_STR_ITEM_SHOVEL_STONE,           // item.shovel_stone
+    CM_STR_FURNACE_TITLE,               // furnace.title
+    CM_STR_FURNACE_INPUT,               // furnace.input
+    CM_STR_FURNACE_FUEL,                // furnace.fuel
+    CM_STR_FURNACE_OUTPUT,              // furnace.output
+    CM_STR_FURNACE_EMPTY,               // furnace.empty
+    CM_STR_FURNACE_SLOT,                // furnace.slot
+    CM_STR_FURNACE_HINT,                // furnace.hint
+    CM_STR_FURNACE_SMELTING,            // furnace.smelting
+    CM_STR_FURNACE_NO_INPUT,            // furnace.no_input
+    CM_STR_FURNACE_NO_FUEL,             // furnace.no_fuel
+    CM_STR_FURNACE_FULL,                // furnace.full
+    CM_STR_FURNACE_TOOK,                // furnace.took
+    CM_STR_FURNACE_PICK_INPUT,          // furnace.pick_input
+    CM_STR_FURNACE_PICK_FUEL,           // furnace.pick_fuel
+    CM_STR_FURNACE_PICK_NONE_INPUT,     // furnace.pick_none_input
+    CM_STR_FURNACE_PICK_NONE_FUEL,      // furnace.pick_none_fuel
+    CM_STR_FURNACE_PICK_HINT,           // furnace.pick_hint
+    CM_STR_FURNACE_BECOMES,             // furnace.becomes
+    CM_STR_FURNACE_BURNS,               // furnace.burns
     CM_STR_ACTION_FORWARD,              // action.forward
     CM_STR_ACTION_BACK,                 // action.back
     CM_STR_ACTION_LEFT,                 // action.left
@@ -142,6 +204,7 @@ typedef enum {
     CM_STR_ACTION_DROP,                 // action.drop
     CM_STR_ACTION_INFO,                 // action.info
     CM_STR_ACTION_SCREENSHOT,           // action.screenshot
+    CM_STR_ACTION_CRAFT,                // action.craft
     CM_STR_COUNT
 } cm_str_t;
 

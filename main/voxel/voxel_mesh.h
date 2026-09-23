@@ -79,6 +79,10 @@ typedef enum {
     VM_SIGN_0,
     VM_SIGN_1,
     VM_SIGN_2,
+    VM_TABLE_TOP,
+    VM_TABLE_SIDE,
+    VM_FURNACE_FRONT,
+    VM_FURNACE_TOP,
     VM_COUNT
 } vox_mat_t;
 
@@ -136,7 +140,25 @@ typedef struct {
     // and faces only merge with neighbours lit the same, so a torch's
     // pool of light is not smeared across a whole wall.
     uint8_t const* lights;
+    // Each cell's BLOCK DATA FIELD -- chunk.h's st_data(), already
+    // extracted by the caller, because this file may not include
+    // chunk.h (blocks.h includes this one). Laid out exactly like
+    // `cells`, or NULL for "all zero".
+    //
+    // Only blocks whose SHAPE depends on it read it: a torch, which
+    // stands in the middle of its cell or against one of four walls.
+    // The coarse levels pass NULL and get upright torches, which at
+    // half resolution nobody can tell from the other kind.
+    uint8_t const* data;
 } vox_grid_t;
+
+// A torch's ST_DATA: where it is, which is to say which wall is holding
+// it up. blocks.h keeps the block, this keeps its shape.
+#define TORCH_FLOOR    0
+#define TORCH_WALL_NX  1  // the wall is at -x, so the torch sits at that edge
+#define TORCH_WALL_PX  2
+#define TORCH_WALL_NZ  3
+#define TORCH_WALL_PZ  4
 
 // A single block for drawing outside the world (a dropped item, a block
 // popping into place, one in the hand): a closed cube of side 2 * half

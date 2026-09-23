@@ -31,6 +31,7 @@ set(APP_SOURCES
     main/world/farlands.c
     main/world/chunk_codec.c
     main/world/region.c
+    main/world/blockent.c
     main/world/vfs_compat.c
     main/world/worldstore.c
     main/world/datadir.c
@@ -46,6 +47,7 @@ set(APP_SOURCES
     main/game/physics.c
     main/game/raycast.c
     main/game/interact.c
+    main/game/furnace.c
     main/game/input.c
     main/game/player.c
     main/game/tick.c
@@ -57,6 +59,7 @@ set(APP_SOURCES
     main/items/items.c
     main/items/inventory.c
     main/items/item_entity.c
+    main/items/recipes.c
 
     # Fred, the player's figure (from the showreel's miner).
     main/fred/fred.c
@@ -65,12 +68,15 @@ set(APP_SOURCES
     # Screens.
     main/ui/title.c
     main/ui/menu.c
+    main/ui/craft_ui.c
+    main/ui/furnace_ui.c
     main/ui/keybind_ui.c
     main/ui/icons.c
     main/ui/settings.c
 
     # The UI's words, in thirty-two languages (lang/*.txt -> strings_gen.c).
     main/i18n/i18n.c
+    main/i18n/fold.c
     main/i18n/strings_gen.c
 
     # Sound: the mixer's lifetime, the effects table, and the music --
