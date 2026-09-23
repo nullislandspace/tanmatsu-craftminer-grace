@@ -82,10 +82,12 @@ hand.left = Vinstri
 hand.right = Hægri
 
 audio.title = Hljóð
-audio.sub = engin hljóð enn: þessar stillingar bíða þeirra
+audio.sub = hljóðstyrkur tækisins, svo hversu hátt hver hluti blandast
 audio.volume = Hljóðstyrkur
 audio.music = Tónlist
 audio.sfx = Hljóðbrellur
+audio.music_volume = Tónlistarstyrkur
+audio.sfx_volume = Hljóðstyrkur
 
 display.title = Skjár
 display.sub = deilt með ræsinum og öllum öðrum forritum

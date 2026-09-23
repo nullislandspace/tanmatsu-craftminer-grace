@@ -26,6 +26,8 @@ static bool s_textured = true;
 static bool s_half     = true;
 static bool s_music    = true;
 static bool s_sfx      = true;
+static uint8_t s_music_vol = 100;  // per-class mix levels; the device volume is the badge's
+static uint8_t s_sfx_vol   = 100;
 static bool s_gyro     = false;
 static bool s_clouds   = true;
 static bool s_third    = false;
@@ -62,6 +64,10 @@ static void apply_line(char* line) {
         s_music = v != 0;
     } else if (strcmp(key, "effects") == 0) {
         s_sfx = v != 0;
+    } else if (strcmp(key, "music_volume") == 0) {
+        s_music_vol = v > 100 ? 100 : (uint8_t)v;
+    } else if (strcmp(key, "effects_volume") == 0) {
+        s_sfx_vol = v > 100 ? 100 : (uint8_t)v;
     } else if (strcmp(key, "gyro") == 0) {
         s_gyro = v != 0;
     } else if (strcmp(key, "clouds") == 0) {
@@ -111,8 +117,11 @@ void settings_save(void) {
     fputs("# CraftMiner settings. Volume and brightness are the badge's own and live\n"
           "# with the launcher. Keys are BSP scancodes; delete a line to get its default.\n", f);
     fprintf(f, "language=%s\n", i18n_language_code(i18n_language()));
-    fprintf(f, "view=%d\ntextures=%d\nhalf_res=%d\nclouds=%d\nthird_person=%d\nleft_handed=%d\nmusic=%d\neffects=%d\ngyro=%d\n",
-            s_view, s_textured, s_half, s_clouds, s_third, s_left, s_music, s_sfx, s_gyro);
+    fprintf(f,
+            "view=%d\ntextures=%d\nhalf_res=%d\nclouds=%d\nthird_person=%d\nleft_handed=%d\nmusic=%d\neffects=%d\n"
+            "music_volume=%u\neffects_volume=%u\ngyro=%d\n",
+            s_view, s_textured, s_half, s_clouds, s_third, s_left, s_music, s_sfx, (unsigned)s_music_vol,
+            (unsigned)s_sfx_vol, s_gyro);
     for (int a = 0; a < CM_ACTION_COUNT; a++) {
         fprintf(f, KEY_PREFIX "%s=0x%04x\n", input_action_id((cm_action_t)a), (unsigned)input_key((cm_action_t)a));
     }
@@ -140,10 +149,14 @@ void settings_load(char const* dir) {
     // written until something is changed.
     audio_mixer_set_music_enabled(s_music);
     audio_mixer_set_group_enabled(SETTINGS_SFX_GROUP, s_sfx);
-    ESP_LOGI(TAG, "%s: language %s, view %d, textures %s, %s resolution, music %s, effects %s, gyroscope %s",
+    audio_mixer_set_music_volume(s_music_vol);
+    audio_mixer_set_group_volume(SETTINGS_SFX_GROUP, s_sfx_vol);
+    ESP_LOGI(TAG,
+             "%s: language %s, view %d, textures %s, %s resolution, music %s (%u%%), effects %s (%u%%), "
+             "gyroscope %s",
              from ? from : "no settings file, defaults", i18n_language_code(i18n_language()), s_view,
-             s_textured ? "on" : "off", s_half ? "half" : "full", s_music ? "on" : "off", s_sfx ? "on" : "off",
-             s_gyro ? "on" : "off");
+             s_textured ? "on" : "off", s_half ? "half" : "full", s_music ? "on" : "off", (unsigned)s_music_vol,
+             s_sfx ? "on" : "off", (unsigned)s_sfx_vol, s_gyro ? "on" : "off");
 }
 
 // --- The values -------------------------------------------------------------
@@ -191,6 +204,30 @@ void settings_set_music(bool on) {
 
 bool settings_sfx(void) {
     return s_sfx;
+}
+
+uint8_t settings_music_volume(void) {
+    return s_music_vol;
+}
+
+void settings_set_music_volume(uint8_t pct) {
+    if (pct > 100) pct = 100;
+    if (pct == s_music_vol) return;
+    s_music_vol = pct;
+    settings_save();
+    audio_mixer_set_music_volume(pct);
+}
+
+uint8_t settings_sfx_volume(void) {
+    return s_sfx_vol;
+}
+
+void settings_set_sfx_volume(uint8_t pct) {
+    if (pct > 100) pct = 100;
+    if (pct == s_sfx_vol) return;
+    s_sfx_vol = pct;
+    settings_save();
+    audio_mixer_set_group_volume(SETTINGS_SFX_GROUP, pct);
 }
 
 void settings_set_sfx(bool on) {

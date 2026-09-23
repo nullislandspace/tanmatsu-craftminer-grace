@@ -82,10 +82,12 @@ hand.left = Αριστερό
 hand.right = Δεξί
 
 audio.title = Ήχος
-audio.sub = δεν υπάρχουν ήχοι ακόμη: αυτά τα περιμένουν
+audio.sub = η ένταση της συσκευής, μετά πόσο δυνατά μιξάρεται κάθε μέρος
 audio.volume = Ένταση
 audio.music = Μουσική
 audio.sfx = Ηχητικά εφέ
+audio.music_volume = Ένταση μουσικής
+audio.sfx_volume = Ένταση ήχων
 
 display.title = Οθόνη
 display.sub = κοινά με τον εκκινητή και κάθε άλλη εφαρμογή

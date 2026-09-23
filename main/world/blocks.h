@@ -55,6 +55,25 @@ typedef enum {
 #define HARDNESS_UNBREAKABLE 0xFFFFu
 #define ITEM_NONE            0u
 
+// What a block SOUNDS like: walked on, broken, put down. One class per
+// material, not one per block, because a footstep on cobble and one on
+// coal ore are the same noise. audio/sfx.c turns a class into the three
+// sounds; a block that makes none (air, the barrier) is SND_NONE.
+//
+// The order matters: sfx.h's SFX_STEP_* / SFX_BREAK_* rows run in this
+// same order, so the lookup is an addition rather than a switch.
+typedef enum {
+    SND_NONE = 0,
+    SND_SOFT,    // grass, leaves, flowers
+    SND_GRAVEL,  // dirt, gravel
+    SND_STONE,   // stone, cobble, ore, bedrock
+    SND_WOOD,    // log, planks, a sign
+    SND_SAND,
+    SND_GLASS,
+    SND_SPLASH,  // water
+    SND_COUNT
+} block_sound_t;
+
 typedef struct {
     char const* name;        // stable id; the string a future save format would key on
     uint8_t     kind;        // block_kind_t
@@ -67,6 +86,7 @@ typedef struct {
     uint8_t     flags;
     uint8_t     light;       // light emitted, 0..15 (world/light.h)
     uint8_t     growth_max;  // BF_CROP: the highest growth stage
+    uint8_t     sound;       // block_sound_t: what it sounds like (audio/sfx.h)
 } block_def_t;
 
 // The block ids -- AND THEY ARE PERMANENT (D-74).
@@ -129,6 +149,9 @@ static inline block_def_t const* block_def(uint8_t id) {
 
 static inline uint8_t block_kind(uint8_t id) {
     return block_def(id)->kind;
+}
+static inline uint8_t block_sound(uint8_t id) {
+    return block_def(id)->sound;
 }
 static inline bool block_solid(uint8_t id) {
     return (block_def(id)->flags & BF_SOLID) != 0;

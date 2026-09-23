@@ -76,10 +76,12 @@ hand.left = Links
 hand.right = Rechts
 
 audio.title = Geluid
-audio.sub = nog geen geluiden: deze knoppen wachten erop
+audio.sub = het volume van het apparaat, dan hoe luid elk deel meegemengd wordt
 audio.volume = Volume
 audio.music = Muziek
 audio.sfx = Geluidseffecten
+audio.music_volume = Muziekvolume
+audio.sfx_volume = Geluidsvolume
 
 display.title = Scherm
 display.sub = gedeeld met de launcher en elke andere app

@@ -30,14 +30,14 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                    .mat      = M3(VM_GRASS_TOP, VM_GRASS_SIDE, VM_DIRT),
                    .hardness = 20,
                    .tool     = TOOL_SHOVEL,
-                   .flags    = BF_SOLID | BF_OPAQUE},
+                   .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_SOFT},
 
     [BLK_DIRT] = {.name     = "dirt", .drop_item = BLK_DIRT, .drop_min = 1, .drop_max = 1,
                   .kind     = K_CUBE,
                   .mat      = M1(VM_DIRT),
                   .hardness = 20,
                   .tool     = TOOL_SHOVEL,
-                  .flags    = BF_SOLID | BF_OPAQUE},
+                  .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_GRAVEL},
 
     [BLK_STONE] = {.name       = "stone", .drop_item = BLK_COBBLE, .drop_min = 1, .drop_max = 1,
                    .kind       = K_CUBE,
@@ -45,7 +45,7 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                    .hardness   = 150,
                    .tool       = TOOL_PICK,
                    .tool_level = 1,
-                   .flags      = BF_SOLID | BF_OPAQUE},
+                   .flags      = BF_SOLID | BF_OPAQUE, .sound = SND_STONE},
 
     [BLK_COBBLE] = {.name       = "cobblestone", .drop_item = BLK_COBBLE, .drop_min = 1, .drop_max = 1,
                     .kind       = K_CUBE,
@@ -53,14 +53,14 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                     .hardness   = 160,
                     .tool       = TOOL_PICK,
                     .tool_level = 1,
-                    .flags      = BF_SOLID | BF_OPAQUE},
+                    .flags      = BF_SOLID | BF_OPAQUE, .sound = SND_STONE},
 
     [BLK_SAND] = {.name     = "sand", .drop_item = BLK_SAND, .drop_min = 1, .drop_max = 1,
                   .kind     = K_CUBE,
                   .mat      = M1(VM_SAND),
                   .hardness = 15,
                   .tool     = TOOL_SHOVEL,
-                  .flags    = BF_SOLID | BF_OPAQUE | BF_GRAVITY},
+                  .flags    = BF_SOLID | BF_OPAQUE | BF_GRAVITY, .sound = SND_SAND},
 
     // Opaque, as in Minecraft's "fast" graphics: the engine has no
     // blending, so a see-through liquid is not on the table.
@@ -68,28 +68,28 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                    .kind     = K_CUBE,
                    .mat      = M1(VM_WATER),
                    .hardness = HARDNESS_UNBREAKABLE,
-                   .flags    = BF_OPAQUE | BF_REPLACEABLE | BF_LIQUID},
+                   .flags    = BF_OPAQUE | BF_REPLACEABLE | BF_LIQUID, .sound = SND_SPLASH},
 
     [BLK_LOG] = {.name     = "log", .drop_item = BLK_LOG, .drop_min = 1, .drop_max = 1,
                  .kind     = K_CUBE,
                  .mat      = M3(VM_LOG_TOP, VM_LOG_SIDE, VM_LOG_TOP),
                  .hardness = 40,
                  .tool     = TOOL_AXE,
-                 .flags    = BF_SOLID | BF_OPAQUE | BF_FELLABLE},
+                 .flags    = BF_SOLID | BF_OPAQUE | BF_FELLABLE, .sound = SND_WOOD},
 
     [BLK_PLANKS] = {.name     = "planks", .drop_item = BLK_PLANKS, .drop_min = 1, .drop_max = 1,
                     .kind     = K_CUBE,
                     .mat      = M1(VM_PLANKS),
                     .hardness = 40,
                     .tool     = TOOL_AXE,
-                    .flags    = BF_SOLID | BF_OPAQUE},
+                    .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_WOOD},
 
     [BLK_LEAVES] = {.name     = "leaves",
                     .kind     = K_SEE,
                     .mat      = M1(VM_LEAVES),
                     .hardness = 8,
                     .tool     = TOOL_SHEARS,
-                    .flags    = BF_SOLID | BF_FELLABLE | BF_SEE_SELF},
+                    .flags    = BF_SOLID | BF_FELLABLE | BF_SEE_SELF, .sound = SND_SOFT},
 
     [BLK_COAL_ORE] = {.name       = "coal_ore", .drop_item = ITEM_COAL, .drop_min = 1, .drop_max = 1,
                       .kind       = K_CUBE,
@@ -97,20 +97,20 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                       .hardness   = 200,
                       .tool       = TOOL_PICK,
                       .tool_level = 1,
-                      .flags      = BF_SOLID | BF_OPAQUE},
+                      .flags      = BF_SOLID | BF_OPAQUE, .sound = SND_STONE},
 
-    [BLK_GLASS] = {.name = "glass", .kind = K_SEE, .mat = M1(VM_GLASS), .hardness = 12, .flags = BF_SOLID},
+    [BLK_GLASS] = {.name = "glass", .kind = K_SEE, .mat = M1(VM_GLASS), .hardness = 12, .flags = BF_SOLID, .sound = SND_GLASS},
 
-    [BLK_TORCH] = {.name = "torch", .drop_item = BLK_TORCH, .drop_min = 1, .drop_max = 1, .kind = K_TORCH, .mat = M1(VM_TORCH), .hardness = 1, .light = 14},
+    [BLK_TORCH] = {.name = "torch", .drop_item = BLK_TORCH, .drop_min = 1, .drop_max = 1, .kind = K_TORCH, .mat = M1(VM_TORCH), .hardness = 1, .light = 14, .sound = SND_WOOD},
 
     [BLK_FLOWER_RED] =
-        {.name = "flower_red", .drop_item = BLK_FLOWER_RED, .drop_min = 1, .drop_max = 1, .kind = K_PLANT, .mat = M1(VM_FLOWER_RED), .hardness = 1, .flags = BF_REPLACEABLE},
+        {.name = "flower_red", .drop_item = BLK_FLOWER_RED, .drop_min = 1, .drop_max = 1, .kind = K_PLANT, .mat = M1(VM_FLOWER_RED), .hardness = 1, .flags = BF_REPLACEABLE, .sound = SND_SOFT},
 
     [BLK_FLOWER_YELLOW] =
-        {.name = "flower_yellow", .drop_item = BLK_FLOWER_YELLOW, .drop_min = 1, .drop_max = 1, .kind = K_PLANT, .mat = M1(VM_FLOWER_YELLOW), .hardness = 1, .flags = BF_REPLACEABLE},
+        {.name = "flower_yellow", .drop_item = BLK_FLOWER_YELLOW, .drop_min = 1, .drop_max = 1, .kind = K_PLANT, .mat = M1(VM_FLOWER_YELLOW), .hardness = 1, .flags = BF_REPLACEABLE, .sound = SND_SOFT},
 
     [BLK_TALL_GRASS] =
-        {.name = "tall_grass", .kind = K_PLANT, .mat = M1(VM_TALL_GRASS), .hardness = 1, .flags = BF_REPLACEABLE},
+        {.name = "tall_grass", .kind = K_PLANT, .mat = M1(VM_TALL_GRASS), .hardness = 1, .flags = BF_REPLACEABLE, .sound = SND_SOFT},
 
     // Never generated, never placed, never meshed: what world_block()
     // answers for a chunk that is not resident (D-14).
@@ -126,16 +126,16 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                      .kind     = K_CUBE,
                      .mat      = M1(VM_BEDROCK),
                      .hardness = HARDNESS_UNBREAKABLE,
-                     .flags    = BF_SOLID | BF_OPAQUE},
+                     .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_STONE},
 
     [BLK_GRAVEL] = {.name     = "gravel", .drop_item = BLK_GRAVEL, .drop_min = 1, .drop_max = 1,
                     .kind     = K_CUBE,
                     .mat      = M1(VM_GRAVEL),
                     .hardness = 18,
                     .tool     = TOOL_SHOVEL,
-                    .flags    = BF_SOLID | BF_OPAQUE | BF_GRAVITY},
+                    .flags    = BF_SOLID | BF_OPAQUE | BF_GRAVITY, .sound = SND_GRAVEL},
 
     // Not solid, as in Minecraft: you walk through a sign. It drops
     // nothing, since there is no sign item yet (D-79).
-    [BLK_SIGN] = {.name = "sign", .kind = K_SIGN, .mat = M1(VM_PLANKS), .hardness = 40, .tool = TOOL_AXE},
+    [BLK_SIGN] = {.name = "sign", .kind = K_SIGN, .mat = M1(VM_PLANKS), .hardness = 40, .tool = TOOL_AXE, .sound = SND_WOOD},
 };

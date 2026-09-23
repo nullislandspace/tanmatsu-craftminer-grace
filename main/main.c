@@ -19,6 +19,9 @@
 #include <math.h>
 #include <string.h>
 #include <time.h>
+#include "audio/audio.h"
+#include "audio/music.h"
+#include "audio/sfx.h"
 #include "bsp/device.h"
 #include "common/texcache.h"
 #include "esp_heap_caps.h"
@@ -688,6 +691,10 @@ static void on_init(void* user) {
     i18n_load_overrides(CM_DATA_DIR);
     ESP_LOGI(TAG, "language: %s (%s)", i18n_language_code(i18n_language()),
              i18n_language_name(i18n_language()));
+    // The speaker, now that settings.txt has said whether the player
+    // wants music and effects. Failing to start is not fatal: the game
+    // runs silent (audio.h).
+    cm_audio_init();
     // The launcher's key-cap PNGs, for the Controls menu (synthracer's
     // icons.c). Missing ones fall back to a text label.
     icons_load();
@@ -756,6 +763,10 @@ static void drain_and_clear(void) {
 
 static bool enter_title(void) {
     s_in_replay = false;
+    // Stop mid-stride: a footstep left ringing across the world change,
+    // and a step accumulator carried into the next world, would both be
+    // heard (audio.h).
+    cm_audio_leave_world();
     drain_and_clear();
     worldstore_close();
     if (!title_begin()) return false;
@@ -1175,6 +1186,11 @@ static void on_update(float dt, void* user) {
     (void)user;
     showtime_frame();
     devtest_update();
+    // The music's long silences are counted in real seconds, not ticks:
+    // it is not part of the world and a paused game should not freeze
+    // mid-piece. Reads the card when a new piece is due, which is why it
+    // is here on the game thread and not in the mixer (music.h).
+    cm_audio_frame(dt);
 
     // Generating what the next screen needs, a slice a frame.
     if (s_app == APP_LOADING) {
@@ -1218,7 +1234,7 @@ static void on_update(float dt, void* user) {
                 break;
             case MENU_CMD_LEAVE:
                 ESP_LOGI(TAG, "leaving for the launcher");
-                audio_mixer_shutdown();  // a speaker left running across the restart squeals
+                cm_audio_shutdown();  // a speaker left running across the restart squeals
                 bsp_device_restart_to_launcher();
                 break;
             case MENU_CMD_GRAPHICS:
@@ -1326,6 +1342,7 @@ static void on_update(float dt, void* user) {
                 }
             }
             player_tick(&s_player, mask, input_pressed());
+            cm_audio_player_tick(&s_player);  // footsteps and landings, AFTER the tick
             s_meta.time_of_day++;  // the world's clock is its own ticks (D-51)
         }
         s_ticks_last_frame = n;

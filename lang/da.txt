@@ -82,10 +82,12 @@ hand.left = Venstre
 hand.right = Højre
 
 audio.title = Lyd
-audio.sub = ingen lyde endnu: de her venter på dem
+audio.sub = enhedens lydstyrke, så hvor højt hver del blandes ind
 audio.volume = Lydstyrke
 audio.music = Musik
 audio.sfx = Lydeffekter
+audio.music_volume = Musikvolumen
+audio.sfx_volume = Lydvolumen
 
 display.title = Skærm
 display.sub = deles med launcheren og alle andre apps

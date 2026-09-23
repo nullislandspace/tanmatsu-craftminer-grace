@@ -82,10 +82,12 @@ hand.left = Bal
 hand.right = Jobb
 
 audio.title = Hang
-audio.sub = még nincsenek hangok: ezek rájuk várnak
+audio.sub = az eszköz hangereje, aztán melyik rész milyen hangosan szól
 audio.volume = Hangerő
 audio.music = Zene
 audio.sfx = Hangeffektek
+audio.music_volume = Zene hangereje
+audio.sfx_volume = Hangok hangereje
 
 display.title = Kijelző
 display.sub = közös az indítóval és minden más alkalmazással

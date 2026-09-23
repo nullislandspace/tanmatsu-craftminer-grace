@@ -82,10 +82,12 @@ hand.left = Esquerda
 hand.right = Direita
 
 audio.title = Áudio
-audio.sub = ainda não há sons: estas definições esperam por eles
+audio.sub = o volume do aparelho, depois como cada parte é misturada
 audio.volume = Volume
 audio.music = Música
 audio.sfx = Efeitos sonoros
+audio.music_volume = Volume da música
+audio.sfx_volume = Volume dos efeitos
 
 display.title = Ecrã
 display.sub = partilhado com o lançador e todas as outras aplicações

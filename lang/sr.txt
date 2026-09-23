@@ -82,10 +82,12 @@ hand.left = Лева
 hand.right = Десна
 
 audio.title = Звук
-audio.sub = звукова још нема: ова подешавања их чекају
+audio.sub = јачина звука уређаја, затим колико гласно се меша сваки део
 audio.volume = Јачина
 audio.music = Музика
 audio.sfx = Звучни ефекти
+audio.music_volume = Јачина музике
+audio.sfx_volume = Јачина звукова
 
 display.title = Екран
 display.sub = дели се са покретачем и свим другим апликацијама

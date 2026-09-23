@@ -101,10 +101,12 @@ hand.left = Left
 hand.right = Right
 
 audio.title = Audio
-audio.sub = no sounds yet: these are kept for when there are
+audio.sub = the badge's own volume, then how loudly each part is mixed
 audio.volume = Volume
 audio.music = Music
 audio.sfx = Sound effects
+audio.music_volume = Music volume
+audio.sfx_volume = Effects volume
 
 display.title = Display
 display.sub = shared with the launcher and every other app

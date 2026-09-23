@@ -82,10 +82,12 @@ hand.left = Vänster
 hand.right = Höger
 
 audio.title = Ljud
-audio.sub = inga ljud än: de här väntar på dem
+audio.sub = enhetens volym, sedan hur högt varje del mixas in
 audio.volume = Volym
 audio.music = Musik
 audio.sfx = Ljudeffekter
+audio.music_volume = Musikvolym
+audio.sfx_volume = Ljudvolym
 
 display.title = Skärm
 display.sub = delas med launchern och alla andra appar

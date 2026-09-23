@@ -82,10 +82,12 @@ hand.left = Ľavá
 hand.right = Pravá
 
 audio.title = Zvuk
-audio.sub = zvuky zatiaľ nie sú: toto na ne čaká
+audio.sub = hlasitosť zariadenia, potom ako hlasno sa mieša každá časť
 audio.volume = Hlasitosť
 audio.music = Hudba
 audio.sfx = Zvukové efekty
+audio.music_volume = Hlasitosť hudby
+audio.sfx_volume = Hlasitosť zvukov
 
 display.title = Obrazovka
 display.sub = zdieľané so spúšťačom a všetkými ostatnými aplikáciami

@@ -65,7 +65,7 @@ controls.reset = Atjaunot noklusējumus
 controls.hint = augšup / lejup izvēlas, Enter maina taustiņu, Esc atpakaļ
 
 graphics.title = Grafika
-graphics.view = Redzamības attālums
+graphics.view = Redzamība
 graphics.textures = Tekstūras
 graphics.resolution = Izšķirtspēja
 graphics.clouds = Mākoņi
@@ -82,10 +82,12 @@ hand.left = Kreisā
 hand.right = Labā
 
 audio.title = Skaņa
-audio.sub = skaņu vēl nav: šie iestatījumi tās gaida
+audio.sub = ierīces skaļums, tad cik skaļi tiek miksēta katra daļa
 audio.volume = Skaļums
 audio.music = Mūzika
 audio.sfx = Skaņas efekti
+audio.music_volume = Mūzikas skaļums
+audio.sfx_volume = Skaņu skaļums
 
 display.title = Ekrāns
 display.sub = kopīgs ar palaidēju un visām citām lietotnēm

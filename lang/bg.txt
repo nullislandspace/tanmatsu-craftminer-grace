@@ -60,9 +60,9 @@ controls.reset = Върни по подразбиране
 controls.hint = горе / долу избира, Enter сменя клавиша, Esc се връща
 
 graphics.title = Графика
-graphics.view = Далечина на видимост
+graphics.view = Видимост
 graphics.textures = Текстури
-graphics.resolution = Разделителна способност
+graphics.resolution = Резолюция
 graphics.clouds = Облаци
 graphics.camera = Камера
 graphics.hand = Ръката на Фред
@@ -77,10 +77,12 @@ hand.left = Лява
 hand.right = Дясна
 
 audio.title = Звук
-audio.sub = още няма звуци: тези настройки ги чакат
+audio.sub = силата на звука на баджа, после колко силно се смесва всяка част
 audio.volume = Сила на звука
 audio.music = Музика
 audio.sfx = Звукови ефекти
+audio.music_volume = Сила на музиката
+audio.sfx_volume = Сила на звуците
 
 display.title = Дисплей
 display.sub = споделено с стартера и всички други приложения

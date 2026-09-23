@@ -242,6 +242,103 @@ declared departure from Minecraft: a log the world grew takes the whole tree
 with it, a log *you placed* drops just itself. The difference is one bit in the
 block's state byte. See `main/game/interact.h`.
 
+## Sound
+
+**Settings → Audio** has three sliders and two switches, and the sliders are
+not the same kind of thing:
+
+| | |
+|---|---|
+| **Volume** | the *badge's* volume, the launcher's setting, shared with every app. Turning it down quietens everything. |
+| **Music** / **Music volume** | on-off, and how loudly the music is mixed into this game |
+| **Effects** / **Effects volume** | the same for footsteps, breaking and the rest |
+
+So you can leave the badge where it is and just push the music back behind the
+footsteps. The two game sliders live in `settings.txt`; the device volume does
+not, because a game keeping its own copy of a device setting is a game that
+disagrees with the device.
+
+The speaker is held powered for as long as the game runs
+(`audio_mixer_keep_awake`, engine 2.2). That is not gratuitous: the mixer
+otherwise mutes the amplifier after ~46 ms of quiet, and an amplifier's
+turn-on is slow enough to swallow a 35 ms tool click whole — which showed up
+as "the tool sounds only play when the music is on", because an installed
+music source keeps the mixer busy whether it is making a sound or not.
+
+### Effects
+
+Every sound is a row in a table (`main/audio/sfx.c`): a tone layer and a noise
+layer through one filter and one envelope, with a little pitch jitter on every
+play so no two footsteps are identical. Nothing is sampled, so the whole set
+costs about two kilobytes of constants.
+
+**Which sound a block makes is the block's own business.** `block_def_t.sound`
+names a material class — `SND_STONE`, `SND_WOOD`, `SND_GRAVEL`, `SND_SAND`,
+`SND_GLASS`, `SND_SOFT`, `SND_SPLASH` — and the footstep, the break and the
+place all follow from it. Adding a block therefore adds its sounds in the same
+row, with no edit in the audio code. Footsteps are counted by **distance
+walked**, not by ticks, so a slow walk does not machine-gun and being pushed
+along sounds different from walking.
+
+### Music
+
+Eleven pieces of out-of-copyright classical music, played the way the Minecraft
+betas did it: a piece starts, it ends, and then there is nothing for several
+minutes. The next one is chosen at random — never in playlist order, and never
+the same piece twice running — and the gap is random too.
+
+They are **Standard MIDI Files**, played by a sequencer (`main/audio/midi_seq.c`)
+through a small synthesiser (`main/audio/midi_synth.c`). All eleven together are
+72 KB. The same music as MP3 would be megabytes, and would need a decoder task
+with a 32 KB stack; this needs neither.
+
+It is not a General MIDI sound module and does not pretend to be. The 128 GM
+programs collapse onto six voice shapes — a struck string, a plucked one, a
+sustained pad, a bass, a reed and a bell — chosen so the piano repertoire comes
+out recognisable. A file that leans on one specific patch will sound like
+something else.
+
+### Your own music
+
+Drop any `.mid` file into `/sd/craftminer/music/` and it joins the pool. A file
+there with the same name as one of ours replaces it, so you can swap an
+arrangement you do not like without deleting anything. Nothing needs rebuilding,
+and no toolchain is involved — the same arrangement the translations use.
+
+### Where the music came from, and the catch
+
+A piece of music has **two** copyrights and both have to be clear:
+
+1. **the composition** — Satie, Debussy, Chopin, Schumann and Bach are all long
+   out of copyright everywhere;
+2. **the engraving** — the particular typeset edition a MIDI file was generated
+   from is a new work with its own copyright, *even when the music in it is
+   ancient*. This is the one that catches people out. A MIDI file found loose on
+   the web is almost never licensed for redistribution, whoever wrote the tune.
+
+So every file comes from the [Mutopia Project](https://www.mutopiaproject.org/),
+and **only from its Public Domain set**, never its Creative Commons one — CC
+BY-SA would have put share-alike conditions on anyone redistributing the game.
+`assets/music/MUSIC.md` records where each file came from, and
+`tools/get_music.py` refuses to download anything that is not Public Domain, so
+extending the set cannot go wrong by accident:
+
+```
+python3 tools/get_music.py            # check the shipped files against Mutopia
+python3 tools/get_music.py --survey   # what else is available, with licences
+```
+
+`make check` parses every file in `assets/music` with the real sequencer: that
+it loads, that it has notes in it, that it **ends**, that rewinding replays it
+identically, and that every truncation of it still terminates.
+
+`make check` also measures every settings-row label, in every language,
+against the value column it sits beside — with the engine's own glyph advances
+at the menu's row height, so a label that passes fits on the badge. That check
+exists because three screens turned out to be overlapping their own text in a
+dozen languages: "every character is drawable" and "every label fits" look
+like the same question and are not.
+
 ## Flying it by hand
 
 **F** in a world swaps the player for a free camera and back. During a `perf` or
@@ -300,6 +397,7 @@ textures/       20 generated 16x16 block textures
 
 ```sh
 make check          # hostpurity + meshcheck + worldcheck; `make build` needs it
+make symcheck       # every symbol we call, the loader can resolve (after the link)
 ```
 
 Most of this game is portable C, on purpose: the world, generation, the mesher,
@@ -308,10 +406,20 @@ plain `cc` and are tested that way. The one seam is allocation
 (`main/common/psram.h`), and `make hostpurity` fails the build if an engine or
 RTOS header creeps into the pure set.
 
-Worth knowing: **`make verify` cannot catch a missing symbol in code nothing
-calls** — `--gc-sections` removes it from `app.so` first, so the check passes and
-the app then fails to *load* on the badge. Anything working around a missing
-graceloader export has to be exercised on the device, not merely compiled.
+**Unresolvable symbols.** An ELF app for graceloader links against nothing:
+every libc and IDF function is resolved at *load* time from the loader's export
+table. A call to something that table does not carry compiles clean, links
+clean, uploads clean — and then the app does not start, with no message and no
+console. `make build` now runs `tools/symcheck.sh` after the link, which
+compares `app.so`'s undefined symbols against
+`../tanmatsu-graceloader/main/symbol_export/all` and names anything missing.
+(It skips, loudly, if that checkout is not there.) `strcasecmp` is one such
+symbol; `opendir` is another.
+
+The remaining gap: **a missing symbol in code nothing calls** still slips
+through, because `--gc-sections` removes it from `app.so` before either check
+can see it. Anything working around a missing export has to be *exercised* on
+the device, not merely compiled.
 
 ### Talking to the badge
 
@@ -413,3 +521,9 @@ and the references mean nothing.
 This software is under the [MIT license](https://opensource.org/license/mit). The MIT license allows others to build upon your work without restrictions while also making sure you retain your attribution.
 
 (C) 2026 Rene Schickbauer
+
+The music in `assets/music` is **not** covered by that licence and does not need
+to be: every file is in the **public domain**, both as a composition and as the
+particular engraving it was made from. `assets/music/MUSIC.md` names the source
+of each one. Nothing in that directory places any obligation on the rest of the
+game, which is exactly why the Creative Commons files were left on the shelf.

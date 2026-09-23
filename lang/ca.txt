@@ -82,10 +82,12 @@ hand.left = Esquerra
 hand.right = Dreta
 
 audio.title = Àudio
-audio.sub = encara no hi ha sons: aquests ajustos els esperen
+audio.sub = el volum del dispositiu, després com es mescla cada part
 audio.volume = Volum
 audio.music = Música
 audio.sfx = Efectes de so
+audio.music_volume = Volum de la música
+audio.sfx_volume = Volum dels efectes
 
 display.title = Pantalla
 display.sub = compartit amb el llançador i totes les altres aplicacions

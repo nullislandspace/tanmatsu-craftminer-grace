@@ -77,10 +77,12 @@ hand.left = Links
 hand.right = Rechts
 
 audio.title = Ton
-audio.sub = noch keine Geräusche: die Schalter warten darauf
+audio.sub = die Lautstärke des Geräts, dann wie laut jeder Teil gemischt wird
 audio.volume = Lautstärke
 audio.music = Musik
 audio.sfx = Geräusche
+audio.music_volume = Musiklautstärke
+audio.sfx_volume = Geräuschlautstärke
 
 display.title = Anzeige
 display.sub = gilt auch für den Launcher und jede andere App

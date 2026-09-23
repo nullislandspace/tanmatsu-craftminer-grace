@@ -77,10 +77,12 @@ hand.left = Gauche
 hand.right = Droite
 
 audio.title = Audio
-audio.sub = pas encore de sons : ces réglages les attendent
+audio.sub = le volume de l'appareil, puis le dosage de chaque partie
 audio.volume = Volume
 audio.music = Musique
 audio.sfx = Effets sonores
+audio.music_volume = Volume de la musique
+audio.sfx_volume = Volume des effets
 
 display.title = Affichage
 display.sub = partagé avec le lanceur et toutes les autres applications

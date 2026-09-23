@@ -38,6 +38,7 @@ PURE=(
     main/game/replay.c      main/game/replay.h
     main/items/items.c      main/items/items.h
     main/items/inventory.c  main/items/inventory.h
+    main/audio/midi_seq.c   main/audio/midi_seq.h
     main/items/item_entity.c main/items/item_entity.h
     main/i18n/i18n.c        main/i18n/i18n.h
 )

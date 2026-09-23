@@ -82,10 +82,12 @@ hand.left = Sinistra
 hand.right = Destra
 
 audio.title = Audio
-audio.sub = ancora nessun suono: queste impostazioni li aspettano
+audio.sub = il volume del dispositivo, poi quanto forte si miscela ogni parte
 audio.volume = Volume
 audio.music = Musica
 audio.sfx = Effetti sonori
+audio.music_volume = Volume della musica
+audio.sfx_volume = Volume degli effetti
 
 display.title = Schermo
 display.sub = condiviso con il launcher e ogni altra app

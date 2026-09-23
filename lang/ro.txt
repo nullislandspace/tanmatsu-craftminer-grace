@@ -65,7 +65,7 @@ controls.reset = Revino la valorile implicite
 controls.hint = sus / jos alege, Enter schimbă tasta, Esc revine
 
 graphics.title = Grafică
-graphics.view = Distanța de vizibilitate
+graphics.view = Distanța vizibilă
 graphics.textures = Texturi
 graphics.resolution = Rezoluție
 graphics.clouds = Nori
@@ -82,10 +82,12 @@ hand.left = Stânga
 hand.right = Dreapta
 
 audio.title = Sunet
-audio.sub = încă nu există sunete: aceste setări le așteaptă
+audio.sub = volumul dispozitivului, apoi cât de tare se mixează fiecare parte
 audio.volume = Volum
 audio.music = Muzică
 audio.sfx = Efecte sonore
+audio.music_volume = Volumul muzicii
+audio.sfx_volume = Volumul efectelor
 
 display.title = Ecran
 display.sub = comun cu lansatorul și cu toate celelalte aplicații

@@ -82,10 +82,12 @@ hand.left = Kairė
 hand.right = Dešinė
 
 audio.title = Garsas
-audio.sub = garsų dar nėra: šie nustatymai jų laukia
+audio.sub = įrenginio garsumas, tada kaip garsiai maišoma kiekviena dalis
 audio.volume = Garsumas
 audio.music = Muzika
 audio.sfx = Garso efektai
+audio.music_volume = Muzikos garsumas
+audio.sfx_volume = Garsų garsumas
 
 display.title = Ekranas
 display.sub = bendras su paleidykle ir visomis kitomis programomis

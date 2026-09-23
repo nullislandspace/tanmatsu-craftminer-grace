@@ -30,6 +30,12 @@ BUILD ?= build
 # clone builds without numpy; `make textures` regenerates them byte-identically.
 TEXTURES := $(patsubst textures/%,%,$(wildcard textures/*.png))
 
+# The music: Standard MIDI files of out-of-copyright pieces, all of them
+# in the public domain and all of them small (assets/music/MUSIC.md says
+# where each came from). They install beside the textures, and a player
+# may add their own to /sd/craftminer/music without touching these.
+MUSIC := $(patsubst assets/music/%,%,$(wildcard assets/music/*.mid))
+
 MAKEFLAGS += --silent
 
 ####
@@ -42,7 +48,15 @@ build: check
 	@echo "=== Building app.so ==="
 	mkdir -p $(BUILD)
 	cd $(BUILD) && cmake .. && make
+	$(MAKE) symcheck
 	@echo "=== Build complete: $(BUILD)/app.so ==="
+
+# Every symbol the app calls must be one graceloader exports, or the app
+# links fine and then silently refuses to start (tools/symcheck.sh).
+# After the link, not in `check`, because it needs app.so.
+.PHONY: symcheck
+symcheck:
+	./tools/symcheck.sh $(BUILD)/app.so
 
 # ---------------------------------------------------------------------
 # Host checks: no badge, seconds to run, and `build` depends on them so
@@ -67,6 +81,7 @@ PURE_SRCS       := main/math/xform.c main/math/mesh.c main/voxel/voxel_mesh.c \
                    main/game/physics.c main/game/raycast.c main/game/interact.c main/game/daytime.c main/game/replay.c \
                    main/items/items.c main/items/inventory.c main/items/item_entity.c \
                    main/i18n/i18n.c main/i18n/strings_gen.c \
+                   main/audio/midi_seq.c \
                    synthengine3D/src/nbt.c
 MESHCHECK_SRCS  := tools/meshcheck.c $(PURE_SRCS)
 WORLDCHECK_SRCS := tools/worldcheck.c $(PURE_SRCS)
@@ -234,6 +249,12 @@ install: build mode
 	cd badgelink/tools; ./badgelink.sh $(BADGELINK_CONN) fs mkdir $(APP_INSTALL_PATH)/textures >/dev/null 2>&1 || true
 	for t in $(TEXTURES); do \
 	  cd badgelink/tools && ./badgelink.sh $(BADGELINK_CONN) fs upload $(APP_INSTALL_PATH)/textures/$$t ../../textures/$$t || exit 1; \
+	  cd ../..; \
+	done
+	@echo "Uploading $(words $(MUSIC)) pieces of music..."
+	cd badgelink/tools; ./badgelink.sh $(BADGELINK_CONN) fs mkdir $(APP_INSTALL_PATH)/music >/dev/null 2>&1 || true
+	for m in $(MUSIC); do \
+	  cd badgelink/tools && ./badgelink.sh $(BADGELINK_CONN) fs upload $(APP_INSTALL_PATH)/music/$$m ../../assets/music/$$m || exit 1; \
 	  cd ../..; \
 	done
 	@echo "=== Installation complete ==="

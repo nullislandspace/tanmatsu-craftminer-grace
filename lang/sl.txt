@@ -82,10 +82,12 @@ hand.left = Leva
 hand.right = Desna
 
 audio.title = Zvok
-audio.sub = zvokov še ni: te nastavitve jih čakajo
+audio.sub = glasnost naprave, nato kako glasno se meša vsak del
 audio.volume = Glasnost
 audio.music = Glasba
 audio.sfx = Zvočni učinki
+audio.music_volume = Glasnost glasbe
+audio.sfx_volume = Glasnost zvokov
 
 display.title = Zaslon
 display.sub = skupno z zaganjalnikom in vsemi drugimi aplikacijami

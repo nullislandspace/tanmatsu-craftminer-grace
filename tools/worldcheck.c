@@ -15,6 +15,7 @@
 //    raycast      step 3   DDA against a brute-force march
 //    felling      step 3   the tree rule
 //    items        step 4   stacking, recipes
+//    music        step 14  every shipped MIDI file parses, and ends
 // =====================================================================
 
 #include <stdio.h>
@@ -49,6 +50,7 @@
 #include "items/items.h"
 #include "items/item_entity.h"
 #include "i18n/i18n.h"
+#include "audio/midi_seq.h"
 // The engine's own glyph tables, so "can the font draw this?" is
 // answered by the code that will have to draw it (engine-internal on
 // purpose: a check may look where a game may not).
@@ -2796,6 +2798,269 @@ static void check_lang(void) {
            (int)(sizeof nasties / sizeof nasties[0]) + 2);
 }
 
+// ---------------------------------------------------------------------
+//  Music
+//
+//  The eleven MIDI files in assets/music are the soundtrack, and the
+//  sequencer that reads them (main/audio/midi_seq.c) is pure, so both
+//  can be checked here rather than by listening on the badge. What this
+//  proves, for every file we ship:
+//
+//    * it parses, and has notes in it;
+//    * it ENDS -- run at the real sample rate it reaches its last event
+//      in a plausible number of minutes rather than looping forever on
+//      a malformed delta;
+//    * rewinding gives exactly the same performance again, which is
+//      what lets the scheduler replay a piece without re-reading the
+//      card;
+//    * a TRUNCATED copy, at every length, still terminates and never
+//      reads past the buffer -- the failure mode a file half-copied
+//      onto an SD card would otherwise produce on the audio task.
+// ---------------------------------------------------------------------
+
+typedef struct {
+    long notes;
+    long offs;
+    long programs;
+    long note_sum;  // so two runs can be compared without keeping the notes
+} midi_tally_t;
+
+static void tally_on(void* ctx, uint8_t ch, uint8_t note, uint8_t vel) {
+    midi_tally_t* t = ctx;
+    t->notes++;
+    t->note_sum += (long)note * 3 + (long)ch * 7 + (long)vel;
+}
+static void tally_off(void* ctx, uint8_t ch, uint8_t note) {
+    midi_tally_t* t = ctx;
+    t->offs++;
+    t->note_sum += (long)note + (long)ch;
+}
+static void tally_prog(void* ctx, uint8_t ch, uint8_t prog) {
+    midi_tally_t* t = ctx;
+    t->programs++;
+    (void)ch;
+    (void)prog;
+}
+static midi_sink_t const TALLY = {
+    .note_on = tally_on, .note_off = tally_off, .program = tally_prog};
+
+// Run a sequence to its end, at 22050 Hz in the mixer's 256-frame
+// blocks. Returns the playing time in seconds, or -1 if it did not end
+// inside `cap_s` -- which is the check that matters, because a
+// sequencer that never returns false hangs the audio task.
+static double midi_play_out(midi_seq_t* s, midi_tally_t* t, double cap_s) {
+    long const  cap_blocks = (long)(cap_s * 22050.0 / 256.0);
+    for (long i = 0; i < cap_blocks; i++) {
+        if (!midi_seq_advance(s, &TALLY, t, 256)) {
+            return (double)(i + 1) * 256.0 / 22050.0;
+        }
+    }
+    return -1.0;
+}
+
+static uint8_t* slurp(char const* path, size_t* len) {
+    FILE* f = fopen(path, "rb");
+    if (f == NULL) return NULL;
+    fseek(f, 0, SEEK_END);
+    long const n = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    if (n <= 0) {
+        fclose(f);
+        return NULL;
+    }
+    uint8_t* buf = malloc((size_t)n);
+    if (buf == NULL) {
+        fclose(f);
+        return NULL;
+    }
+    size_t const got = fread(buf, 1, (size_t)n, f);
+    fclose(f);
+    if (got != (size_t)n) {
+        free(buf);
+        return NULL;
+    }
+    *len = got;
+    return buf;
+}
+
+static void check_midi(void) {
+    printf("music: the shipped MIDI files\n");
+
+    // The list is read from the directory rather than written out here,
+    // so a piece added to assets/music is checked the day it is added
+    // and one removed does not leave a check failing for a missing file.
+    FILE* ls = popen("ls assets/music/*.mid 2>/dev/null", "r");
+    if (ls == NULL) {
+        CHECK(false, "cannot list assets/music");
+        return;
+    }
+
+    int  files = 0;
+    char path[256];
+    while (fgets(path, sizeof(path), ls) != NULL) {
+        char* nl = strchr(path, '\n');
+        if (nl) *nl = '\0';
+        if (path[0] == '\0') continue;
+        files++;
+
+        size_t   len = 0;
+        uint8_t* buf = slurp(path, &len);
+        if (buf == NULL) {
+            CHECK(false, "%s: cannot read", path);
+            continue;
+        }
+
+        midi_seq_t   seq;
+        midi_tally_t t = {0};
+        if (!midi_seq_load(&seq, buf, len, 22050u)) {
+            CHECK(false, "%s: not a MIDI file the sequencer accepts", path);
+            free(buf);
+            continue;
+        }
+
+        // Twenty minutes is longer than anything in the repertoire and
+        // far short of forever.
+        double const secs = midi_play_out(&seq, &t, 20.0 * 60.0);
+        CHECK(secs > 0.0, "%s: did not end inside twenty minutes", path);
+        CHECK(t.notes > 32, "%s: only %ld notes; is this the right file?", path, t.notes);
+        // Every note that starts should stop. A few strays are normal
+        // (a piece ending on a held chord), but not hundreds.
+        CHECK(t.offs >= t.notes - 16, "%s: %ld note-ons but only %ld note-offs", path, t.notes, t.offs);
+        if (secs > 0.0) {
+            CHECK(secs > 15.0, "%s: %.0f s is too short to be the piece", path, secs);
+            printf("  %-42s %5.0f s  %5ld notes\n", strrchr(path, '/') + 1, secs, t.notes);
+        }
+
+        // Rewinding replays it identically.
+        midi_seq_rewind(&seq);
+        midi_tally_t again = {0};
+        double const secs2 = midi_play_out(&seq, &again, 20.0 * 60.0);
+        CHECK(again.notes == t.notes && again.note_sum == t.note_sum,
+              "%s: a rewound replay differs (%ld vs %ld notes)", path, again.notes, t.notes);
+        CHECK(secs2 == secs, "%s: a rewound replay runs %.2f s, not %.2f s", path, secs2, secs);
+
+        // Every truncation of it must still terminate and stay inside
+        // the buffer. Stepping by a prime keeps this quick while still
+        // cutting in the middle of events, deltas and meta lengths.
+        for (size_t cut = 14; cut < len; cut += 97) {
+            midi_seq_t   ts;
+            midi_tally_t tt = {0};
+            if (!midi_seq_load(&ts, buf, cut, 22050u)) continue;  // refused: also fine
+            double const cs = midi_play_out(&ts, &tt, 20.0 * 60.0);
+            CHECK(cs > 0.0, "%s: truncated to %zu bytes, never ends", path, cut);
+            if (cs <= 0.0) break;
+        }
+
+        free(buf);
+    }
+    pclose(ls);
+
+    CHECK(files > 0, "no MIDI files in assets/music");
+
+    // A file that is not MIDI at all, and one whose header lies.
+    {
+        midi_seq_t s;
+        uint8_t const junk[64] = {'N', 'o', 'p', 'e'};
+        CHECK(!midi_seq_load(&s, junk, sizeof(junk), 22050u), "junk accepted as a MIDI file");
+        CHECK(!midi_seq_load(&s, NULL, 0, 22050u), "a null file accepted");
+
+        // A valid header claiming 2000 tracks, with none of them there.
+        uint8_t hdr[14] = {'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 1, 0x07, 0xD0, 0x01, 0xE0};
+        CHECK(!midi_seq_load(&s, hdr, sizeof(hdr), 22050u), "a header with no tracks accepted");
+
+        // SMPTE division (the high bit set) is refused rather than played
+        // at some invented speed.
+        uint8_t smpte[14] = {'M', 'T', 'h', 'd', 0, 0, 0, 6, 0, 0, 0, 1, 0xE8, 0x04};
+        CHECK(!midi_seq_load(&s, smpte, sizeof(smpte), 22050u), "an SMPTE division accepted");
+    }
+}
+
+// ---------------------------------------------------------------------
+//  Menu labels fit their column
+//
+//  A settings row draws its label at the left and its value -- a slider,
+//  a tick box, a word -- at a fixed offset from it (`value_dx` in
+//  main/ui/menu.c). A label longer than that offset runs under the
+//  value. In English nothing came close; in Ukrainian "Дальність
+//  промальовування" was 492 px against a 260 px column, and three
+//  screens were overlapping in a dozen languages before anyone measured
+//  (F-76).
+//
+//  So measure. The width here is the engine's own -- the same
+//  `hershey_advance` the renderer uses, at the same row height -- so a
+//  label that passes here fits on the badge. When a column is widened
+//  or a screen re-laid-out, the number below moves with it.
+// ---------------------------------------------------------------------
+
+#define ROW_TEXT_H    28.0f          // SE_UI_ROW_TEXT_H
+#define HERSHEY_SCALE (21.0f / 28.0f)  // rendertext.c
+#define HERSHEY_BASE  21.0f          // HERSHEY_DIRECT_BASE_HEIGHT
+
+static float label_width(char const* s) {
+    float const scale = (ROW_TEXT_H * HERSHEY_SCALE) / HERSHEY_BASE;
+    int         w     = 0;
+    for (;;) {
+        uint32_t  cp;
+        int const used = hershey_utf8_next(s, &cp);
+        if (used == 0) break;
+        s += used;
+        if (cp != 0) w += (int)((float)hershey_advance(cp) * scale);
+    }
+    return (float)w;
+}
+
+// One row per screen that puts a value beside its labels: the key
+// prefix, and the value column it has to stay clear of. A screen whose
+// rows carry no value needs no entry -- its labels may run the width of
+// the panel.
+static struct {
+    char const* prefix;
+    float       value_dx;
+} const LABEL_COLUMNS[] = {
+    {"audio.", 390.0f},     // the wide panel (PANEL_W_WIDE)
+    {"graphics.", 340.0f},  // ... and so is this one
+    {"display.", 300.0f},
+    {"settings.", 260.0f},
+};
+
+static void check_label_widths(void) {
+    printf("menu labels: do they fit beside their values\n");
+
+    int worst_n = 0;
+    float worst = 0.0f;
+    char const* worst_text = "";
+
+    for (int li = 0; li < CM_LANG_COUNT; li++) {
+        i18n_set_language((cm_lang_t)li);
+        for (int si = 0; si < (int)(sizeof(LABEL_COLUMNS) / sizeof(LABEL_COLUMNS[0])); si++) {
+            char const* const pre = LABEL_COLUMNS[si].prefix;
+            size_t const      n   = strlen(pre);
+            for (int k = 0; k < CM_STR_COUNT; k++) {
+                char const* const key = CM_STR_KEYS[k];
+                if (strncmp(key, pre, n) != 0) continue;
+                // Titles, subtitles and hints are not rows and are not
+                // beside anything.
+                char const* const tail = key + n;
+                if (strcmp(tail, "title") == 0 || strcmp(tail, "sub") == 0 || strcmp(tail, "hint") == 0) continue;
+
+                char const* const text = i18n_text((cm_str_t)k);
+                float const       w    = label_width(text);
+                CHECK(w < LABEL_COLUMNS[si].value_dx, "%s/%s: \"%s\" is %.0f px, column is %.0f",
+                      i18n_language_code((cm_lang_t)li), key, text, (double)w,
+                      (double)LABEL_COLUMNS[si].value_dx);
+                float const slack = LABEL_COLUMNS[si].value_dx - w;
+                if (worst_n == 0 || slack < worst) {
+                    worst      = slack;
+                    worst_text = text;
+                    worst_n    = 1;
+                }
+            }
+        }
+    }
+    i18n_set_language(CM_LANG_EN);
+    printf("  tightest fit: %.0f px to spare (\"%s\")\n", (double)worst, worst_text);
+}
+
 int main(void) {
     check_blocks();
     check_ids();
@@ -2835,6 +3100,8 @@ int main(void) {
     check_replay();
     check_drops();
     check_lang();
+    check_label_widths();
+    check_midi();
     chunk_store_shutdown();
     if (s_fail) {
         printf("\nworldcheck: %d FAILURE(S)\n", s_fail);

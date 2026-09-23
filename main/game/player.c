@@ -2,6 +2,7 @@
 //  CraftMiner  --  the player (see player.h)
 // =====================================================================
 
+#include "audio/sfx.h"
 #include "game/player.h"
 
 #include <math.h>
@@ -14,6 +15,11 @@
 // vector's horizontal part zero, and then "which way am I walking" has
 // no answer.
 #define PITCH_MAX 1.55f
+
+// Ticks between one blow of the tool and the next while a block is being
+// mined. Kept in step with FRED_STROKES in main.c (1.8 swings a second at
+// 20 Hz), so the sound lands with the arm rather than beside it.
+#define SWING_TICKS 11
 
 void player_spawn(player_t* p, double x, double z, float yaw) {
     int const g = world_ground((int32_t)floor(x), (int32_t)floor(z));
@@ -113,7 +119,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
         p->body.vz = 0.0f;
         phys_move(&p->body, 0.0, (double)p->body.vy, 0.0);
         phys_gravity(&p->body, PL_GRAVITY, PL_DRAG, PL_TERMINAL);
-        item_entity_tick(&p->inv, p->body.x, p->body.y, p->body.z);
+        if (item_entity_tick(&p->inv, p->body.x, p->body.y, p->body.z) > 0) sfx_play(SFX_PICKUP);
         p->aim_valid = false;
         return;
     }
@@ -219,6 +225,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
             p->mine_ticks  = 0;
             p->mine_needed = item_break_ticks(p->aim.block, held);
         }
+        uint8_t const aimed = p->aim.block;
         if (p->mine_needed < 0) {
             p->mining = false;  // unbreakable: bedrock, or the edge of the world
         } else if (++p->mine_ticks >= p->mine_needed) {
@@ -227,9 +234,20 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
                 // One use per BREAK, not per felled block: a tree is
                 // one swing of the axe, not forty.
                 inv_wear_held(&p->inv, 1);
+                // A whole tree coming down is a different sound from one
+                // block breaking, and it should be: the rule that made it
+                // fall is the game's one deliberate departure from
+                // Minecraft (Part F), so it is worth hearing.
+                if (r.was_tree && r.felled > 1) sfx_play(SFX_FELL);
+                else sfx_play_break(aimed);
             }
             p->mining    = false;
             p->aim_valid = false;  // whatever was aimed at is gone
+        } else if ((p->mine_ticks % SWING_TICKS) == 1) {
+            // The tool striking the block, at the rate Fred's arm swings
+            // -- not once a tick, which would be a buzz rather than
+            // a tapping.
+            sfx_play_pitched(SFX_HIT, block_sound(aimed) == SND_STONE ? 3.0f : 0.0f);
         }
     } else {
         p->mining = false;
@@ -238,7 +256,10 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // --- Placing, which is a tap -------------------------------------
     if (p->aim_valid && act_held(pressed, CM_USE)) {
         uint8_t const block = item_block(held);
-        if (block != BLK_AIR && interact_place(&p->aim, block, &p->body)) inv_consume_held(&p->inv);
+        if (block != BLK_AIR && interact_place(&p->aim, block, &p->body)) {
+            inv_consume_held(&p->inv);
+            sfx_play_place(block);
+        }
     }
 
     // --- Dropping what is held ---------------------------------------
@@ -262,7 +283,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     }
 
     // --- What is lying about -----------------------------------------
-    item_entity_tick(&p->inv, p->body.x, p->body.y, p->body.z);
+    if (item_entity_tick(&p->inv, p->body.x, p->body.y, p->body.z) > 0) sfx_play(SFX_PICKUP);
 }
 
 void player_eye(player_t const* p, float alpha, double* x, double* y, double* z, float* yaw, float* pitch) {

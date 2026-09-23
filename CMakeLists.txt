@@ -69,9 +69,18 @@ set(APP_SOURCES
     main/ui/icons.c
     main/ui/settings.c
 
-    # The UI's words, in six languages (lang/*.txt -> strings_gen.c).
+    # The UI's words, in thirty-two languages (lang/*.txt -> strings_gen.c).
     main/i18n/i18n.c
     main/i18n/strings_gen.c
+
+    # Sound: the mixer's lifetime, the effects table, and the music --
+    # a MIDI sequencer and a small synth, because a piece of Satie is
+    # eight kilobytes as a MIDI file and four megabytes as an MP3.
+    main/audio/audio.c
+    main/audio/sfx.c
+    main/audio/music.c
+    main/audio/midi_seq.c
+    main/audio/midi_synth.c
 
     # Textures by name, cached.
     main/common/texcache.c

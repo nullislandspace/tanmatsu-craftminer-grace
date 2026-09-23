@@ -82,10 +82,12 @@ hand.left = Lewa
 hand.right = Prawa
 
 audio.title = Dźwięk
-audio.sub = jeszcze nie ma dźwięków: te ustawienia na nie czekają
+audio.sub = głośność urządzenia, potem jak głośno miesza się każda część
 audio.volume = Głośność
 audio.music = Muzyka
 audio.sfx = Efekty dźwiękowe
+audio.music_volume = Głośność muzyki
+audio.sfx_volume = Głośność dźwięków
 
 display.title = Ekran
 display.sub = wspólne z launcherem i każdą inną aplikacją

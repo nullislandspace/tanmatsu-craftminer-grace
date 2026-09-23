@@ -82,10 +82,12 @@ hand.left = Vasak
 hand.right = Parem
 
 audio.title = Heli
-audio.sub = helisid veel pole: need seaded ootavad neid
+audio.sub = seadme helitugevus, siis kui valjult iga osa segatakse
 audio.volume = Helitugevus
 audio.music = Muusika
 audio.sfx = Heliefektid
+audio.music_volume = Muusika valjus
+audio.sfx_volume = Helide valjus
 
 display.title = Ekraan
 display.sub = jagatud käivitaja ja kõigi teiste rakendustega

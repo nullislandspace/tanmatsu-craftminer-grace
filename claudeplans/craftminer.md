@@ -129,6 +129,12 @@ main/
   fred/
 *   fred.{c,h}            PORTED showreel miner: the player's figure and arm
 *   fred_mesh.{c,h}       his meshes, plus an axe and a shovel
+  audio/
+*   audio.{c,h}           the mixer's lifetime; footsteps, landings
+*   sfx.{c,h}             THE EFFECT TABLE: one row per sound
+*   music.{c,h}           which piece, and how long the silence before it
+*   midi_seq.{c,h}        Standard MIDI File sequencer, PORTED from tadoom  (pure)
+*   midi_synth.{c,h}      a voice pool over se_voice.h; GM families -> six shapes
   i18n/
 *   i18n.{c,h}            T(id), the language, and a printf that reorders    (pure)
 *   strings_gen.{c,h}     GENERATED from lang/*.txt by tools/make_lang.py
@@ -140,8 +146,13 @@ main/
 *   icons.{c,h}           PORTED from synthracer: the launcher's key-cap PNGs
 *   settings.{c,h}        settings.txt on the SD card: language, graphics, audio, gyro, bindings (D-67)
 * testkit/                wired into CMakeLists; PROF_HUD added (F-46)
+assets/
+* music/*.mid             the soundtrack, public domain (assets/music/MUSIC.md)
+* music/manifest.json     where each file came from, and its hash
 tools/
 * worldcheck.c            host test of every pure module
+* get_music.py            fetch/verify the soundtrack; refuses anything not PD
+* symcheck.sh             every symbol we call, the loader can resolve (F-74)
   scenecheck.c            host budget test via synthengine3D/host/se_host_stub.c
 * meshcheck.c             LIFTED + the sectioning check (D-34)
 * hostpurity.sh           the pure set really is pure
@@ -547,6 +558,8 @@ headers — enforced by a grep rule in `make check`.
 | AABB sweeps | 10000 random (start, velocity) pairs: never ends inside a solid; zero velocity is a fixed point; no tunnelling to 40 m/s; a 1.0-block step-up succeeds and 1.5 does not; a 0.6-wide body fits a 1-wide gap and not a 0.5 one. |
 | DDA picking | 10000 random rays against a brute-force march at 1/64 block: same block, same face normal, reach honoured, normal points at the cell a placement would fill. |
 | Crafting | Every recipe resolves at every legal grid offset; no two collide; every output and every `drop_item` exists. |
+| Menu labels | Every settings-row label, in all 32 languages, is narrower than the value column it sits beside -- measured with the engine's own glyph advances at the menu's row height (F-76). |
+| Music | Every file in `assets/music` loads, has notes, and ENDS inside twenty minutes at the real sample rate; a rewind replays it identically; every truncation of it still terminates. Junk, a header with no tracks and an SMPTE division are all refused. |
 | Save round trip | Chunk -> RLE -> chunk byte-identical; a 64-chunk region written and fully read back; a corrupted directory copy A falls back to B and reports the chunk *absent*, never corrupt; compaction preserves every chunk. |
 | Tree felling | Part F. |
 | Registry invariants | `BLK_COUNT < 256`; every block has materials; every item has a name and `stack_max >= 1`; inventory index maths at every boundary. |
@@ -950,7 +963,7 @@ frame time than the fell.
 | 6.4 | **Gyroscope look** | done | 2026-09-22, asked for by the user: a Controls checkbox, off by default. The **rate** gyroscope is added up frame by frame and handed to the look beside the cursor keys, one real degree per view degree, so both work at once (D-65). A resting gyroscope's offset is tracked rather than turned into a slow spin. Yaw sign as the diagram in `graceloader_imu.h` predicts; the **pitch sign had to be flipped**, reported by the user on the badge. |
 | 6.2 | Graphics menu: textures, render scale, view distance; settings.txt | done | 2026-09-22: view distance (default near -- medium for a few hours, D-66 then D-76), textures, half / full resolution, in `settings.txt` on the SD card (D-67; NVS under `craftminer` at first, moved the same day). Replaces the T and V debug keys. Full resolution clears its own sky now, which it never had to while it was only the no-PPA fallback. |
 | 6.3 | Audio and display via `se_hw.h` | done | 2026-09-22: device volume and the three brightnesses through `se_hw` (shared with the launcher); music and effects switches stored and wired to the mixer's gates, and labelled as waiting for block 14, since the game makes no sound yet. |
-| 6.5 | **The UI in six languages** (D-81) | done | 2026-09-23, asked for by the user. `lang/*.txt` (English the reference, plus German, Dutch, Flemish, French, Bulgarian), baked by `tools/make_lang.py` into `main/i18n/strings_gen.c`: 126 strings x 6, a lookup is an array index. Language is the first row of Settings, each named in its own language, stored in settings.txt; a player with no toolchain can correct any line from `/sd/craftminer/lang/<code>.txt` on the card. The font was the work, not the text (F-69): the engine drew ASCII only, and now draws Cyrillic, accented Latin, both dashes and the European quotation marks, generated from Hershey's own database with a check that every letter of every declared alphabet exists. `i18n_fmt` does its own `%2$s` substitution and takes the argument types from English, so an edited lang file cannot mislead it (F-70). `make` regenerates the tables whenever a lang file changes -- an ordinary make rule with known inputs, so nobody has to remember a second command -- and the generator validates while it generates (keys, placeholders, no word mixing two alphabets). `make langcheck` is the CI form, asking whether what is committed is up to date. worldcheck's "languages" section covers the rest: every character drawable, the formatter against six nasty strings. On the badge: the language list, Settings in Bulgarian, Controls in German. The language list first drew tick boxes, which the user rejected -- one choice out of many is a radio button -- so the engine gained `SE_MENU_VAL_RADIO` (their call to add it there rather than work round it). **Then 26 more languages, the user's call after asking what was missing** (F-71): 32 in all, English first and the rest alphabetical by the name each calls itself. The font grew seven accents (caron, breve, double acute, macron, dot above, ogonek, comma below), Greek out of Hershey's own SIMPLEX face -- the same weight as the Latin, which the Cyrillic never was -- and a dozen letterforms nobody can compose. 126 strings x 32 = 4032, every character of every one of them drawable. |
+| 6.5 | **The UI in six languages** (D-81) | done | 2026-09-23, asked for by the user. `lang/*.txt` (English the reference, plus German, Dutch, Flemish, French, Bulgarian), baked by `tools/make_lang.py` into `main/i18n/strings_gen.c`: 126 strings x 6, a lookup is an array index. Language is the first row of Settings, each named in its own language, stored in settings.txt; a player with no toolchain can correct any line from `/sd/craftminer/lang/<code>.txt` on the card. The font was the work, not the text (F-69): the engine drew ASCII only, and now draws Cyrillic, accented Latin, both dashes and the European quotation marks, generated from Hershey's own database with a check that every letter of every declared alphabet exists. `i18n_fmt` does its own `%2$s` substitution and takes the argument types from English, so an edited lang file cannot mislead it (F-70). `make` regenerates the tables whenever a lang file changes -- an ordinary make rule with known inputs, so nobody has to remember a second command -- and the generator validates while it generates (keys, placeholders, no word mixing two alphabets). `make langcheck` is the CI form, asking whether what is committed is up to date. worldcheck's "languages" section covers the rest: every character drawable, the formatter against six nasty strings. On the badge: the language list, Settings in Bulgarian, Controls in German. The language list first drew tick boxes, which the user rejected -- one choice out of many is a radio button -- so the engine gained `SE_MENU_VAL_RADIO` (their call to add it there rather than work round it). **Then 26 more languages, the user's call after asking what was missing** (F-71): 32 in all, English first and the rest alphabetical by the name each calls itself. The font grew seven accents (caron, breve, double acute, macron, dot above, ogonek, comma below), Greek out of Hershey's own SIMPLEX face -- the same weight as the Latin, which the Cyrillic never was -- and a dozen letterforms nobody can compose. 126 strings x 32 = 4032, every character of every one of them drawable -- 128 once step 14 added the volume sliders, and a label-width check came with them (F-76). |
 | | **Accept:** every menu reached on the badge, a key rebound and used, a world created, played, saved, reopened with its inventory; the Testworld adopted | **in progress** | 2026-09-22: the Testworld adoption **ran on the user's card** — `worlds/flyover` became `slot1`, named *Testworld*, all five region files with it (a copy of the original is kept off the badge). The title strip renders (screenshot). The user is testing the rest by hand: the gyroscope works after one sign flip (F-55), and the inventory cursor bug (F-54) was found that way. `make check` covers slots, the inventory round trip and the adoption. |
 | **7** | **Far Lands** | | |
 | 7.0 | **Bedrock, gravel, and generated signs** (D-79) | done | 2026-09-22, asked for by the user for the Far Lands: bedrock (unbreakable) and gravel (shovel, drops itself) as blocks 17 and 18; a sign, block 19, a post with a board facing east (`K_SIGN`), not solid, breakable with nothing dropped. Its text -- "Kurt / was here", "Wolfie / was here", "Far Lands / or Bust!" -- is one of three 64x32 textures drawn by `make_textures.py` with its own 5x7 pixel font (so the PNGs do not depend on PIL's fonts), chosen by a hash of where the sign stands (`voxel_sign_text`). Existing textures regenerate byte-identical. |
@@ -964,7 +977,7 @@ frame time than the fell.
 | 11 | Animals: pigs, cows, chickens; breeding; dogs (wild, tamed with steak) | todo | |
 | 12 | Mobs: zombies, skeletons, spiders; spawning, pathing, combat; beds and spawn; death keeps the inventory | todo | |
 | 13 | Fishing | todo | |
-| 14 | Audio: SFX voices and procedural music | todo | |
+| 14 | **Audio: sound effects, and music that is mostly silence** (D-82, D-83, D-84, D-85) | done | 2026-09-23: the mixer starts at boot. 21 effects as table rows (`audio/sfx.c`), and which one a block makes is its own registry row (`block_def_t.sound`), so a new block brings its sounds with it. Music is eleven public-domain MIDI files played by a ported sequencer and a six-shape synth: 72 KB for half an hour, against megabytes for the same music as MP3. `worldcheck`'s `check_midi` proves every shipped file parses, ends, rewinds identically and survives truncation at any length (F-72). The raw voice sum clipped, so the synth carries a master gain and a cubic soft limiter (F-73). **Three volume sliders** in Settings -> Audio (D-85): the badge's own, then how loudly the music and the effects are each mixed in. The effects turned out to be inaudible whenever the music was off -- the amplifier was asleep and eating them (F-75) -- which is why the engine is 2.2. Two checks came out of the round and stay behind: `tools/symcheck.sh`, after an unexported `strcasecmp` made the app link clean and then refuse to start with no message at all (F-74), and `check_label_widths()`, after the sliders' labels turned out to be the least of it -- three settings screens had been overlapping their own text in a dozen languages since the day the language count went to 32 (F-76). |
 | 15 | Block and sky lighting | done | 2026-09-22, asked for by the user (torches that light the area, computed when a block changes). Pulled forward from the end of the plan: a light plane per chunk (sky and block light, 0..15 each, D-69), flooded when a chunk arrives -- its own light on core 1, the border exchange on the main task (F-58) -- and updated with the two-queue flood on every block change. The mesher keys faces on light; a per-frame table turns light into brightness for the time of day, through the engine's new `SE_TRI_LIGHT`. Host-tested: fall-off, removal, a shaft opened and capped, across a chunk border and into a chunk arriving late. On the badge: a placed torch lights the ground at night. |
 | 16 | **Day and night; sun, moon, clouds, stars** | done | 2026-09-22, asked for by the user. `game/daytime.{c,h}`: a 20-minute day from the world's tick count -- sun direction, sky and fog colours with an orange band at sunrise and sunset, a daylight fraction, the light table. The showreel's blocky sun, moon and clouds (`voxel/voxel_sky.c`, clouds laid out in world coordinates) and its starfield. Night takes 9 light levels off the sky, not Minecraft's 11 (F-57). Clouds are a Graphics toggle; the title has none (they flew through its letters). |
 | 17 | **Fred: first-person arm, held item, third person** | done | 2026-09-22, asked for by the user: the showreel's miner, ported as `fred/fred.{c,h}` and `fred_mesh.{c,h}` with provenance, given an axe and a shovel beside the pickaxe, blocks in their own textures, flowers as sprites and a torch as its stick. Lit by the cell he stands in. First person draws the arm at a third of the showreel's distance and size (D-70). Third person (Settings -> Graphics -> Camera) puts the camera 4 blocks behind his eyes, pulled in by a ray when something is in the way; the crosshair is hidden there, the block outline kept. |
@@ -1751,6 +1764,144 @@ frame time than the fell.
   checked (the user's call): neither change can move a pixel, the sort only
   changes which triangle the depth test meets first.
 
+- **F-72** 2026-09-23, step 14: **the sequencer could be proved on the host,
+  so it was.** `midi_seq.c` is pure -- no engine, no RTOS, no allocation --
+  which meant `worldcheck` could run every shipped file through the real
+  sequencer at the real sample rate rather than anyone listening for a
+  problem on the badge. What that caught is not that the files play, which
+  was never in doubt, but the shapes of failure that only show up later:
+  a file that never ENDS (the audio task would hang on it), a rewind that
+  differs from the first pass (the scheduler replays pieces), and a
+  truncated copy -- a file half-copied onto an SD card -- read past its
+  buffer. The check truncates every file at every 97th byte and requires
+  each one to terminate.
+
+  The clock needed fixing for the same reason. The donor player kept its
+  tempo in `double`; the P4's FPU is single precision, so that is a call
+  into a software library, on the audio task, per tick. It is 32.32 fixed
+  point here -- and the obvious `(num << 32) / den` **overflows**: a 32-bit
+  core has no `__int128`, and `rate * us_per_quarter` is already 1.1e10
+  before the shift. Long division with two sixteen-bit refinements instead.
+
+- **F-73** 2026-09-23, step 14: **sixteen voices summing is not bounded by
+  anything.** Rendered on the host, a dense Schumann chord peaked at 1.64
+  where 1.0 is full scale, and the honest int16 conversion clipped it --
+  1036 clipped samples in Traeumerei, heard as a crackle on every loud
+  chord. Turning the master gain down far enough to fix that alone would
+  have made the Satie, which never went above 0.89, too quiet to hear under
+  the footsteps.
+
+  The fix is a gain of 0.58 and the cubic soft clipper `1.5x - 0.5x^3`:
+  three multiplies, no table, no branch on the common path. It has a second
+  property worth having -- its slope at small signals is 1.5, so it lifts
+  quiet music while it compresses loud music, and the eleven pieces end up
+  nearer each other in level than they went in. Afterwards: peaks 0.71 to
+  1.00 and **not one clipped sample** in any of them.
+
+  The general lesson is the one worth keeping: the host render was a WAV
+  file and a peak meter, and it found in a minute what would have been
+  "the music sounds a bit crunchy sometimes" on the badge.
+
+- **F-74** 2026-09-23, step 14: **the app built, linked, uploaded and then
+  would not start, and nothing said why.** No console output, no panic, no
+  splash -- `make ping` answered "the launcher is up, or the app is wedged",
+  which is true and useless. Three cycles went into the tooling before the
+  cause turned out to be one line of ours: `music.c` called **`strcasecmp`**,
+  and graceloader does not export it.
+
+  An ELF app for graceloader links against NOTHING. Every libc and IDF
+  function is resolved at LOAD time from the loader's export table, so a
+  call to something that table does not carry compiles clean, links clean,
+  uploads clean, and then fails at the one moment when there is no way left
+  to report it. se_mp3.c's header records the same trap with `opendir()`,
+  which is how it was eventually recognised.
+
+  Two things came out of it, and the second matters more than the fix:
+
+  * `ieq()` in music.c, four lines, because a file extension is ASCII;
+  * **`tools/symcheck.sh`, run by `make build` after the link**: every
+    undefined symbol in app.so, checked against
+    `../tanmatsu-graceloader/main/symbol_export/all`, naming anything
+    missing. It found exactly one symbol -- ours -- and it will find the
+    next one in the second it is introduced rather than after an hour of
+    suspecting the badge. Where the loader's source is not checked out it
+    SKIPS and says so, rather than failing a clone that only wants to
+    build.
+
+  The general shape is one this project keeps meeting: a seam between two
+  builds that the compiler cannot see across wants a check that CAN. It is
+  the same argument as `hostpurity.sh` and the language-table staleness
+  rule, and the same argument for having written `check_midi` before ever
+  putting a MIDI file on the badge.
+
+- **F-75** 2026-09-23, **the user**, reporting it: **"the tool sounds only
+  play when music is enabled."** Which is exactly what it looked like, and
+  exactly what it was not.
+
+  Nothing in the effects path reads the music setting. What actually
+  happened is the mixer's idle power policy: it mutes the amplifier and
+  disables I2S about 46 ms after the last sound, and powers back up when the
+  next voice is registered. The audio is mixed and written correctly either
+  way -- but **an amplifier's turn-on is not instantaneous**, and CraftMiner's
+  effects are short. `SFX_HIT`, the tool striking a block, is 35 ms. Against a
+  cold amp it is over before the speaker is listening.
+
+  Why the music setting appeared to control it: a music source that is
+  INSTALLED counts as an active source every chunk, whether or not it is
+  making any sound. With music on, our source renders silence through the
+  four-to-ten-minute gaps and the amplifier never sleeps, so the effects are
+  fine. Turn the music off, the gate skips the source, the mixer idles, and
+  every effect now has to wake the speaker up.
+
+  The badge said so plainly once asked the right question. With `music=0`:
+  `power_down: amp+I2S off` at 4662 ms and never up again. With the fix:
+  `power_up` at 7992 ms and no power_down in the next 43 seconds.
+
+  Fixed in the engine with `audio_mixer_keep_awake()` rather than in the
+  game, because the sharp edge is the engine's and the next game to meet it
+  would lose the same afternoon. CraftMiner holds it on for as long as it
+  runs. The cost is the amplifier's idle draw -- which, note, **this game was
+  already paying** whenever the music was switched on.
+
+  The lesson is not about amplifiers. It is that "feature A only works when
+  feature B is on" almost never means A reads B; it means both depend on
+  something neither of them mentions.
+
+- **F-76** 2026-09-23, adding the volume sliders: **three settings screens
+  had been overlapping their own text in a dozen languages, and nobody had
+  measured.** A row draws its label at the left and its value -- a slider, a
+  tick box, a word -- at a fixed offset (`value_dx`). The offsets were chosen
+  by eye against ENGLISH, when English was the only language there. Going to
+  32 (F-71) checked that every letter could be DRAWN and never asked whether
+  the words would FIT.
+
+  What was already broken before a single slider was added: Graphics
+  overflowed in 23 of 32 languages, Settings in 7, Audio in 4. The worst was
+  Ukrainian's "Дальність промальовування" at 492 px against a 260 px column
+  -- nearly double.
+
+  Two kinds of fix, and both were needed:
+
+  * the panels and columns widened where the language is simply longer than
+    English (Audio and Graphics now use a wider panel; every column grew);
+  * eight translations shortened where no panel could have held them. These
+    were descriptions where a label was wanted -- Bulgarian's "Разделителна
+    способност" for a resolution toggle is correct and is not what a control
+    is called.
+
+  The third fix is the one that lasts: **`check_label_widths()` in
+  worldcheck**, which measures every label of every screen in every language
+  with the engine's OWN `hershey_advance` at the row height the menu uses. A
+  label that passes there fits on the badge. It reports the tightest fit in
+  the whole game (16 px, Spanish "Volumen de los efectos") so the margin is
+  visible rather than assumed, and it was proved to bite by lengthening a
+  Ukrainian label and watching it name the language, the key, the text, the
+  width and the column.
+
+  This is the same lesson as F-74 and `hostpurity.sh`: a property the
+  compiler cannot see wants a check that can. "Every character is drawable"
+  and "every label fits" look like the same question and are not.
+
 ### Decisions (D-n), each with date and who decided
 
 - **D-81** 2026-09-23, **the user**: **the UI is translated, English by
@@ -1782,6 +1933,67 @@ frame time than the fell.
   looking for is the one they can read, so the list sorts by that and not by
   English name or by code. The translations past English stay a machine's
   work, and the README now asks for pull requests by people who speak them.
+- **D-82** 2026-09-23, **the user**: **the music is MIDI files of classic
+  pieces that are out of copyright**, played "at random intervals with long
+  pauses between them, similar to old minecraft versions", chosen randomly
+  rather than in playlist order, "with the only limit to not play the same
+  piece twice in a row".
+
+  Three things follow, and the third is the one that needed care.
+
+  * **MIDI, not MP3.** The engine has `se_mp3.h` and it would have worked,
+    but the cost is a decoder task with a 32 KB stack, a 64 KB PCM ring and a
+    16 KB read buffer, and the music itself is megabytes. The eleven pieces we
+    ship are **72 KB in total**, and the sequencer allocates nothing but the
+    file. `se_voice.h` had said all along that "a future MIDI player will keep
+    a pool of voices and route note-on / note-off events to them"; this is
+    that player, so the engine did not have to change at all.
+  * **The silence is the feature.** A piece, then four to ten minutes of
+    nothing, and a fresh random gap each time. The first gap is shorter
+    (25-70 s) so that a player who puts the badge down after five minutes has
+    at least heard that the music exists.
+  * **TWO COPYRIGHTS, not one.** A MIDI file carries the copyright of its
+    *engraving* as well as of the composition. Satie, Debussy, Chopin,
+    Schumann and Bach are all long out of copyright; the particular typeset
+    edition a file was generated from is a new work and usually is not. A
+    MIDI file found loose on the web is almost never licensed to
+    redistribute, whoever wrote the tune. So every file comes from the
+    Mutopia Project, which publishes an explicit licence per piece -- and
+    only from its **Public Domain** set, never its Creative Commons one.
+    That cost us the Gnossiennes, which are BY-SA, and share-alike would
+    have put conditions on anyone redistributing CraftMiner. The
+    Gymnopedies are Public Domain, so the mood survived.
+    `tools/get_music.py` **refuses to download anything that is not Public
+    Domain**, so extending the set cannot go wrong by accident, and
+    `assets/music/MUSIC.md` records where each file came from.
+
+- **D-83** 2026-09-23, Claude: **what a block sounds like is a field in the
+  block registry, not a switch in the audio code.** `block_def_t.sound` names
+  a material class (SND_STONE, SND_WOOD, ...) and the footstep, the break and
+  the place all follow from it. This is the same extendability contract as
+  the rest of the table (Part L): adding a block is one row, and the row now
+  carries its sounds. The alternative -- a lookup in `sfx.c` keyed on block id
+  -- would have been a second table to keep in step with the first, and the
+  one that got forgotten.
+
+  The effects themselves are **one table, not one file per noise**. The
+  synthracer modules this is descended from gave each effect its own file,
+  which is right when there are seven and each is a different idea, and wrong
+  here, where a footstep on gravel and a footstep on sand are the same idea
+  with different numbers. A row is a tone layer and a noise layer through one
+  filter and one envelope, with per-play pitch jitter so no two footsteps are
+  identical.
+
+- **D-84** 2026-09-23, Claude: **the game thread reads the card; the mixer
+  only plays.** `se_audio_source.h` forbids blocking in `render()`, and a
+  MIDI file lives on the SD card. Unlike the MP3 source, which needs a whole
+  decoder task to bridge that, a MIDI file is small enough to read whole:
+  `music_frame()` loads it on the game thread and hands it over through a
+  single atomic state word, each state having exactly one writer. Parsing
+  happens in `render()` because it is a few hundred bytes of header walking
+  with no I/O. If a file is slow to load the silence simply lasts a moment
+  longer; nothing on the audio path ever waits.
+
 - **D-80** 2026-09-22, **the user**: **the player's data lives in
   /sd/craftminer, not in the app's install directory.** The launcher owns
   /sd/apps/<slug> and may empty it on an update or a reinstall; worlds,
@@ -2111,7 +2323,10 @@ frame time than the fell.
   it waits, and "wait with a hole in the ground" is the worst of the options.
 
 - **D-39** 2026-09-21, the user: **engine work is authorised**, and the engine
-  stays at **version 2.1** while it is being worked on -- no bump per change.
+  stays at one version while it is being worked on -- no bump per change. It
+  sat at **2.1** through the rasteriser work, the menus and the font, and went
+  to **2.2** when the mixer gained public calls that a game outside this one
+  would want (D-85, F-75).
   The standing "an engine problem means stop and ask" rule (D-15's sibling)
   still holds for anything beyond what has been asked for.
 
@@ -2224,6 +2439,28 @@ frame time than the fell.
 
 ---
 
+- **D-85** 2026-09-23, **the user**: **three volume sliders, and they are not
+  the same kind of thing.** The existing one stays what it is -- the BADGE's
+  volume, the launcher's setting, shared with every app -- and two new ones
+  set "how it is mixed in" for the music and for the effects, inside the game.
+
+  The distinction is the whole point and the menu is laid out to make it
+  obvious: the device slider first, then each toggle paired with its own
+  slider. Turning the badge down quietens everything including the launcher;
+  turning Music down leaves the footsteps exactly where they were.
+
+  It went in the engine rather than in our own render paths. Scaling our
+  samples before the mixer's fixed gain would have been arithmetically
+  identical and half the work, but the mixer is where mixing belongs, and
+  `se_config.h` already owned the music-versus-effects balance -- the sliders
+  ride on top of that rather than replacing it. Two calls,
+  `audio_mixer_set_music_volume()` and `_set_group_volume()`, both additive,
+  and the engine went to 2.2.
+
+  One trap worth writing down: **a volume of 0 is not the same as off.** A
+  silent source is still a playing source, so it still holds the speaker up
+  (F-75). The enable gates remain the way to turn a class off.
+
 ## Verification
 
 - **Host:** `make check` = `worldcheck` + `scenecheck` + `meshcheck` +
@@ -2297,8 +2534,8 @@ untouched chunks keep their old ids) must be fixed before any block id moves.
   F-46).
 - **Engine: CHANGED, with permission (D-39).** No longer "no changes planned",
   which it was until the user asked for the rasteriser to be looked at.
-  SynthEngine3D is a submodule and its commits are its own; the version stays
-  **2.1** while it is work in progress, as asked.
+  SynthEngine3D is a submodule and its commits are its own; the version went
+  to **2.2** when the mixer gained public calls (see below).
   * `include/se_ui.h`, `src/se_ui.c`: `SE_MENU_VAL_RADIO`, a ring filled on
     the chosen row, for a single-choice list (the language menu). The user's
     call: "If there is no radio button in the engine, add it."
@@ -2308,6 +2545,11 @@ untouched chunks keep their old ids) must be fixed before any block id moves.
     "If you need to ammend the fonts (use the full set) ... you are allowed
     to." Hershey's database is vendored with the generator that reads it;
     `simplex` itself is untouched and still public.
+  * `include/se_audio.h`, `src/audio_mixer.c`: per-class volume
+    (`audio_mixer_set_music_volume` / `_set_group_volume`) and
+    `audio_mixer_keep_awake()`, which holds the amplifier up through the
+    quiet so a short one-shot is not eaten by its turn-on (D-85, F-75).
+    The engine is **2.2** from here.
   * `CMakeLists.txt`: built `-O2`, not `-Os` (F-39).
   * `src/se_scene.c`: `ceil_i` / `floor_i` instead of the libm calls in the
     column scans, and per-pass pixel and span counters.

@@ -65,7 +65,7 @@ controls.reset = Повернути типові
 controls.hint = вгору / вниз обирає, Enter змінює клавішу, Esc повертає
 
 graphics.title = Графіка
-graphics.view = Дальність промальовування
+graphics.view = Дальність огляду
 graphics.textures = Текстури
 graphics.resolution = Роздільність
 graphics.clouds = Хмари
@@ -82,10 +82,12 @@ hand.left = Ліва
 hand.right = Права
 
 audio.title = Звук
-audio.sub = звуків ще немає: ці налаштування на них чекають
+audio.sub = гучність пристрою, потім наскільки гучно зводиться кожна частина
 audio.volume = Гучність
 audio.music = Музика
 audio.sfx = Звукові ефекти
+audio.music_volume = Гучність музики
+audio.sfx_volume = Гучність звуків
 
 display.title = Екран
 display.sub = спільне з лаунчером і всіма іншими застосунками

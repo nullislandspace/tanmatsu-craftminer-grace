@@ -27,6 +27,7 @@
 // =====================================================================
 
 #include <stdbool.h>
+#include <stdint.h>
 
 // View distance: an index into cm_view_preset() -- 0 near, 1 medium,
 // 2 far.
@@ -85,6 +86,15 @@ bool settings_music(void);
 void settings_set_music(bool on);
 bool settings_sfx(void);
 void settings_set_sfx(bool on);
+
+// How loud each part is mixed in, 0..100. NOT the device volume, which
+// is the badge's own (se_hw_get_volume) and belongs to the launcher:
+// these two lower the game's music or its effects against each other
+// and against everything else the badge plays. Both default to 100.
+uint8_t settings_music_volume(void);
+void    settings_set_music_volume(uint8_t pct);
+uint8_t settings_sfx_volume(void);
+void    settings_set_sfx_volume(uint8_t pct);
 
 // Looking round by turning the badge (input.h, input_gyro_frame). Off by
 // default; the cursor keys work either way.

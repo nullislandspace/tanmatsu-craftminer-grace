@@ -82,10 +82,12 @@ hand.left = Majtas
 hand.right = Djathtas
 
 audio.title = Zëri
-audio.sub = ende nuk ka tinguj: këto cilësime i presin
+audio.sub = volumi i pajisjes, pastaj sa fort përzihet secila pjesë
 audio.volume = Volumi
 audio.music = Muzika
 audio.sfx = Efektet zanore
+audio.music_volume = Volumi i muzikës
+audio.sfx_volume = Volumi i tingujve
 
 display.title = Ekrani
 display.sub = i përbashkët me nisësin dhe çdo aplikacion tjetër

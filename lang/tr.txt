@@ -82,10 +82,12 @@ hand.left = Sol
 hand.right = Sağ
 
 audio.title = Ses
-audio.sub = henüz ses yok: bu ayarlar onları bekliyor
+audio.sub = cihazın sesi, sonra her bölümün ne kadar yüksek karıştırıldığı
 audio.volume = Ses düzeyi
 audio.music = Müzik
 audio.sfx = Ses efektleri
+audio.music_volume = Müzik sesi
+audio.sfx_volume = Efekt sesi
 
 display.title = Ekran
 display.sub = başlatıcıyla ve diğer tüm uygulamalarla ortak

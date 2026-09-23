@@ -76,6 +76,8 @@ typedef enum {
     CM_STR_AUDIO_VOLUME,                // audio.volume
     CM_STR_AUDIO_MUSIC,                 // audio.music
     CM_STR_AUDIO_SFX,                   // audio.sfx
+    CM_STR_AUDIO_MUSIC_VOLUME,          // audio.music_volume
+    CM_STR_AUDIO_SFX_VOLUME,            // audio.sfx_volume
     CM_STR_DISPLAY_TITLE,               // display.title
     CM_STR_DISPLAY_SUB,                 // display.sub
     CM_STR_DISPLAY_SCREEN,              // display.screen

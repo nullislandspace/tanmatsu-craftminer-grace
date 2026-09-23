@@ -82,10 +82,12 @@ hand.left = Vasen
 hand.right = Oikea
 
 audio.title = Ääni
-audio.sub = ääniä ei vielä ole: nämä odottavat niitä
+audio.sub = laitteen äänenvoimakkuus, sitten miten kukin osa miksataan
 audio.volume = Äänenvoimakkuus
 audio.music = Musiikki
 audio.sfx = Äänitehosteet
+audio.music_volume = Musiikin voimakkuus
+audio.sfx_volume = Äänien voimakkuus
 
 display.title = Näyttö
 display.sub = jaettu käynnistimen ja kaikkien muiden sovellusten kanssa

@@ -2,6 +2,7 @@
 //  CraftMiner  --  the menus (see menu.h)
 // =====================================================================
 
+#include "audio/sfx.h"
 #include "ui/menu.h"
 
 #include <stdio.h>
@@ -120,10 +121,17 @@ static int clampi(int v, int lo, int hi) {
 }
 
 // Up and down over `n` rows. No wrap, like the engine's own menus.
+//
+// The click is here rather than in the key decoding so it follows the
+// CURSOR, not the key: pressing Up on the top row moves nothing and so
+// says nothing, which is the difference between a menu that responds and
+// one that rattles.
 static void nav(int* cursor, int n) {
+    int const was = *cursor;
     if (s_act & ACT_UP) (*cursor)--;
     if (s_act & ACT_DOWN) (*cursor)++;
     *cursor = clampi(*cursor, 0, n - 1);
+    if (*cursor != was) sfx_play(SFX_CLICK);
 }
 
 static uint8_t pct_step(uint8_t cur, int delta) {
@@ -530,9 +538,17 @@ static menu_cmd_t update_graphics(void) {
     return cmd;
 }
 
+// Three sliders, and they are not the same kind of thing. The first is
+// the BADGE's volume -- the launcher's setting, shared with every app,
+// which is why it goes through se_hw and not through ours. The other two
+// are how loudly this game mixes its own music and its own effects, and
+// they live in settings.txt. Turning the badge down quietens everything;
+// turning Music down leaves the footsteps where they were.
+#define AUDIO_ROWS 6
+
 static void update_audio(void) {
     int* cur = &s_cursor[SCR_AUDIO];
-    nav(cur, 4);
+    nav(cur, AUDIO_ROWS);
     int const step = (s_act & ACT_RIGHT) ? SE_HW_VOLUME_STEP_PCT : (s_act & ACT_LEFT) ? -SE_HW_VOLUME_STEP_PCT : 0;
     switch (*cur) {
         case 0:
@@ -542,7 +558,17 @@ static void update_audio(void) {
             if (s_act & (ACT_OK | ACT_LEFT | ACT_RIGHT)) settings_set_music(!settings_music());
             break;
         case 2:
+            if (step != 0) settings_set_music_volume(pct_step(settings_music_volume(), step));
+            break;
+        case 3:
             if (s_act & (ACT_OK | ACT_LEFT | ACT_RIGHT)) settings_set_sfx(!settings_sfx());
+            break;
+        case 4:
+            if (step != 0) {
+                settings_set_sfx_volume(pct_step(settings_sfx_volume(), step));
+                // Play one, so the slider is heard rather than read.
+                sfx_play(SFX_PLACE);
+            }
             break;
         default:
             if (s_act & ACT_OK) go(SCR_SETTINGS);
@@ -618,8 +644,17 @@ menu_cmd_t menu_update(void) {
 // list menu does itself (se_menu_def_t.visible_rows, engine 2.1).
 #define VISIBLE 7
 
-static void draw_list(pax_buf_t* fb, char const* title, char const* subtitle, se_menu_row_t const* rows, int n,
-                      int cursor, char const* hint, float value_dx) {
+// The ordinary panel: eight tenths of the screen, and a value column
+// 0.80 * 800 wide is room for about 330 px of label.
+#define PANEL_W_NORMAL 0.80f
+// ... and a wide one, for a screen whose labels are long in some
+// language. "Volumen de los efectos" is 374 px at the row height, and
+// the slider beside it wants 250 more; the two do not both fit in the
+// ordinary panel in any arrangement (F-76).
+#define PANEL_W_WIDE 0.94f
+
+static void draw_list_w(pax_buf_t* fb, char const* title, char const* subtitle, se_menu_row_t const* rows, int n,
+                        int cursor, char const* hint, float value_dx, float panel_w) {
     char const*         sub = status_line();
     se_menu_def_t const def = {
         .title        = title,
@@ -630,12 +665,17 @@ static void draw_list(pax_buf_t* fb, char const* title, char const* subtitle, se
         .title_h      = 32.0f,
         .row_h        = 38.0f,
         .value_dx     = value_dx,
-        .panel_w      = 0.80f,
+        .panel_w      = panel_w,
         .panel_h      = 0.92f,
         .visible_rows = VISIBLE,
     };
     se_menu_t const m = {.def = &def, .cursor = cursor};
     se_menu_draw(&m, fb);
+}
+
+static void draw_list(pax_buf_t* fb, char const* title, char const* subtitle, se_menu_row_t const* rows, int n,
+                      int cursor, char const* hint, float value_dx) {
+    draw_list_w(fb, title, subtitle, rows, n, cursor, hint, value_dx, PANEL_W_NORMAL);
 }
 
 // The same list, packed tighter. For the languages: there are 32 of them,
@@ -779,7 +819,7 @@ void menu_draw(pax_buf_t* fb) {
                 {.label = T(CM_STR_COMMON_BACK)},
             };
             draw_list(fb, T(CM_STR_SETTINGS_TITLE), NULL, rows, SETTINGS_ROWS, s_cursor[SCR_SETTINGS],
-                      HINT_LIST, 180.0f);
+                      HINT_LIST, 260.0f);
         } break;
 
         case SCR_LANGUAGE: {
@@ -840,21 +880,25 @@ void menu_draw(pax_buf_t* fb) {
                  .value = T(settings_left_handed() ? CM_STR_HAND_LEFT : CM_STR_HAND_RIGHT)},
                 {.label = T(CM_STR_COMMON_BACK)},
             };
-            draw_list(fb, T(CM_STR_GRAPHICS_TITLE), NULL, rows, GRAPHICS_ROWS, s_cursor[SCR_GRAPHICS],
-                      HINT_ADJUST, 260.0f);
+            draw_list_w(fb, T(CM_STR_GRAPHICS_TITLE), NULL, rows, GRAPHICS_ROWS, s_cursor[SCR_GRAPHICS],
+                        HINT_ADJUST, 340.0f, PANEL_W_WIDE);
         } break;
 
         case SCR_AUDIO: {
-            se_menu_row_t const rows[4] = {
+            se_menu_row_t const rows[AUDIO_ROWS] = {
                 {.label = T(CM_STR_AUDIO_VOLUME), .kind = SE_MENU_VAL_RANGE, .range_pct = se_hw_get_volume()},
                 {.label = T(CM_STR_AUDIO_MUSIC), .kind = SE_MENU_VAL_CHECK, .checked = settings_music()},
+                {.label     = T(CM_STR_AUDIO_MUSIC_VOLUME),
+                 .kind      = SE_MENU_VAL_RANGE,
+                 .range_pct = settings_music_volume()},
                 {.label = T(CM_STR_AUDIO_SFX), .kind = SE_MENU_VAL_CHECK, .checked = settings_sfx()},
+                {.label     = T(CM_STR_AUDIO_SFX_VOLUME),
+                 .kind      = SE_MENU_VAL_RANGE,
+                 .range_pct = settings_sfx_volume()},
                 {.label = T(CM_STR_COMMON_BACK)},
             };
-            // Honest about it: the toggles are remembered, but there is
-            // nothing to hear yet.
-            draw_list(fb, T(CM_STR_AUDIO_TITLE), T(CM_STR_AUDIO_SUB), rows, 4,
-                      s_cursor[SCR_AUDIO], HINT_ADJUST, 260.0f);
+            draw_list_w(fb, T(CM_STR_AUDIO_TITLE), T(CM_STR_AUDIO_SUB), rows, AUDIO_ROWS,
+                        s_cursor[SCR_AUDIO], HINT_ADJUST, 390.0f, PANEL_W_WIDE);
         } break;
 
         case SCR_DISPLAY: {
@@ -869,7 +913,7 @@ void menu_draw(pax_buf_t* fb) {
                 {.label = T(CM_STR_COMMON_BACK)},
             };
             draw_list(fb, T(CM_STR_DISPLAY_TITLE), T(CM_STR_DISPLAY_SUB), rows, 4, s_cursor[SCR_DISPLAY],
-                      HINT_ADJUST, 260.0f);
+                      HINT_ADJUST, 300.0f);
         } break;
 
         case SCR_PAUSE: {

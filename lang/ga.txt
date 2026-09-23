@@ -82,10 +82,12 @@ hand.left = Clé
 hand.right = Deas
 
 audio.title = Fuaim
-audio.sub = gan fuaimeanna go fóill: tá siad seo ag fanacht leo
+audio.sub = airde an ghléis, ansin cé chomh hard is a mheasctar gach cuid
 audio.volume = Airde
 audio.music = Ceol
 audio.sfx = Maisíochtaí fuaime
+audio.music_volume = Airde an cheoil
+audio.sfx_volume = Airde na bhfuaimeanna
 
 display.title = Scáileán
 display.sub = roinnte leis an tosaitheoir agus gach aip eile

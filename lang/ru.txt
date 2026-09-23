@@ -65,7 +65,7 @@ controls.reset = Вернуть по умолчанию
 controls.hint = вверх / вниз выбирает, Enter меняет клавишу, Esc возвращает
 
 graphics.title = Графика
-graphics.view = Дальность прорисовки
+graphics.view = Дальность вида
 graphics.textures = Текстуры
 graphics.resolution = Разрешение
 graphics.clouds = Облака
@@ -82,10 +82,12 @@ hand.left = Левая
 hand.right = Правая
 
 audio.title = Звук
-audio.sub = звуков ещё нет: эти настройки их ждут
+audio.sub = громкость устройства, затем насколько громко сводится каждая часть
 audio.volume = Громкость
 audio.music = Музыка
 audio.sfx = Звуковые эффекты
+audio.music_volume = Громкость музыки
+audio.sfx_volume = Громкость звуков
 
 display.title = Экран
 display.sub = общее с лаунчером и всеми другими приложениями
