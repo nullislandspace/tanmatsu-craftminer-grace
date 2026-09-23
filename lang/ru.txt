@@ -164,3 +164,74 @@ action.pause = Пауза
 action.drop = Бросить
 action.info = Показать позицию
 action.screenshot = Снимок экрана
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Изготовление
+craft.title_table = Верстак
+craft.search = Поиск: %s
+craft.hint = печатай для поиска   ентер создаёт   есц закрывает
+craft.empty = Пока нечего делать
+craft.empty_sub = Рецепты появляются, когда подберёшь их материалы
+craft.no_match = Ничего не найдено
+craft.value_make = x%d
+craft.value_missing = не хватает
+craft.ing = %s %d/%d
+craft.made = Создано %d %s
+craft.full = Нет места для этого
+craft.detail_sub = что нужно
+craft.detail_hint = есц или влево назад
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Трава
+item.dirt = Земля
+item.stone = Камень
+item.cobblestone = Булыжник
+item.sand = Песок
+item.water = Вода
+item.log = Бревно
+item.planks = Доски
+item.leaves = Листва
+item.coal_ore = Угольная руда
+item.glass = Стекло
+item.torch = Факел
+item.flower_red = Красный цветок
+item.flower_yellow = Жёлтый цветок
+item.tall_grass = Высокая трава
+item.bedrock = Коренная порода
+item.gravel = Гравий
+item.sign = Табличка
+item.crafting_table = Верстак
+item.furnace = Печь
+item.coal = Уголь
+item.stick = Палка
+item.pickaxe_wood = Деревянная кирка
+item.pickaxe_stone = Каменная кирка
+item.axe_wood = Деревянный топор
+item.axe_stone = Каменный топор
+item.shovel_wood = Деревянная лопата
+item.shovel_stone = Каменная лопата
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Печь
+furnace.input = Вход
+furnace.fuel = Топливо
+furnace.output = Выход
+furnace.empty = - пусто -
+furnace.slot = %d %s
+furnace.hint = ентер кладёт или берёт   есц закрывает
+furnace.smelting = плавит, %d%%
+furnace.no_input = нечего плавить
+furnace.no_fuel = нет топлива
+furnace.full = выход заполнен
+furnace.took = Взято %d %s
+furnace.pick_input = Что плавить
+furnace.pick_fuel = Что жечь
+furnace.pick_none_input = Здесь ничего не плавится
+furnace.pick_none_fuel = Здесь ничего не горит
+furnace.pick_hint = ентер выбирает   есц назад
+furnace.becomes = даёт %s
+furnace.burns = расплавит %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Изготовление

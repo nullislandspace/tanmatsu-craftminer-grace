@@ -4,7 +4,7 @@
 // ASCII a player types to find it. See main/i18n/fold.h for why, and
 // run `python3 tools/make_fold.py` after adding a language.
 //
-// 282 characters; the longest folds to 4.
+// 288 characters; the longest folds to 4.
 
 // A folded form is never longer than this, NUL included.
 #define FOLD_REP_MAX 5
@@ -39,11 +39,13 @@ static fold_entry_t const FOLD_TABLE[] = {
     {0x00D1, "n"},  // Ñ latin capital letter n with tilde
     {0x00D2, "o"},  // Ò latin capital letter o with grave
     {0x00D3, "o"},  // Ó latin capital letter o with acute
+    {0x00D4, "o"},  // Ô latin capital letter o with circumflex
     {0x00D5, "o"},  // Õ latin capital letter o with tilde
     {0x00D6, "o"},  // Ö latin capital letter o with diaeresis
     {0x00D8, "o"},  // Ø latin capital letter o with stroke
     {0x00D9, "u"},  // Ù latin capital letter u with grave
     {0x00DA, "u"},  // Ú latin capital letter u with acute
+    {0x00DB, "u"},  // Û latin capital letter u with circumflex
     {0x00DC, "u"},  // Ü latin capital letter u with diaeresis
     {0x00DD, "y"},  // Ý latin capital letter y with acute
     {0x00DE, "th"},  // Þ latin capital letter thorn
@@ -67,11 +69,13 @@ static fold_entry_t const FOLD_TABLE[] = {
     {0x00F1, "n"},  // ñ latin small letter n with tilde
     {0x00F2, "o"},  // ò latin small letter o with grave
     {0x00F3, "o"},  // ó latin small letter o with acute
+    {0x00F4, "o"},  // ô latin small letter o with circumflex
     {0x00F5, "o"},  // õ latin small letter o with tilde
     {0x00F6, "o"},  // ö latin small letter o with diaeresis
     {0x00F8, "o"},  // ø latin small letter o with stroke
     {0x00F9, "u"},  // ù latin small letter u with grave
     {0x00FA, "u"},  // ú latin small letter u with acute
+    {0x00FB, "u"},  // û latin small letter u with circumflex
     {0x00FC, "u"},  // ü latin small letter u with diaeresis
     {0x00FD, "y"},  // ý latin small letter y with acute
     {0x00FE, "th"},  // þ latin small letter thorn
@@ -99,6 +103,8 @@ static fold_entry_t const FOLD_TABLE[] = {
     {0x011B, "e"},  // ě latin small letter e with caron
     {0x011E, "g"},  // Ğ latin capital letter g with breve
     {0x011F, "g"},  // ğ latin small letter g with breve
+    {0x0122, "g"},  // Ģ latin capital letter g with cedilla
+    {0x0123, "g"},  // ģ latin small letter g with cedilla
     {0x012A, "i"},  // Ī latin capital letter i with macron
     {0x012B, "i"},  // ī latin small letter i with macron
     {0x012E, "i"},  // Į latin capital letter i with ogonek

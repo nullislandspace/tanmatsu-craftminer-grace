@@ -164,3 +164,74 @@ action.pause = Bið
 action.drop = Sleppa
 action.info = Sýna staðsetningu
 action.screenshot = Skjámynd
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Smíði
+craft.title_table = Vinnuborð
+craft.search = Leita: %s
+craft.hint = sláðu inn til að leita   enter smíðar   esc lokar
+craft.empty = Ekkert til að smíða enn
+craft.empty_sub = Uppskriftir birtast þegar þú tekur upp efnin
+craft.no_match = Ekkert fannst
+craft.value_make = x%d
+craft.value_missing = vantar
+craft.ing = %s %d/%d
+craft.made = Smíðaði %d %s
+craft.full = Ekkert pláss fyrir það
+craft.detail_sub = hvað þarf
+craft.detail_hint = esc eða vinstri til baka
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Gras
+item.dirt = Mold
+item.stone = Steinn
+item.cobblestone = Hnullungur
+item.sand = Sandur
+item.water = Vatn
+item.log = Bolur
+item.planks = Plankar
+item.leaves = Lauf
+item.coal_ore = Kolamálmur
+item.glass = Gler
+item.torch = Kyndill
+item.flower_red = Rautt blóm
+item.flower_yellow = Gult blóm
+item.tall_grass = Hátt gras
+item.bedrock = Berggrunnur
+item.gravel = Möl
+item.sign = Skilti
+item.crafting_table = Vinnuborð
+item.furnace = Ofn
+item.coal = Kol
+item.stick = Prik
+item.pickaxe_wood = Tréhaki
+item.pickaxe_stone = Steinhaki
+item.axe_wood = Tréöxi
+item.axe_stone = Steinöxi
+item.shovel_wood = Tréskófla
+item.shovel_stone = Steinskófla
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Ofn
+furnace.input = Inn
+furnace.fuel = Eldsneyti
+furnace.output = Út
+furnace.empty = - tómt -
+furnace.slot = %d %s
+furnace.hint = enter setur inn eða tekur   esc lokar
+furnace.smelting = bræðir, %d%%
+furnace.no_input = ekkert til að bræða
+furnace.no_fuel = ekkert eldsneyti
+furnace.full = úttakið er fullt
+furnace.took = Tók %d %s
+furnace.pick_input = Hvað á að bræða
+furnace.pick_fuel = Hvað á að brenna
+furnace.pick_none_input = Ekkert hér bráðnar
+furnace.pick_none_fuel = Ekkert hér brennur
+furnace.pick_hint = enter velur   esc til baka
+furnace.becomes = gefur %s
+furnace.burns = bræðir %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Smíði

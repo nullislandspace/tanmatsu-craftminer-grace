@@ -277,8 +277,8 @@ static void draw_detail(pax_buf_t* fb, inventory_t const* inv) {
         .hint      = T(CM_STR_CRAFT_DETAIL_HINT),
         .title_h   = 32.0f,
         .row_h     = 38.0f,
-        .value_dx  = 300.0f,
-        .panel_w   = 0.78f,
+        .value_dx  = 380.0f,
+        .panel_w   = 0.88f,
         .panel_h   = 0.62f,
     };
     // No cursor: nothing here is chosen, it is a thing to read. Past the
@@ -350,8 +350,8 @@ void craft_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
         .hint         = footer,
         .title_h      = 32.0f,
         .row_h        = 34.0f,
-        .value_dx     = 300.0f,
-        .panel_w      = 0.72f,
+        .value_dx     = 380.0f,
+        .panel_w      = 0.88f,
         .panel_h      = 0.92f,
         .visible_rows = VISIBLE,
     };

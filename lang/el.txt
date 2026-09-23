@@ -164,3 +164,74 @@ action.pause = Παύση
 action.drop = Ρίξε
 action.info = Εμφάνιση θέσης
 action.screenshot = Στιγμιότυπο οθόνης
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Κατασκευή
+craft.title_table = Πάγκος εργασίας
+craft.search = Αναζήτηση: %s
+craft.hint = πληκτρολόγησε για αναζήτηση   enter φτιάχνει   esc κλείνει
+craft.empty = Τίποτα προς κατασκευή
+craft.empty_sub = Οι συνταγές εμφανίζονται όταν μαζέψεις τα υλικά τους
+craft.no_match = Κανένα αποτέλεσμα
+craft.value_make = x%d
+craft.value_missing = λείπει
+craft.ing = %s %d/%d
+craft.made = Φτιάχτηκαν %d %s
+craft.full = Δεν υπάρχει χώρος
+craft.detail_sub = τι χρειάζεται
+craft.detail_hint = esc ή αριστερά επιστρέφει
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Γρασίδι
+item.dirt = Χώμα
+item.stone = Πέτρα
+item.cobblestone = Λιθόστρωτο
+item.sand = Άμμος
+item.water = Νερό
+item.log = Κορμός
+item.planks = Σανίδες
+item.leaves = Φύλλα
+item.coal_ore = Μετάλλευμα άνθρακα
+item.glass = Γυαλί
+item.torch = Δάδα
+item.flower_red = Κόκκινο λουλούδι
+item.flower_yellow = Κίτρινο λουλούδι
+item.tall_grass = Ψηλό γρασίδι
+item.bedrock = Βράχος βάσης
+item.gravel = Χαλίκι
+item.sign = Πινακίδα
+item.crafting_table = Πάγκος εργασίας
+item.furnace = Καμίνι
+item.coal = Άνθρακας
+item.stick = Ξύλο
+item.pickaxe_wood = Ξύλινη αξίνα
+item.pickaxe_stone = Πέτρινη αξίνα
+item.axe_wood = Ξύλινο τσεκούρι
+item.axe_stone = Πέτρινο τσεκούρι
+item.shovel_wood = Ξύλινο φτυάρι
+item.shovel_stone = Πέτρινο φτυάρι
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Καμίνι
+furnace.input = Είσοδος
+furnace.fuel = Καύσιμο
+furnace.output = Έξοδος
+furnace.empty = - άδειο -
+furnace.slot = %d %s
+furnace.hint = enter βάζει ή παίρνει   esc κλείνει
+furnace.smelting = λιώνει, %d%%
+furnace.no_input = τίποτα για λιώσιμο
+furnace.no_fuel = χωρίς καύσιμο
+furnace.full = η έξοδος είναι γεμάτη
+furnace.took = Πάρθηκαν %d %s
+furnace.pick_input = Τι να λιώσει
+furnace.pick_fuel = Τι να καεί
+furnace.pick_none_input = Τίποτα εδώ δεν λιώνει
+furnace.pick_none_fuel = Τίποτα εδώ δεν καίγεται
+furnace.pick_hint = enter επιλέγει   esc επιστρέφει
+furnace.becomes = δίνει %s
+furnace.burns = λιώνει %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Κατασκευή

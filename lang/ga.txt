@@ -164,3 +164,74 @@ action.pause = Sos
 action.drop = Lig titim
 action.info = Taispeáin an suíomh
 action.screenshot = Gabháil scáileáin
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Ceardaíocht
+craft.title_table = Binse oibre
+craft.search = Cuardach: %s
+craft.hint = clóscríobh chun cuardaigh   enter déan   esc dún
+craft.empty = Faic le déanamh fós
+craft.empty_sub = Tagann oidis chun cinn nuair a phiocann tú a n-ábhair
+craft.no_match = Faic aimsithe
+craft.value_make = x%d
+craft.value_missing = ar iarraidh
+craft.ing = %s %d/%d
+craft.made = Rinneadh %d %s
+craft.full = Níl spás dó
+craft.detail_sub = cad atá de dhíth
+craft.detail_hint = esc nó clé ar ais
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Féar
+item.dirt = Cré
+item.stone = Cloch
+item.cobblestone = Duirleog
+item.sand = Gaineamh
+item.water = Uisce
+item.log = Lomán
+item.planks = Cláir
+item.leaves = Duilleoga
+item.coal_ore = Mianach guail
+item.glass = Gloine
+item.torch = Tóirse
+item.flower_red = Bláth dearg
+item.flower_yellow = Bláth buí
+item.tall_grass = Féar ard
+item.bedrock = Buncharraig
+item.gravel = Gairbhéal
+item.sign = Comhartha
+item.crafting_table = Binse oibre
+item.furnace = Foirnéis
+item.coal = Gual
+item.stick = Maide
+item.pickaxe_wood = Piocóid adhmaid
+item.pickaxe_stone = Piocóid chloiche
+item.axe_wood = Tua adhmaid
+item.axe_stone = Tua chloiche
+item.shovel_wood = Sluasaid adhmaid
+item.shovel_stone = Sluasaid chloiche
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Foirnéis
+furnace.input = Isteach
+furnace.fuel = Breosla
+furnace.output = Amach
+furnace.empty = - folamh -
+furnace.slot = %d %s
+furnace.hint = enter a chur nó a thógáil   esc a dhúnadh
+furnace.smelting = ag bruithniú, %d%%
+furnace.no_input = faic le bruithniú
+furnace.no_fuel = gan breosla
+furnace.full = tá an t-aschur lán
+furnace.took = Tógadh %d %s
+furnace.pick_input = Cad a bhruithniú
+furnace.pick_fuel = Cad a dhó
+furnace.pick_none_input = Ní bhruithnítear faic anseo
+furnace.pick_none_fuel = Ní dhóitear faic anseo
+furnace.pick_hint = enter a roghnú   esc ar ais
+furnace.becomes = tugann %s
+furnace.burns = bruithníonn %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Ceardaíocht

@@ -164,3 +164,74 @@ action.pause = Pauză
 action.drop = Aruncă
 action.info = Arată poziția
 action.screenshot = Captură de ecran
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Meșteșug
+craft.title_table = Masă de lucru
+craft.search = Caută: %s
+craft.hint = scrie pentru a căuta   enter face   esc închide
+craft.empty = Nimic de făcut încă
+craft.empty_sub = Rețetele apar când ridici materialele lor
+craft.no_match = Nimic găsit
+craft.value_make = x%d
+craft.value_missing = lipsește
+craft.ing = %s %d/%d
+craft.made = %d %s făcut
+craft.full = Nu e loc pentru asta
+craft.detail_sub = ce trebuie
+craft.detail_hint = esc sau stânga înapoi
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Iarbă
+item.dirt = Pământ
+item.stone = Piatră
+item.cobblestone = Pavaj
+item.sand = Nisip
+item.water = Apă
+item.log = Buștean
+item.planks = Scânduri
+item.leaves = Frunze
+item.coal_ore = Minereu de cărbune
+item.glass = Sticlă
+item.torch = Torță
+item.flower_red = Floare roșie
+item.flower_yellow = Floare galbenă
+item.tall_grass = Iarbă înaltă
+item.bedrock = Rocă de bază
+item.gravel = Pietriș
+item.sign = Indicator
+item.crafting_table = Masă de lucru
+item.furnace = Cuptor
+item.coal = Cărbune
+item.stick = Băț
+item.pickaxe_wood = Târnăcop de lemn
+item.pickaxe_stone = Târnăcop de piatră
+item.axe_wood = Topor de lemn
+item.axe_stone = Topor de piatră
+item.shovel_wood = Lopată de lemn
+item.shovel_stone = Lopată de piatră
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Cuptor
+furnace.input = Intrare
+furnace.fuel = Combustibil
+furnace.output = Ieșire
+furnace.empty = - gol -
+furnace.slot = %d %s
+furnace.hint = enter pune sau ia   esc închide
+furnace.smelting = topește, %d%%
+furnace.no_input = nimic de topit
+furnace.no_fuel = fără combustibil
+furnace.full = ieșirea este plină
+furnace.took = Luat %d %s
+furnace.pick_input = Ce se topește
+furnace.pick_fuel = Ce se arde
+furnace.pick_none_input = Aici nu se topește nimic
+furnace.pick_none_fuel = Aici nu arde nimic
+furnace.pick_hint = enter alege   esc înapoi
+furnace.becomes = dă %s
+furnace.burns = topește %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Meșteșug

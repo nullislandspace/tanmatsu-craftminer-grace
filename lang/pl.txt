@@ -164,3 +164,74 @@ action.pause = Pauza
 action.drop = Upuść
 action.info = Pokaż pozycję
 action.screenshot = Zrzut ekranu
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Wytwarzanie
+craft.title_table = Stół rzemieślniczy
+craft.search = Szukaj: %s
+craft.hint = pisz aby szukać   enter tworzy   esc zamyka
+craft.empty = Nie ma jeszcze co zrobić
+craft.empty_sub = Przepisy pojawiają się, gdy podniesiesz ich materiały
+craft.no_match = Nic nie pasuje
+craft.value_make = x%d
+craft.value_missing = brakuje
+craft.ing = %s %d/%d
+craft.made = Zrobiono %d %s
+craft.full = Nie ma na to miejsca
+craft.detail_sub = czego potrzeba
+craft.detail_hint = esc lub w lewo wraca
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Trawa
+item.dirt = Ziemia
+item.stone = Kamień
+item.cobblestone = Bruk
+item.sand = Piasek
+item.water = Woda
+item.log = Kłoda
+item.planks = Deski
+item.leaves = Liście
+item.coal_ore = Ruda węgla
+item.glass = Szkło
+item.torch = Pochodnia
+item.flower_red = Czerwony kwiat
+item.flower_yellow = Żółty kwiat
+item.tall_grass = Wysoka trawa
+item.bedrock = Skała macierzysta
+item.gravel = Żwir
+item.sign = Tabliczka
+item.crafting_table = Stół rzemieślniczy
+item.furnace = Piec
+item.coal = Węgiel
+item.stick = Patyk
+item.pickaxe_wood = Drewniany kilof
+item.pickaxe_stone = Kamienny kilof
+item.axe_wood = Drewniany topór
+item.axe_stone = Kamienny topór
+item.shovel_wood = Drewniana łopata
+item.shovel_stone = Kamienna łopata
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Piec
+furnace.input = Wejście
+furnace.fuel = Paliwo
+furnace.output = Wyjście
+furnace.empty = - puste -
+furnace.slot = %d %s
+furnace.hint = enter wkłada lub bierze   esc zamyka
+furnace.smelting = wytapia, %d%%
+furnace.no_input = nie ma co wytapiać
+furnace.no_fuel = brak paliwa
+furnace.full = wyjście jest pełne
+furnace.took = Wzięto %d %s
+furnace.pick_input = Co wytopić
+furnace.pick_fuel = Co spalić
+furnace.pick_none_input = Tu nic się nie wytopi
+furnace.pick_none_fuel = Tu nic nie pali się
+furnace.pick_hint = enter wybiera   esc wraca
+furnace.becomes = daje %s
+furnace.burns = wytopi %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Wytwarzanie

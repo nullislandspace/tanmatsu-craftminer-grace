@@ -164,3 +164,74 @@ action.pause = Paus
 action.drop = Släpp
 action.info = Visa positionen
 action.screenshot = Skärmbild
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Tillverkning
+craft.title_table = Arbetsbänk
+craft.search = Sök: %s
+craft.hint = skriv för att söka   enter tillverkar   esc stänger
+craft.empty = Inget att tillverka än
+craft.empty_sub = Recept dyker upp när du plockar upp deras material
+craft.no_match = Inget hittades
+craft.value_make = x%d
+craft.value_missing = saknas
+craft.ing = %s %d/%d
+craft.made = Gjorde %d %s
+craft.full = Ingen plats för det
+craft.detail_sub = vad som krävs
+craft.detail_hint = esc eller vänster tillbaka
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Gräs
+item.dirt = Jord
+item.stone = Sten
+item.cobblestone = Kullersten
+item.sand = Sand
+item.water = Vatten
+item.log = Stock
+item.planks = Plankor
+item.leaves = Löv
+item.coal_ore = Kolmalm
+item.glass = Glas
+item.torch = Fackla
+item.flower_red = Röd blomma
+item.flower_yellow = Gul blomma
+item.tall_grass = Högt gräs
+item.bedrock = Berggrund
+item.gravel = Grus
+item.sign = Skylt
+item.crafting_table = Arbetsbänk
+item.furnace = Ugn
+item.coal = Kol
+item.stick = Pinne
+item.pickaxe_wood = Trähacka
+item.pickaxe_stone = Stenhacka
+item.axe_wood = Träyxa
+item.axe_stone = Stenyxa
+item.shovel_wood = Träspade
+item.shovel_stone = Stenspade
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Ugn
+furnace.input = In
+furnace.fuel = Bränsle
+furnace.output = Ut
+furnace.empty = - tom -
+furnace.slot = %d %s
+furnace.hint = enter lägger i eller tar   esc stänger
+furnace.smelting = smälter, %d%%
+furnace.no_input = inget att smälta
+furnace.no_fuel = inget bränsle
+furnace.full = utgången är full
+furnace.took = Tog %d %s
+furnace.pick_input = Vad ska smältas
+furnace.pick_fuel = Vad ska brinna
+furnace.pick_none_input = Inget här kan smältas
+furnace.pick_none_fuel = Inget här brinner
+furnace.pick_hint = enter väljer   esc tillbaka
+furnace.becomes = ger %s
+furnace.burns = smälter %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Tillverkning

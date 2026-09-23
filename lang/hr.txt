@@ -164,3 +164,74 @@ action.pause = Pauza
 action.drop = Baci
 action.info = Prikaži položaj
 action.screenshot = Snimka zaslona
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Izrada
+craft.title_table = Radni stol
+craft.search = Traži: %s
+craft.hint = tipkaj za traženje   enter izrađuje   esc zatvara
+craft.empty = Još nema što izraditi
+craft.empty_sub = Recepti se pojave kad pokupiš njihove materijale
+craft.no_match = Ništa ne odgovara
+craft.value_make = x%d
+craft.value_missing = nedostaje
+craft.ing = %s %d/%d
+craft.made = Izrađeno %d %s
+craft.full = Nema mjesta za to
+craft.detail_sub = što je potrebno
+craft.detail_hint = esc ili lijevo natrag
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Trava
+item.dirt = Zemlja
+item.stone = Kamen
+item.cobblestone = Kaldrma
+item.sand = Pijesak
+item.water = Voda
+item.log = Trupac
+item.planks = Daske
+item.leaves = Lišće
+item.coal_ore = Ugljena ruda
+item.glass = Staklo
+item.torch = Baklja
+item.flower_red = Crveni cvijet
+item.flower_yellow = Žuti cvijet
+item.tall_grass = Visoka trava
+item.bedrock = Temeljna stijena
+item.gravel = Šljunak
+item.sign = Znak
+item.crafting_table = Radni stol
+item.furnace = Peć
+item.coal = Ugljen
+item.stick = Štap
+item.pickaxe_wood = Drveni pijuk
+item.pickaxe_stone = Kameni pijuk
+item.axe_wood = Drvena sjekira
+item.axe_stone = Kamena sjekira
+item.shovel_wood = Drvena lopata
+item.shovel_stone = Kamena lopata
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Peć
+furnace.input = Ulaz
+furnace.fuel = Gorivo
+furnace.output = Izlaz
+furnace.empty = - prazno -
+furnace.slot = %d %s
+furnace.hint = enter stavlja ili uzima   esc zatvara
+furnace.smelting = tali, %d%%
+furnace.no_input = nema što taliti
+furnace.no_fuel = nema goriva
+furnace.full = izlaz je pun
+furnace.took = Uzeto %d %s
+furnace.pick_input = Što taliti
+furnace.pick_fuel = Što gorjeti
+furnace.pick_none_input = Ovdje se ništa ne tali
+furnace.pick_none_fuel = Ovdje ništa ne gori
+furnace.pick_hint = enter bira   esc natrag
+furnace.becomes = daje %s
+furnace.burns = tali %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Izrada

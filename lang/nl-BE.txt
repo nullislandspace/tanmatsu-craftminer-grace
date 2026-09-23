@@ -154,3 +154,74 @@ action.pause = Pauze
 action.drop = Laten vallen
 action.info = Positie tonen
 action.screenshot = Schermafdruk
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Vervaardigen
+craft.title_table = Werkbank
+craft.search = Zoeken: %s
+craft.hint = typ om te zoeken   enter maakt   esc sluit
+craft.empty = Nog niets te maken
+craft.empty_sub = Recepten verschijnen zodra ge hun materiaal oppakt
+craft.no_match = Niets gevonden
+craft.value_make = x%d
+craft.value_missing = ontbreekt
+craft.ing = %s %d/%d
+craft.made = %d %s gemaakt
+craft.full = Geen plaats voor
+craft.detail_sub = wat het kost
+craft.detail_hint = esc of links terug
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Gras
+item.dirt = Aarde
+item.stone = Steen
+item.cobblestone = Keisteen
+item.sand = Zand
+item.water = Water
+item.log = Boomstam
+item.planks = Planken
+item.leaves = Bladeren
+item.coal_ore = Steenkoolerts
+item.glass = Glas
+item.torch = Toorts
+item.flower_red = Rode bloem
+item.flower_yellow = Gele bloem
+item.tall_grass = Hoog gras
+item.bedrock = Grondgesteente
+item.gravel = Grind
+item.sign = Bord
+item.crafting_table = Werkbank
+item.furnace = Oven
+item.coal = Steenkool
+item.stick = Stok
+item.pickaxe_wood = Houten pikhouweel
+item.pickaxe_stone = Stenen pikhouweel
+item.axe_wood = Houten bijl
+item.axe_stone = Stenen bijl
+item.shovel_wood = Houten schop
+item.shovel_stone = Stenen schop
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Oven
+furnace.input = Invoer
+furnace.fuel = Brandstof
+furnace.output = Uitvoer
+furnace.empty = - leeg -
+furnace.slot = %d %s
+furnace.hint = enter legt in of neemt   esc sluit
+furnace.smelting = smelten, %d%%
+furnace.no_input = niets om te smelten
+furnace.no_fuel = geen brandstof
+furnace.full = de uitvoer is vol
+furnace.took = %d %s genomen
+furnace.pick_input = Wat smelten
+furnace.pick_fuel = Wat verbranden
+furnace.pick_none_input = Hier smelt niets
+furnace.pick_none_fuel = Hier brandt niets
+furnace.pick_hint = enter kiest   esc terug
+furnace.becomes = maakt %s
+furnace.burns = smelt %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Vervaardigen

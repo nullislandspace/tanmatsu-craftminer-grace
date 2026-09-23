@@ -164,3 +164,74 @@ action.pause = Pausa
 action.drop = Deixa caure
 action.info = Mostra la posició
 action.screenshot = Captura de pantalla
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Fabricació
+craft.title_table = Taula de treball
+craft.search = Cerca: %s
+craft.hint = escriu per cercar   retorn fabrica   esc tanca
+craft.empty = Encara no hi ha res a fer
+craft.empty_sub = Les receptes apareixen quan reculls els seus materials
+craft.no_match = Cap resultat
+craft.value_make = x%d
+craft.value_missing = falta
+craft.ing = %s %d/%d
+craft.made = %d %s fet
+craft.full = No hi ha lloc
+craft.detail_sub = què cal
+craft.detail_hint = esc o esquerra per tornar
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Herba
+item.dirt = Terra
+item.stone = Pedra
+item.cobblestone = Llamborda
+item.sand = Sorra
+item.water = Aigua
+item.log = Tronc
+item.planks = Taulons
+item.leaves = Fulles
+item.coal_ore = Mineral de carbó
+item.glass = Vidre
+item.torch = Torxa
+item.flower_red = Flor vermella
+item.flower_yellow = Flor groga
+item.tall_grass = Herba alta
+item.bedrock = Roca mare
+item.gravel = Grava
+item.sign = Rètol
+item.crafting_table = Taula de treball
+item.furnace = Forn
+item.coal = Carbó
+item.stick = Pal
+item.pickaxe_wood = Pic de fusta
+item.pickaxe_stone = Pic de pedra
+item.axe_wood = Destral de fusta
+item.axe_stone = Destral de pedra
+item.shovel_wood = Pala de fusta
+item.shovel_stone = Pala de pedra
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Forn
+furnace.input = Entrada
+furnace.fuel = Combustible
+furnace.output = Sortida
+furnace.empty = - buit -
+furnace.slot = %d %s
+furnace.hint = retorn posa o treu   esc tanca
+furnace.smelting = fonent, %d%%
+furnace.no_input = res per fondre
+furnace.no_fuel = sense combustible
+furnace.full = la sortida és plena
+furnace.took = %d %s agafat
+furnace.pick_input = Què fondre
+furnace.pick_fuel = Què cremar
+furnace.pick_none_input = Aquí no es fon res
+furnace.pick_none_fuel = Aquí no crema res
+furnace.pick_hint = retorn tria   esc torna
+furnace.becomes = dóna %s
+furnace.burns = fon %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Fabricació

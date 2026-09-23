@@ -164,3 +164,74 @@ action.pause = Tauko
 action.drop = Pudota
 action.info = Näytä sijainti
 action.screenshot = Kuvakaappaus
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Valmistus
+craft.title_table = Työpöytä
+craft.search = Haku: %s
+craft.hint = kirjoita hakeaksesi   enter valmistaa   esc sulkee
+craft.empty = Ei vielä mitään tehtävää
+craft.empty_sub = Ohjeet ilmestyvät kun poimit niiden materiaalit
+craft.no_match = Ei osumia
+craft.value_make = x%d
+craft.value_missing = puuttuu
+craft.ing = %s %d/%d
+craft.made = Tehty %d %s
+craft.full = Ei tilaa sille
+craft.detail_sub = mitä siihen tarvitaan
+craft.detail_hint = esc tai vasen takaisin
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Ruoho
+item.dirt = Multa
+item.stone = Kivi
+item.cobblestone = Mukulakivi
+item.sand = Hiekka
+item.water = Vesi
+item.log = Tukki
+item.planks = Lankut
+item.leaves = Lehdet
+item.coal_ore = Hiilimalmi
+item.glass = Lasi
+item.torch = Soihtu
+item.flower_red = Punainen kukka
+item.flower_yellow = Keltainen kukka
+item.tall_grass = Korkea ruoho
+item.bedrock = Peruskallio
+item.gravel = Sora
+item.sign = Kyltti
+item.crafting_table = Työpöytä
+item.furnace = Uuni
+item.coal = Hiili
+item.stick = Keppi
+item.pickaxe_wood = Puuhakku
+item.pickaxe_stone = Kivihakku
+item.axe_wood = Puukirves
+item.axe_stone = Kivikirves
+item.shovel_wood = Puulapio
+item.shovel_stone = Kivilapio
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Uuni
+furnace.input = Sisään
+furnace.fuel = Polttoaine
+furnace.output = Ulos
+furnace.empty = - tyhjä -
+furnace.slot = %d %s
+furnace.hint = enter panee tai ottaa   esc sulkee
+furnace.smelting = sulattaa, %d%%
+furnace.no_input = ei mitään sulatettavaa
+furnace.no_fuel = ei polttoainetta
+furnace.full = ulostulo on täynnä
+furnace.took = Otettiin %d %s
+furnace.pick_input = Mitä sulatetaan
+furnace.pick_fuel = Mitä poltetaan
+furnace.pick_none_input = Täällä ei sula mikään
+furnace.pick_none_fuel = Täällä ei pala mikään
+furnace.pick_hint = enter valitsee   esc takaisin
+furnace.becomes = antaa %s
+furnace.burns = sulattaa %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Valmistus

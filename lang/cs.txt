@@ -164,3 +164,74 @@ action.pause = Pauza
 action.drop = Zahodit
 action.info = Zobrazit pozici
 action.screenshot = Snímek obrazovky
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Výroba
+craft.title_table = Pracovní stůl
+craft.search = Hledat: %s
+craft.hint = piš pro hledání   enter vyrobí   esc zavře
+craft.empty = Zatím není co vyrobit
+craft.empty_sub = Recepty se objeví, až seberete jejich materiál
+craft.no_match = Nic nenalezeno
+craft.value_make = x%d
+craft.value_missing = chybí
+craft.ing = %s %d/%d
+craft.made = Vyrobeno %d %s
+craft.full = Není na to místo
+craft.detail_sub = co je potřeba
+craft.detail_hint = esc nebo vlevo zpět
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Tráva
+item.dirt = Hlína
+item.stone = Kámen
+item.cobblestone = Dlažební kostky
+item.sand = Písek
+item.water = Voda
+item.log = Kmen
+item.planks = Prkna
+item.leaves = Listí
+item.coal_ore = Uhelná ruda
+item.glass = Sklo
+item.torch = Pochodeň
+item.flower_red = Červená květina
+item.flower_yellow = Žlutá květina
+item.tall_grass = Vysoká tráva
+item.bedrock = Podloží
+item.gravel = Štěrk
+item.sign = Cedule
+item.crafting_table = Pracovní stůl
+item.furnace = Pec
+item.coal = Uhlí
+item.stick = Klacek
+item.pickaxe_wood = Dřevěný krumpáč
+item.pickaxe_stone = Kamenný krumpáč
+item.axe_wood = Dřevěná sekera
+item.axe_stone = Kamenná sekera
+item.shovel_wood = Dřevěná lopata
+item.shovel_stone = Kamenná lopata
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Pec
+furnace.input = Vstup
+furnace.fuel = Palivo
+furnace.output = Výstup
+furnace.empty = - prázdné -
+furnace.slot = %d %s
+furnace.hint = enter vloží nebo vezme   esc zavře
+furnace.smelting = taví, %d%%
+furnace.no_input = není co tavit
+furnace.no_fuel = není palivo
+furnace.full = výstup je plný
+furnace.took = Vzato %d %s
+furnace.pick_input = Co tavit
+furnace.pick_fuel = Co pálit
+furnace.pick_none_input = Tady se nic neroztaví
+furnace.pick_none_fuel = Tady nic nehoří
+furnace.pick_hint = enter vybere   esc zpět
+furnace.becomes = dá %s
+furnace.burns = roztaví %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Výroba

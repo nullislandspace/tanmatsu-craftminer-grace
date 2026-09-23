@@ -164,3 +164,74 @@ action.pause = Pausa
 action.drop = Largar
 action.info = Mostrar a posição
 action.screenshot = Captura de ecrã
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Fabrico
+craft.title_table = Bancada
+craft.search = Procurar: %s
+craft.hint = escreve para procurar   enter fabrica   esc fecha
+craft.empty = Ainda nada para fazer
+craft.empty_sub = As receitas aparecem quando apanhas os materiais
+craft.no_match = Nada encontrado
+craft.value_make = x%d
+craft.value_missing = falta
+craft.ing = %s %d/%d
+craft.made = %d %s feito
+craft.full = Sem espaço para isso
+craft.detail_sub = o que é preciso
+craft.detail_hint = esc ou esquerda volta
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Erva
+item.dirt = Terra
+item.stone = Pedra
+item.cobblestone = Calçada
+item.sand = Areia
+item.water = Água
+item.log = Tronco
+item.planks = Tábuas
+item.leaves = Folhas
+item.coal_ore = Minério de carvão
+item.glass = Vidro
+item.torch = Tocha
+item.flower_red = Flor vermelha
+item.flower_yellow = Flor amarela
+item.tall_grass = Erva alta
+item.bedrock = Rocha-mãe
+item.gravel = Cascalho
+item.sign = Placa
+item.crafting_table = Bancada
+item.furnace = Fornalha
+item.coal = Carvão
+item.stick = Pau
+item.pickaxe_wood = Picareta de madeira
+item.pickaxe_stone = Picareta de pedra
+item.axe_wood = Machado de madeira
+item.axe_stone = Machado de pedra
+item.shovel_wood = Pá de madeira
+item.shovel_stone = Pá de pedra
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Fornalha
+furnace.input = Entrada
+furnace.fuel = Combustível
+furnace.output = Saída
+furnace.empty = - vazio -
+furnace.slot = %d %s
+furnace.hint = enter põe ou tira   esc fecha
+furnace.smelting = a fundir, %d%%
+furnace.no_input = nada para fundir
+furnace.no_fuel = sem combustível
+furnace.full = a saída está cheia
+furnace.took = %d %s tirado
+furnace.pick_input = O que fundir
+furnace.pick_fuel = O que queimar
+furnace.pick_none_input = Aqui nada funde
+furnace.pick_none_fuel = Aqui nada arde
+furnace.pick_hint = enter escolhe   esc volta
+furnace.becomes = dá %s
+furnace.burns = funde %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Fabrico

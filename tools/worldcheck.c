@@ -3569,6 +3569,11 @@ static struct {
     {"graphics.", 340.0f},  // ... and so is this one
     {"display.", 300.0f},
     {"settings.", 260.0f},
+    // The crafting book and the "what it takes" panel put an ITEM NAME
+    // in the label column with a value beside it. Russian "Деревянная
+    // лопата" is half as wide again as "Wooden shovel", and nothing was
+    // measuring it until the day the translations landed.
+    {"item.", 380.0f},
 };
 
 // ---------------------------------------------------------------------
@@ -3663,43 +3668,43 @@ static struct {
     {"hud.inventory_hint", 16.0f, 800.0f - 32.0f},
 
     // The crafting book: the list's value column, and its footer.
-    {"craft.value_make", 28.0f, VALUE_ROOM(0.72f, 300.0f)},
-    {"craft.value_missing", 28.0f, VALUE_ROOM(0.72f, 300.0f)},
+    {"craft.value_make", 28.0f, VALUE_ROOM(0.88f, 380.0f)},
+    {"craft.value_missing", 28.0f, VALUE_ROOM(0.88f, 380.0f)},
     // Several of these share one line. The share is worked out from the
     // recipe table below, not guessed here, so a recipe with another
     // ingredient in it tightens this automatically.
     {"craft.ing", 14.0f, 0.0f},
-    {"craft.hint", 14.0f, PANEL_ROOM(0.72f)},
-    {"craft.search", 18.0f, PANEL_ROOM(0.72f)},
-    {"craft.made", 14.0f, PANEL_ROOM(0.72f)},
-    {"craft.full", 14.0f, PANEL_ROOM(0.72f)},
-    {"craft.empty_sub", 14.0f, PANEL_ROOM(0.72f)},
-    {"craft.empty", 28.0f, PANEL_ROOM(0.72f)},
-    {"craft.no_match", 28.0f, PANEL_ROOM(0.72f)},
+    {"craft.hint", 14.0f, PANEL_ROOM(0.88f)},
+    {"craft.search", 18.0f, PANEL_ROOM(0.88f)},
+    {"craft.made", 14.0f, PANEL_ROOM(0.88f)},
+    {"craft.full", 14.0f, PANEL_ROOM(0.88f)},
+    {"craft.empty_sub", 14.0f, PANEL_ROOM(0.88f)},
+    {"craft.empty", 28.0f, PANEL_ROOM(0.88f)},
+    {"craft.no_match", 28.0f, PANEL_ROOM(0.88f)},
 
     // ... and the "what it takes" panel, which is where it went wrong.
-    {"craft.detail_have", 28.0f, VALUE_ROOM(0.78f, 300.0f)},
-    {"craft.detail_sub", 18.0f, PANEL_ROOM(0.78f)},
-    {"craft.detail_hint", 14.0f, PANEL_ROOM(0.78f)},
+    {"craft.detail_have", 28.0f, VALUE_ROOM(0.88f, 380.0f)},
+    {"craft.detail_sub", 18.0f, PANEL_ROOM(0.88f)},
+    {"craft.detail_hint", 14.0f, PANEL_ROOM(0.88f)},
 
     // The furnace: three rows with a value column, a subtitle that says
     // what it is doing, and the picker over the player's own stacks.
-    {"furnace.slot", 28.0f, VALUE_ROOM(0.86f, 200.0f)},
-    {"furnace.empty", 28.0f, VALUE_ROOM(0.86f, 200.0f)},
-    {"furnace.input", 28.0f, 200.0f},
-    {"furnace.fuel", 28.0f, 200.0f},
-    {"furnace.output", 28.0f, 200.0f},
-    {"furnace.smelting", 18.0f, PANEL_ROOM(0.86f)},
-    {"furnace.no_input", 18.0f, PANEL_ROOM(0.86f)},
-    {"furnace.no_fuel", 18.0f, PANEL_ROOM(0.86f)},
-    {"furnace.full", 18.0f, PANEL_ROOM(0.86f)},
-    {"furnace.took", 18.0f, PANEL_ROOM(0.86f)},
-    {"furnace.hint", 14.0f, PANEL_ROOM(0.86f)},
-    {"furnace.becomes", 14.0f, PANEL_ROOM(0.72f)},
-    {"furnace.burns", 14.0f, PANEL_ROOM(0.72f)},
-    {"furnace.pick_hint", 14.0f, PANEL_ROOM(0.72f)},
-    {"furnace.pick_none_input", 28.0f, PANEL_ROOM(0.72f)},
-    {"furnace.pick_none_fuel", 28.0f, PANEL_ROOM(0.72f)},
+    {"furnace.slot", 28.0f, VALUE_ROOM(0.94f, 240.0f)},
+    {"furnace.empty", 28.0f, VALUE_ROOM(0.94f, 240.0f)},
+    {"furnace.input", 28.0f, 240.0f},
+    {"furnace.fuel", 28.0f, 240.0f},
+    {"furnace.output", 28.0f, 240.0f},
+    {"furnace.smelting", 18.0f, PANEL_ROOM(0.94f)},
+    {"furnace.no_input", 18.0f, PANEL_ROOM(0.94f)},
+    {"furnace.no_fuel", 18.0f, PANEL_ROOM(0.94f)},
+    {"furnace.full", 18.0f, PANEL_ROOM(0.94f)},
+    {"furnace.took", 18.0f, PANEL_ROOM(0.94f)},
+    {"furnace.hint", 14.0f, PANEL_ROOM(0.94f)},
+    {"furnace.becomes", 14.0f, PANEL_ROOM(0.88f)},
+    {"furnace.burns", 14.0f, PANEL_ROOM(0.88f)},
+    {"furnace.pick_hint", 14.0f, PANEL_ROOM(0.88f)},
+    {"furnace.pick_none_input", 28.0f, PANEL_ROOM(0.88f)},
+    {"furnace.pick_none_fuel", 28.0f, PANEL_ROOM(0.88f)},
 };
 
 static void check_text_fits(void) {
@@ -3735,7 +3740,7 @@ static void check_text_fits(void) {
                 for (int ri = 0; ri < recipe_count(); ri++) {
                     if (recipe_at(ri)->n_in > most) most = recipe_at(ri)->n_in;
                 }
-                room = PANEL_ROOM(0.72f) / (float)most;
+                room = PANEL_ROOM(0.88f) / (float)most;
             }
             float const slack = room - w;
             CHECK(slack >= 0.0f, "%s/%s: \"%s\" is %.0f px, room is %.0f",

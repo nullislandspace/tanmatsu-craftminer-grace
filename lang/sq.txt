@@ -164,3 +164,74 @@ action.pause = Pauzë
 action.drop = Lësho
 action.info = Shfaq pozicionin
 action.screenshot = Foto e ekranit
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Punimi
+craft.title_table = Banku i punës
+craft.search = Kërko: %s
+craft.hint = shkruaj për të kërkuar   enter punon   esc mbyll
+craft.empty = Ende asgjë për të bërë
+craft.empty_sub = Recetat shfaqen kur merr materialet e tyre
+craft.no_match = Asgjë nuk përputhet
+craft.value_make = x%d
+craft.value_missing = mungon
+craft.ing = %s %d/%d
+craft.made = U bënë %d %s
+craft.full = Nuk ka vend
+craft.detail_sub = çfarë duhet
+craft.detail_hint = esc ose majtas kthehet
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Bar
+item.dirt = Dhe
+item.stone = Gur
+item.cobblestone = Kalldrëm
+item.sand = Rërë
+item.water = Ujë
+item.log = Trung
+item.planks = Dërrasa
+item.leaves = Gjethe
+item.coal_ore = Xeheror qymyri
+item.glass = Xham
+item.torch = Pishtar
+item.flower_red = Lule e kuqe
+item.flower_yellow = Lule e verdhë
+item.tall_grass = Bar i gjatë
+item.bedrock = Shkëmb bazë
+item.gravel = Zhavorr
+item.sign = Tabelë
+item.crafting_table = Banku i punës
+item.furnace = Furrë
+item.coal = Qymyr
+item.stick = Shkop
+item.pickaxe_wood = Kazmë druri
+item.pickaxe_stone = Kazmë guri
+item.axe_wood = Sëpatë druri
+item.axe_stone = Sëpatë guri
+item.shovel_wood = Lopatë druri
+item.shovel_stone = Lopatë guri
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Furrë
+furnace.input = Hyrje
+furnace.fuel = Karburant
+furnace.output = Dalje
+furnace.empty = - bosh -
+furnace.slot = %d %s
+furnace.hint = enter fut ose merr   esc mbyll
+furnace.smelting = po shkrin, %d%%
+furnace.no_input = asgjë për të shkrirë
+furnace.no_fuel = pa lëndë djegëse
+furnace.full = dalja është plot
+furnace.took = U morën %d %s
+furnace.pick_input = Çfarë të shkrihet
+furnace.pick_fuel = Çfarë të digjet
+furnace.pick_none_input = Këtu nuk shkrihet asgjë
+furnace.pick_none_fuel = Këtu nuk digjet asgjë
+furnace.pick_hint = enter zgjedh   esc kthehet
+furnace.becomes = jep %s
+furnace.burns = shkrin %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Punimi

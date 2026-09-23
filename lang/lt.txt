@@ -164,3 +164,74 @@ action.pause = Pauzė
 action.drop = Numesti
 action.info = Rodyti padėtį
 action.screenshot = Ekrano nuotrauka
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Gaminimas
+craft.title_table = Darbastalis
+craft.search = Ieškoti: %s
+craft.hint = rašyk norėdamas ieškoti   enter gamina   esc uždaro
+craft.empty = Kol kas nėra ką gaminti
+craft.empty_sub = Receptai atsiranda, kai pakeli jų medžiagas
+craft.no_match = Nieko nerasta
+craft.value_make = x%d
+craft.value_missing = trūksta
+craft.ing = %s %d/%d
+craft.made = Pagaminta %d %s
+craft.full = Nėra tam vietos
+craft.detail_sub = ko reikia
+craft.detail_hint = esc arba kairėn grįžta
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Žolė
+item.dirt = Žemė
+item.stone = Akmuo
+item.cobblestone = Grindinys
+item.sand = Smėlis
+item.water = Vanduo
+item.log = Rąstas
+item.planks = Lentos
+item.leaves = Lapai
+item.coal_ore = Anglies rūda
+item.glass = Stiklas
+item.torch = Deglas
+item.flower_red = Raudona gėlė
+item.flower_yellow = Geltona gėlė
+item.tall_grass = Aukšta žolė
+item.bedrock = Pamatinė uoliena
+item.gravel = Žvyras
+item.sign = Ženklas
+item.crafting_table = Darbastalis
+item.furnace = Krosnis
+item.coal = Anglis
+item.stick = Lazda
+item.pickaxe_wood = Medinis kirtiklis
+item.pickaxe_stone = Akmeninis kirtiklis
+item.axe_wood = Medinis kirvis
+item.axe_stone = Akmeninis kirvis
+item.shovel_wood = Medinis kastuvas
+item.shovel_stone = Akmeninis kastuvas
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Krosnis
+furnace.input = Įvestis
+furnace.fuel = Kuras
+furnace.output = Išvestis
+furnace.empty = - tuščia -
+furnace.slot = %d %s
+furnace.hint = enter deda arba ima   esc uždaro
+furnace.smelting = lydo, %d%%
+furnace.no_input = nėra ką lydyti
+furnace.no_fuel = nėra kuro
+furnace.full = išvestis pilna
+furnace.took = Paimta %d %s
+furnace.pick_input = Ką lydyti
+furnace.pick_fuel = Ką deginti
+furnace.pick_none_input = Čia niekas nesilydo
+furnace.pick_none_fuel = Čia niekas nedega
+furnace.pick_hint = enter renkasi   esc grįžta
+furnace.becomes = duoda %s
+furnace.burns = išlydys %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Gaminimas

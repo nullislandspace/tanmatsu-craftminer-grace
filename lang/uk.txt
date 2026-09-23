@@ -164,3 +164,74 @@ action.pause = Пауза
 action.drop = Кинути
 action.info = Показати позицію
 action.screenshot = Знімок екрана
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Виготовлення
+craft.title_table = Верстак
+craft.search = Пошук: %s
+craft.hint = друкуй для пошуку   ентер створює   есц закриває
+craft.empty = Поки нема чого робити
+craft.empty_sub = Рецепти з'являються, коли підбереш їхні матеріали
+craft.no_match = Нічого не знайдено
+craft.value_make = x%d
+craft.value_missing = бракує
+craft.ing = %s %d/%d
+craft.made = Створено %d %s
+craft.full = Немає місця для цього
+craft.detail_sub = що потрібно
+craft.detail_hint = есц або ліворуч назад
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Трава
+item.dirt = Земля
+item.stone = Камінь
+item.cobblestone = Брущатка
+item.sand = Пісок
+item.water = Вода
+item.log = Колода
+item.planks = Дошки
+item.leaves = Листя
+item.coal_ore = Вугільна руда
+item.glass = Скло
+item.torch = Смолоскип
+item.flower_red = Червона квітка
+item.flower_yellow = Жовта квітка
+item.tall_grass = Висока трава
+item.bedrock = Корінна порода
+item.gravel = Гравій
+item.sign = Табличка
+item.crafting_table = Верстак
+item.furnace = Піч
+item.coal = Вугілля
+item.stick = Палиця
+item.pickaxe_wood = Дерев'яна кирка
+item.pickaxe_stone = Кам'яна кирка
+item.axe_wood = Дерев'яна сокира
+item.axe_stone = Кам'яна сокира
+item.shovel_wood = Дерев'яна лопата
+item.shovel_stone = Кам'яна лопата
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Піч
+furnace.input = Вхід
+furnace.fuel = Паливо
+furnace.output = Вихід
+furnace.empty = - порожньо -
+furnace.slot = %d %s
+furnace.hint = ентер кладе або бере   есц закриває
+furnace.smelting = плавить, %d%%
+furnace.no_input = нема чого плавити
+furnace.no_fuel = немає палива
+furnace.full = вихід заповнений
+furnace.took = Взято %d %s
+furnace.pick_input = Що плавити
+furnace.pick_fuel = Що палити
+furnace.pick_none_input = Тут ніщо не плавиться
+furnace.pick_none_fuel = Тут ніщо не горить
+furnace.pick_hint = ентер обирає   есц назад
+furnace.becomes = дає %s
+furnace.burns = розплавить %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Виготовлення

@@ -164,3 +164,74 @@ action.pause = Pause
 action.drop = Slipp
 action.info = Vis posisjonen
 action.screenshot = Skjermbilde
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Håndverk
+craft.title_table = Arbeidsbenk
+craft.search = Søk: %s
+craft.hint = skriv for å søke   enter lager   esc lukker
+craft.empty = Ingenting å lage ennå
+craft.empty_sub = Oppskrifter dukker opp når du plukker opp materialene
+craft.no_match = Ingenting funnet
+craft.value_make = x%d
+craft.value_missing = mangler
+craft.ing = %s %d/%d
+craft.made = Laget %d %s
+craft.full = Ikke plass til det
+craft.detail_sub = hva som trengs
+craft.detail_hint = esc eller venstre tilbake
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Gress
+item.dirt = Jord
+item.stone = Stein
+item.cobblestone = Brostein
+item.sand = Sand
+item.water = Vann
+item.log = Tømmer
+item.planks = Planker
+item.leaves = Løv
+item.coal_ore = Kullmalm
+item.glass = Glass
+item.torch = Fakkel
+item.flower_red = Rød blomst
+item.flower_yellow = Gul blomst
+item.tall_grass = Høyt gress
+item.bedrock = Grunnfjell
+item.gravel = Grus
+item.sign = Skilt
+item.crafting_table = Arbeidsbenk
+item.furnace = Ovn
+item.coal = Kull
+item.stick = Pinne
+item.pickaxe_wood = Trehakke
+item.pickaxe_stone = Steinhakke
+item.axe_wood = Treøks
+item.axe_stone = Steinøks
+item.shovel_wood = Trespade
+item.shovel_stone = Steinspade
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Ovn
+furnace.input = Inn
+furnace.fuel = Brensel
+furnace.output = Ut
+furnace.empty = - tom -
+furnace.slot = %d %s
+furnace.hint = enter legger inn eller tar   esc lukker
+furnace.smelting = smelter, %d%%
+furnace.no_input = ingenting å smelte
+furnace.no_fuel = ingen brensel
+furnace.full = utgangen er full
+furnace.took = Tok %d %s
+furnace.pick_input = Hva skal smeltes
+furnace.pick_fuel = Hva skal brenne
+furnace.pick_none_input = Ingenting her kan smeltes
+furnace.pick_none_fuel = Ingenting her brenner
+furnace.pick_hint = enter velger   esc tilbake
+furnace.becomes = gir %s
+furnace.burns = smelter %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Håndverk

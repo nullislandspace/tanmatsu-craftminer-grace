@@ -156,3 +156,74 @@ action.pause = Pause
 action.drop = Jeter
 action.info = Afficher la position
 action.screenshot = Capture d'écran
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Fabrication
+craft.title_table = Établi
+craft.search = Recherche : %s
+craft.hint = tapez pour chercher   entrée fabrique   échap ferme
+craft.empty = Rien à fabriquer encore
+craft.empty_sub = Les recettes apparaissent en ramassant leur matériau
+craft.no_match = Aucun résultat
+craft.value_make = x%d
+craft.value_missing = manque
+craft.ing = %s %d/%d
+craft.made = %d %s fabriqué
+craft.full = Pas de place pour ça
+craft.detail_sub = ce qu'il faut
+craft.detail_hint = échap ou gauche pour revenir
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Herbe
+item.dirt = Terre
+item.stone = Pierre
+item.cobblestone = Pavé
+item.sand = Sable
+item.water = Eau
+item.log = Bûche
+item.planks = Planches
+item.leaves = Feuilles
+item.coal_ore = Minerai de charbon
+item.glass = Verre
+item.torch = Torche
+item.flower_red = Fleur rouge
+item.flower_yellow = Fleur jaune
+item.tall_grass = Herbe haute
+item.bedrock = Roche-mère
+item.gravel = Gravier
+item.sign = Panneau
+item.crafting_table = Établi
+item.furnace = Four
+item.coal = Charbon
+item.stick = Bâton
+item.pickaxe_wood = Pioche en bois
+item.pickaxe_stone = Pioche en pierre
+item.axe_wood = Hache en bois
+item.axe_stone = Hache en pierre
+item.shovel_wood = Pelle en bois
+item.shovel_stone = Pelle en pierre
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Four
+furnace.input = Entrée
+furnace.fuel = Combustible
+furnace.output = Sortie
+furnace.empty = - vide -
+furnace.slot = %d %s
+furnace.hint = entrée met ou prend   échap ferme
+furnace.smelting = fusion, %d%%
+furnace.no_input = rien à fondre
+furnace.no_fuel = pas de combustible
+furnace.full = la sortie est pleine
+furnace.took = %d %s pris
+furnace.pick_input = Quoi fondre
+furnace.pick_fuel = Quoi brûler
+furnace.pick_none_input = Rien ici ne fond
+furnace.pick_none_fuel = Rien ici ne brûle
+furnace.pick_hint = entrée choisit   échap revient
+furnace.becomes = donne %s
+furnace.burns = fond %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Fabrication

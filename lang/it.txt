@@ -164,3 +164,74 @@ action.pause = Pausa
 action.drop = Lascia cadere
 action.info = Mostra la posizione
 action.screenshot = Schermata
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Fabbricazione
+craft.title_table = Banco da lavoro
+craft.search = Cerca: %s
+craft.hint = scrivi per cercare   invio fabbrica   esc chiude
+craft.empty = Ancora niente da fare
+craft.empty_sub = Le ricette compaiono quando raccogli i loro materiali
+craft.no_match = Nessun risultato
+craft.value_make = x%d
+craft.value_missing = manca
+craft.ing = %s %d/%d
+craft.made = %d %s fatto
+craft.full = Non c'è posto
+craft.detail_sub = cosa serve
+craft.detail_hint = esc o sinistra per tornare
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Erba
+item.dirt = Terra
+item.stone = Pietra
+item.cobblestone = Ciottoli
+item.sand = Sabbia
+item.water = Acqua
+item.log = Tronco
+item.planks = Assi
+item.leaves = Foglie
+item.coal_ore = Minerale di carbone
+item.glass = Vetro
+item.torch = Torcia
+item.flower_red = Fiore rosso
+item.flower_yellow = Fiore giallo
+item.tall_grass = Erba alta
+item.bedrock = Roccia madre
+item.gravel = Ghiaia
+item.sign = Cartello
+item.crafting_table = Banco da lavoro
+item.furnace = Fornace
+item.coal = Carbone
+item.stick = Bastone
+item.pickaxe_wood = Piccone di legno
+item.pickaxe_stone = Piccone di pietra
+item.axe_wood = Ascia di legno
+item.axe_stone = Ascia di pietra
+item.shovel_wood = Pala di legno
+item.shovel_stone = Pala di pietra
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Fornace
+furnace.input = Entrata
+furnace.fuel = Combustibile
+furnace.output = Uscita
+furnace.empty = - vuoto -
+furnace.slot = %d %s
+furnace.hint = invio mette o prende   esc chiude
+furnace.smelting = fusione, %d%%
+furnace.no_input = niente da fondere
+furnace.no_fuel = niente da bruciare
+furnace.full = l'uscita è piena
+furnace.took = Presi %d %s
+furnace.pick_input = Cosa fondere
+furnace.pick_fuel = Cosa bruciare
+furnace.pick_none_input = Qui non fonde niente
+furnace.pick_none_fuel = Qui non brucia niente
+furnace.pick_hint = invio sceglie   esc torna
+furnace.becomes = dà %s
+furnace.burns = fonde %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Fabbricazione

@@ -156,3 +156,74 @@ action.pause = Pause
 action.drop = Fallen lassen
 action.info = Position zeigen
 action.screenshot = Screenshot
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Handwerk
+craft.title_table = Werkbank
+craft.search = Suche: %s
+craft.hint = tippen zum Suchen   Enter fertigt   Esc schließt
+craft.empty = Noch nichts zu fertigen
+craft.empty_sub = Rezepte erscheinen, sobald du ihr Material aufhebst
+craft.no_match = Nichts gefunden
+craft.value_make = x%d
+craft.value_missing = fehlt
+craft.ing = %s %d/%d
+craft.made = %d %s gefertigt
+craft.full = Kein Platz dafür
+craft.detail_sub = was nötig ist
+craft.detail_hint = Esc oder links zurück
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Gras
+item.dirt = Erde
+item.stone = Stein
+item.cobblestone = Bruchstein
+item.sand = Sand
+item.water = Wasser
+item.log = Holzstamm
+item.planks = Bretter
+item.leaves = Laub
+item.coal_ore = Kohleerz
+item.glass = Glas
+item.torch = Fackel
+item.flower_red = Rote Blume
+item.flower_yellow = Gelbe Blume
+item.tall_grass = Hohes Gras
+item.bedrock = Grundgestein
+item.gravel = Kies
+item.sign = Schild
+item.crafting_table = Werkbank
+item.furnace = Ofen
+item.coal = Kohle
+item.stick = Stock
+item.pickaxe_wood = Holzspitzhacke
+item.pickaxe_stone = Steinspitzhacke
+item.axe_wood = Holzaxt
+item.axe_stone = Steinaxt
+item.shovel_wood = Holzschaufel
+item.shovel_stone = Steinschaufel
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Ofen
+furnace.input = Eingabe
+furnace.fuel = Brennstoff
+furnace.output = Ausgabe
+furnace.empty = - leer -
+furnace.slot = %d %s
+furnace.hint = Enter legt ein oder nimmt   Esc schließt
+furnace.smelting = schmilzt, %d%%
+furnace.no_input = nichts zu schmelzen
+furnace.no_fuel = kein Brennstoff
+furnace.full = die Ausgabe ist voll
+furnace.took = %d %s genommen
+furnace.pick_input = Was schmelzen
+furnace.pick_fuel = Was verbrennen
+furnace.pick_none_input = Nichts davon schmilzt
+furnace.pick_none_fuel = Nichts davon brennt
+furnace.pick_hint = Enter wählt   Esc zurück
+furnace.becomes = ergibt %s
+furnace.burns = schmilzt %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Handwerk

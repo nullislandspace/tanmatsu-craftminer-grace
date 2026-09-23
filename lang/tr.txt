@@ -164,3 +164,74 @@ action.pause = Duraklat
 action.drop = Bırak
 action.info = Konumu göster
 action.screenshot = Ekran görüntüsü
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Üretim
+craft.title_table = Çalışma tezgâhı
+craft.search = Ara: %s
+craft.hint = aramak için yaz   enter üretir   esc kapatır
+craft.empty = Henüz yapacak bir şey yok
+craft.empty_sub = Tarifler, malzemelerini aldığında görünür
+craft.no_match = Eşleşen yok
+craft.value_make = x%d
+craft.value_missing = eksik
+craft.ing = %s %d/%d
+craft.made = %d %s yapıldı
+craft.full = Buna yer yok
+craft.detail_sub = ne gerekiyor
+craft.detail_hint = esc veya sol geri döner
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Çimen
+item.dirt = Toprak
+item.stone = Taş
+item.cobblestone = Parke taşı
+item.sand = Kum
+item.water = Su
+item.log = Kütük
+item.planks = Tahta
+item.leaves = Yapraklar
+item.coal_ore = Kömür cevheri
+item.glass = Cam
+item.torch = Meşale
+item.flower_red = Kırmızı çiçek
+item.flower_yellow = Sarı çiçek
+item.tall_grass = Uzun çimen
+item.bedrock = Ana kaya
+item.gravel = Çakıl
+item.sign = Tabela
+item.crafting_table = Çalışma tezgâhı
+item.furnace = Fırın
+item.coal = Kömür
+item.stick = Çubuk
+item.pickaxe_wood = Ahşap kazma
+item.pickaxe_stone = Taş kazma
+item.axe_wood = Ahşap balta
+item.axe_stone = Taş balta
+item.shovel_wood = Ahşap kürek
+item.shovel_stone = Taş kürek
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Fırın
+furnace.input = Girdi
+furnace.fuel = Yakıt
+furnace.output = Çıktı
+furnace.empty = - boş -
+furnace.slot = %d %s
+furnace.hint = enter koyar veya alır   esc kapatır
+furnace.smelting = eritiyor, %d%%
+furnace.no_input = eritecek bir şey yok
+furnace.no_fuel = yakıt yok
+furnace.full = çıktı dolu
+furnace.took = %d %s alındı
+furnace.pick_input = Ne eritilecek
+furnace.pick_fuel = Ne yakılacak
+furnace.pick_none_input = Burada hiçbir şey erimez
+furnace.pick_none_fuel = Burada hiçbir şey yanmaz
+furnace.pick_hint = enter seçer   esc geri döner
+furnace.becomes = verir %s
+furnace.burns = eritir %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Üretim

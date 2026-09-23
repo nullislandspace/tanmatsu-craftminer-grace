@@ -164,3 +164,74 @@ action.pause = Paus
 action.drop = Viska maha
 action.info = Näita asukohta
 action.screenshot = Kuvatõmmis
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Meisterdamine
+craft.title_table = Töölaud
+craft.search = Otsi: %s
+craft.hint = kirjuta otsimiseks   enter valmistab   esc sulgeb
+craft.empty = Veel pole midagi teha
+craft.empty_sub = Retseptid ilmuvad, kui korjad nende materjalid üles
+craft.no_match = Midagi ei leitud
+craft.value_make = x%d
+craft.value_missing = puudub
+craft.ing = %s %d/%d
+craft.made = Tehtud %d %s
+craft.full = Selle jaoks pole ruumi
+craft.detail_sub = mida vaja on
+craft.detail_hint = esc või vasak tagasi
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Rohi
+item.dirt = Muld
+item.stone = Kivi
+item.cobblestone = Munakivi
+item.sand = Liiv
+item.water = Vesi
+item.log = Palk
+item.planks = Lauad
+item.leaves = Lehed
+item.coal_ore = Söemaak
+item.glass = Klaas
+item.torch = Tõrvik
+item.flower_red = Punane lill
+item.flower_yellow = Kollane lill
+item.tall_grass = Kõrge rohi
+item.bedrock = Aluspõhi
+item.gravel = Kruus
+item.sign = Silt
+item.crafting_table = Töölaud
+item.furnace = Ahi
+item.coal = Süsi
+item.stick = Kepp
+item.pickaxe_wood = Puust kirka
+item.pickaxe_stone = Kivist kirka
+item.axe_wood = Puust kirves
+item.axe_stone = Kivist kirves
+item.shovel_wood = Puust labidas
+item.shovel_stone = Kivist labidas
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Ahi
+furnace.input = Sisend
+furnace.fuel = Kütus
+furnace.output = Väljund
+furnace.empty = - tühi -
+furnace.slot = %d %s
+furnace.hint = enter paneb või võtab   esc sulgeb
+furnace.smelting = sulatab, %d%%
+furnace.no_input = pole midagi sulatada
+furnace.no_fuel = kütust pole
+furnace.full = väljund on täis
+furnace.took = Võetud %d %s
+furnace.pick_input = Mida sulatada
+furnace.pick_fuel = Mida põletada
+furnace.pick_none_input = Siin ei sula miski
+furnace.pick_none_fuel = Siin ei põle miski
+furnace.pick_hint = enter valib   esc tagasi
+furnace.becomes = annab %s
+furnace.burns = sulatab %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Meisterdamine

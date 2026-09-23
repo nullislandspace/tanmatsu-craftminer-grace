@@ -164,3 +164,74 @@ action.pause = Pauze
 action.drop = Nomest
 action.info = Rādīt atrašanās vietu
 action.screenshot = Ekrānuzņēmums
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Izgatavošana
+craft.title_table = Darbgalds
+craft.search = Meklēt: %s
+craft.hint = raksti, lai meklētu   enter izgatavo   esc aizver
+craft.empty = Vēl nav ko izgatavot
+craft.empty_sub = Receptes parādās, kad paņem to materiālus
+craft.no_match = Nekas neatbilst
+craft.value_make = x%d
+craft.value_missing = trūkst
+craft.ing = %s %d/%d
+craft.made = Izgatavots %d %s
+craft.full = Nav tam vietas
+craft.detail_sub = kas nepieciešams
+craft.detail_hint = esc vai pa kreisi atpakaļ
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Zāle
+item.dirt = Zeme
+item.stone = Akmens
+item.cobblestone = Bruģakmens
+item.sand = Smiltis
+item.water = Ūdens
+item.log = Baļķis
+item.planks = Dēļi
+item.leaves = Lapas
+item.coal_ore = Ogļu rūda
+item.glass = Stikls
+item.torch = Lāpa
+item.flower_red = Sarkana puķe
+item.flower_yellow = Dzeltena puķe
+item.tall_grass = Gara zāle
+item.bedrock = Pamatieži
+item.gravel = Grants
+item.sign = Zīme
+item.crafting_table = Darbgalds
+item.furnace = Krāsns
+item.coal = Ogles
+item.stick = Nūja
+item.pickaxe_wood = Koka cērte
+item.pickaxe_stone = Akmens cērte
+item.axe_wood = Koka cirvis
+item.axe_stone = Akmens cirvis
+item.shovel_wood = Koka lāpsta
+item.shovel_stone = Akmens lāpsta
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Krāsns
+furnace.input = Ievade
+furnace.fuel = Kurināmais
+furnace.output = Izvade
+furnace.empty = - tukšs -
+furnace.slot = %d %s
+furnace.hint = enter ieliek vai izņem   esc aizver
+furnace.smelting = kausē, %d%%
+furnace.no_input = nav ko kausēt
+furnace.no_fuel = nav kurināmā
+furnace.full = izvade ir pilna
+furnace.took = Paņemts %d %s
+furnace.pick_input = Ko kausēt
+furnace.pick_fuel = Ko dedzināt
+furnace.pick_none_input = Šeit nekas nekūst
+furnace.pick_none_fuel = Šeit nekas nedeg
+furnace.pick_hint = enter izvēlas   esc atpakaļ
+furnace.becomes = dod %s
+furnace.burns = izkausēs %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Izgatavošana

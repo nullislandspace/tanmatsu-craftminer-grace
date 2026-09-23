@@ -164,3 +164,74 @@ action.pause = Szünet
 action.drop = Eldobás
 action.info = Pozíció mutatása
 action.screenshot = Képernyőkép
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Barkácsolás
+craft.title_table = Munkapad
+craft.search = Keresés: %s
+craft.hint = gépelj a kereséshez   enter készít   esc bezár
+craft.empty = Még nincs mit készíteni
+craft.empty_sub = A receptek akkor jelennek meg, ha felveszed az anyagukat
+craft.no_match = Nincs találat
+craft.value_make = x%d
+craft.value_missing = hiányzik
+craft.ing = %s %d/%d
+craft.made = %d %s elkészült
+craft.full = Nincs rá hely
+craft.detail_sub = mi kell hozzá
+craft.detail_hint = esc vagy balra vissza
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Fű
+item.dirt = Föld
+item.stone = Kő
+item.cobblestone = Macskakő
+item.sand = Homok
+item.water = Víz
+item.log = Rönk
+item.planks = Deszka
+item.leaves = Levelek
+item.coal_ore = Szénérc
+item.glass = Üveg
+item.torch = Fáklya
+item.flower_red = Piros virág
+item.flower_yellow = Sárga virág
+item.tall_grass = Magas fű
+item.bedrock = Alapkőzet
+item.gravel = Kavics
+item.sign = Tábla
+item.crafting_table = Munkapad
+item.furnace = Kemence
+item.coal = Szén
+item.stick = Bot
+item.pickaxe_wood = Fa csákány
+item.pickaxe_stone = Kő csákány
+item.axe_wood = Fa fejsze
+item.axe_stone = Kő fejsze
+item.shovel_wood = Fa lapát
+item.shovel_stone = Kő lapát
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Kemence
+furnace.input = Bemenet
+furnace.fuel = Tüzelő
+furnace.output = Kimenet
+furnace.empty = - üres -
+furnace.slot = %d %s
+furnace.hint = enter betesz vagy kivesz   esc bezár
+furnace.smelting = olvaszt, %d%%
+furnace.no_input = nincs mit olvasztani
+furnace.no_fuel = nincs tüzelő
+furnace.full = a kimenet tele van
+furnace.took = Elvéve %d %s
+furnace.pick_input = Mit olvasszon
+furnace.pick_fuel = Mit égessen
+furnace.pick_none_input = Itt semmi sem olvad
+furnace.pick_none_fuel = Itt semmi sem ég
+furnace.pick_hint = enter választ   esc vissza
+furnace.becomes = ad %s
+furnace.burns = olvaszt %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Barkácsolás

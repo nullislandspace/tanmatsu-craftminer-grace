@@ -281,7 +281,7 @@ static void draw_picker(pax_buf_t* fb, inventory_t const* inv) {
         .title_h      = 32.0f,
         .row_h        = 34.0f,
         .value_dx     = 0.0f,
-        .panel_w      = 0.72f,
+        .panel_w      = 0.88f,
         .panel_h      = 0.92f,
         .visible_rows = 8,
     };
@@ -335,8 +335,8 @@ void furnace_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
         .hint      = T(CM_STR_FURNACE_HINT),
         .title_h   = 32.0f,
         .row_h     = 40.0f,
-        .value_dx  = 200.0f,
-        .panel_w   = 0.86f,
+        .value_dx  = 240.0f,
+        .panel_w   = 0.94f,
         .panel_h   = 0.66f,
     };
     se_menu_t const m = {.def = &def, .cursor = s_cursor};

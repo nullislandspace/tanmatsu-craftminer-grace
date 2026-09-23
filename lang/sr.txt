@@ -164,3 +164,74 @@ action.pause = Пауза
 action.drop = Баци
 action.info = Прикажи положај
 action.screenshot = Снимак екрана
+
+# --- Crafting ---------------------------------------------------------------
+craft.title = Израда
+craft.title_table = Радни сто
+craft.search = Тражи: %s
+craft.hint = куцај за тражење   ентер прави   есц затвара
+craft.empty = Још нема шта правити
+craft.empty_sub = Рецепти се појаве кад покупиш њихове материјале
+craft.no_match = Ништа не одговара
+craft.value_make = x%d
+craft.value_missing = недостаје
+craft.ing = %s %d/%d
+craft.made = Направљено %d %s
+craft.full = Нема места за то
+craft.detail_sub = шта је потребно
+craft.detail_hint = есц или лево назад
+craft.detail_have = %d / %d
+
+# --- The names of things ----------------------------------------------------
+item.grass = Трава
+item.dirt = Земља
+item.stone = Камен
+item.cobblestone = Калдрма
+item.sand = Песак
+item.water = Вода
+item.log = Трупац
+item.planks = Даске
+item.leaves = Лишће
+item.coal_ore = Руда угља
+item.glass = Стакло
+item.torch = Бакља
+item.flower_red = Црвени цвет
+item.flower_yellow = Жути цвет
+item.tall_grass = Висока трава
+item.bedrock = Основна стена
+item.gravel = Шљунак
+item.sign = Знак
+item.crafting_table = Радни сто
+item.furnace = Пећ
+item.coal = Угаљ
+item.stick = Штап
+item.pickaxe_wood = Дрвени пијук
+item.pickaxe_stone = Камени пијук
+item.axe_wood = Дрвена секира
+item.axe_stone = Камена секира
+item.shovel_wood = Дрвена лопата
+item.shovel_stone = Камена лопата
+
+# --- The furnace ------------------------------------------------------------
+furnace.title = Пећ
+furnace.input = Улаз
+furnace.fuel = Гориво
+furnace.output = Излаз
+furnace.empty = - празно -
+furnace.slot = %d %s
+furnace.hint = ентер ставља или узима   есц затвара
+furnace.smelting = топи, %d%%
+furnace.no_input = нема шта да се топи
+furnace.no_fuel = нема горива
+furnace.full = излаз је пун
+furnace.took = Узето %d %s
+furnace.pick_input = Шта топити
+furnace.pick_fuel = Шта горети
+furnace.pick_none_input = Овде се ништа не топи
+furnace.pick_none_fuel = Овде ништа не гори
+furnace.pick_hint = ентер бира   есц назад
+furnace.becomes = даје %s
+furnace.burns = топи %d
+
+# --- The things a key can be bound to ---------------------------------------
+action.craft = Израда
