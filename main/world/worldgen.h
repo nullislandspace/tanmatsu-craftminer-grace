@@ -58,15 +58,24 @@ int worldgen_height(int32_t x, int32_t z, uint32_t seed);
 // Minecraft chooses, and NOT from the height field: a biome that
 // followed the terrain would put the same place on every hilltop.
 //
-// What is NOT here yet, deliberately: per-biome terrain HEIGHT. Making
-// deserts flat and hills high means blending the height parameters
-// across biome borders, because a lookup that changes abruptly puts a
-// vertical cliff at every boundary -- that is the expensive half, and
-// it can be added without any of this moving.
+// THE TERRAIN IS BLENDED AND THE SURFACE IS NOT, and that difference
+// is the whole design. A biome id is a step function, so height taken
+// from a lookup would put a vertical cliff at every border. What is
+// blended instead is the WEIGHTS: each biome's membership is a smooth
+// function of temperature and humidity, the three height numbers are
+// mixed by those weights, and the ground comes out continuous because
+// every term in it is. The surface BLOCK still changes abruptly, which
+// is right -- grass meets sand at a line in every game that has both.
+//
+// It costs four multiplies on two noise values the column already
+// needed. The obvious alternative -- sample the biome at a grid of
+// offsets and average -- would be 25 lookups and 50 noise fields per
+// column, and this world already spends 134 ms a chunk.
 typedef enum {
     BIOME_PLAINS = 0,
     BIOME_FOREST,
     BIOME_SAND,
+    BIOME_MOUNTAIN,
     BIOME_COUNT
 } biome_t;
 
@@ -79,6 +88,17 @@ typedef struct {
     float       tree_chance;  // per candidate on the tree grid
     float       plant_chance; // that a surface block carries a plant
     float       flowers;      // of those plants, the share that are flowers
+
+    // What the ground DOES here. The three numbers worldgen_height has
+    // always used, now one set per biome and blended between them.
+    float       h_base;       // the floor this biome sits on
+    float       h_cont;       // how far the broad field lifts it
+    float       h_hill;       // how far the fine field roughens it
+
+    // Bare rock at or above this height, whatever the surface block
+    // would have been. What makes a mountain read as a mountain without
+    // a single new block id. 255 for a biome that never shows rock.
+    uint8_t     rock_above;
 } biome_def_t;
 
 extern biome_def_t const BIOMES[BIOME_COUNT];
@@ -87,3 +107,8 @@ extern biome_def_t const BIOMES[BIOME_COUNT];
 // else here, so two chunks agree along their border without either
 // reading the other.
 uint8_t worldgen_biome(int32_t x, int32_t z, uint32_t seed);
+
+// Each biome's smooth share of (x, z), summing to 1. The discrete biome
+// above is simply the largest of these, so the block on the ground and
+// the shape of the ground can never disagree about where a place is.
+void worldgen_biome_weights(int32_t x, int32_t z, uint32_t seed, float w[BIOME_COUNT]);

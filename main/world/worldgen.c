@@ -46,17 +46,19 @@
 #define S_TEMP   0xAAAAu
 #define S_HUMID  0xBBBBu
 
-// Height band. Sea level is CH_SEA_LEVEL (24) of 64, so there is room
-// for caves beneath and for building above.
-#define H_BASE 14.0f
-#define H_CONT 20.0f  // how far the broad field lifts the land
-#define H_HILL 12.0f  // how far the fine field roughens it
+// Sea level is CH_SEA_LEVEL (24) of 64, so there is room for caves
+// beneath and for building above. The three height numbers that used to
+// live here are columns of the biome table now (worldgen.h).
 
 // --- Biomes -----------------------------------------------------------
 //
 // Three, out of blocks the game already has: no new ids, nothing
 // permanent committed (D-74), and a row here is the whole of what makes
 // one place different from another.
+// The height band each biome sits in. H_BASE/H_CONT/H_HILL used to be
+// three constants for the whole world; they are these columns now, and
+// PLAINS still holds exactly the old numbers so plains ground is
+// unchanged to the block.
 biome_def_t const BIOMES[BIOME_COUNT] = {
     // Open ground with the odd tree: what the whole world used to be,
     // kept at exactly its old numbers so a plains chunk generates as it
@@ -64,35 +66,91 @@ biome_def_t const BIOMES[BIOME_COUNT] = {
     [BIOME_PLAINS] = {.name  = "plains",
                       .surface = BLK_GRASS, .filler = BLK_DIRT,
                       .soil_min = 3, .soil_max = 5,
-                      .tree_chance = 0.28f, .plant_chance = 0.09f, .flowers = 0.55f},
+                      .tree_chance = 0.28f, .plant_chance = 0.09f, .flowers = 0.55f,
+                      .h_base = 14.0f, .h_cont = 20.0f, .h_hill = 12.0f, .rock_above = 255},
 
     // Trees close enough to walk between in shade, and more undergrowth
     // than flowers.
     [BIOME_FOREST] = {.name  = "forest",
                       .surface = BLK_GRASS, .filler = BLK_DIRT,
                       .soil_min = 3, .soil_max = 6,
-                      .tree_chance = 0.66f, .plant_chance = 0.16f, .flowers = 0.25f},
+                      .tree_chance = 0.66f, .plant_chance = 0.16f, .flowers = 0.25f,
+                      .h_base = 14.0f, .h_cont = 20.0f, .h_hill = 15.0f, .rock_above = 255},
 
     // Sand over sand, and nothing growing. No cactus: that would be a
     // new block, and a new block id is forever.
     [BIOME_SAND] = {.name  = "sand flats",
                     .surface = BLK_SAND, .filler = BLK_SAND,
                     .soil_min = 4, .soil_max = 7,
-                    .tree_chance = 0.0f, .plant_chance = 0.0f, .flowers = 0.0f},
+                    .tree_chance = 0.0f, .plant_chance = 0.0f, .flowers = 0.0f,
+                    // FLAT, and that is most of what makes it read as a
+                    // desert rather than as pale grassland.
+                    .h_base = 13.0f, .h_cont = 17.0f, .h_hill = 4.0f, .rock_above = 255},
+
+    // High, steep, and bare above the treeline. No snow and no new
+    // stone: the rock is the stone already under everything, shown
+    // rather than added, so this biome costs no permanent block id.
+    [BIOME_MOUNTAIN] = {.name  = "mountains",
+                        .surface = BLK_GRASS, .filler = BLK_DIRT,
+                        .soil_min = 1, .soil_max = 3,
+                        .tree_chance = 0.16f, .plant_chance = 0.05f, .flowers = 0.35f,
+                        .h_base = 17.0f, .h_cont = 25.0f, .h_hill = 27.0f, .rock_above = 40},
 };
 
-uint8_t worldgen_biome(int32_t x, int32_t z, uint32_t seed) {
+// A smooth 0..1 crossing of `edge`, over a band either side of it.
+// Every biome's share is built out of these, which is why the ground
+// they shape has no steps in it.
+#define BIOME_BAND 0.055f
+
+static float step_up(float v, float edge) {
+    float t = (v - (edge - BIOME_BAND)) / (2.0f * BIOME_BAND);
+    t       = t < 0.0f ? 0.0f : t > 1.0f ? 1.0f : t;
+    return t * t * (3.0f - 2.0f * t);
+}
+
+static float step_down(float v, float edge) {
+    return 1.0f - step_up(v, edge);
+}
+
+void worldgen_biome_weights(int32_t x, int32_t z, uint32_t seed, float w[BIOME_COUNT]) {
     // SLOWER THAN THE HILLS AND FASTER THAN THE CONTINENTS: at 420 and
     // 360 blocks a biome is a few minutes across on foot, which is far
     // enough to feel like somewhere and near enough to find another.
     float const temp  = cm_fbm2((float)x, (float)z, 420.0f, 3, seed ^ S_TEMP);
     float const humid = cm_fbm2((float)x, (float)z, 360.0f, 3, seed ^ S_HUMID);
 
-    // Hot AND dry, or it is merely a warm meadow. Tested first, so the
-    // driest ground wins over the wettest.
-    if (temp > 0.60f && humid < 0.42f) return BIOME_SAND;
-    if (humid > 0.56f) return BIOME_FOREST;
-    return BIOME_PLAINS;
+    float const cold = step_down(temp, 0.32f);
+    float const hot  = step_up(temp, 0.60f);
+    float const dry  = step_down(humid, 0.42f);
+    float const wet  = step_up(humid, 0.56f);
+
+    // In order of precedence, each one taking what the ones before it
+    // left: cold ground is mountains whatever else it is, hot AND dry
+    // ground is sand, wet ground is forest, and the rest is plains.
+    //
+    // The cold edge was swept, not chosen: 0.38 makes mountains 24% of
+    // the world (more than forest, which is not a mountain range, it is
+    // a mountain planet), 0.32 makes them 12%, and 0.26 makes them 5%
+    // and hard to ever find. worldcheck prints the share of each.
+    w[BIOME_MOUNTAIN] = cold;
+    w[BIOME_SAND]     = (1.0f - cold) * hot * dry;
+    w[BIOME_FOREST]   = (1.0f - cold) * (1.0f - hot * dry) * wet;
+    float rest        = 1.0f - w[BIOME_MOUNTAIN] - w[BIOME_SAND] - w[BIOME_FOREST];
+    w[BIOME_PLAINS]   = rest < 0.0f ? 0.0f : rest;
+}
+
+uint8_t worldgen_biome(int32_t x, int32_t z, uint32_t seed) {
+    // THE LARGEST SHARE, not a second set of thresholds. One rule means
+    // the block on the ground and the shape of the ground can never
+    // disagree about where a biome starts.
+    float w[BIOME_COUNT];
+    worldgen_biome_weights(x, z, seed, w);
+
+    int best = 0;
+    for (int b = 1; b < BIOME_COUNT; b++) {
+        if (w[b] > w[best]) best = b;
+    }
+    return (uint8_t)best;
 }
 
 int worldgen_height(int32_t x, int32_t z, uint32_t seed) {
@@ -106,7 +164,19 @@ int worldgen_height(int32_t x, int32_t z, uint32_t seed) {
     // Fine: hills. Squared, so flat ground is common and peaks are not.
     float const h = cm_fbm2(fx, fz, 56.0f, 4, seed ^ S_HILL);
 
-    float y = H_BASE + c * H_CONT + h * h * H_HILL;
+    // The three numbers, mixed by each biome's smooth share of this
+    // spot. Continuous because the weights are, so a biome border is a
+    // slope and not a step (worldgen.h).
+    float w[BIOME_COUNT];
+    worldgen_biome_weights(x, z, seed, w);
+    float base = 0.0f, cont = 0.0f, hill = 0.0f;
+    for (int b = 0; b < BIOME_COUNT; b++) {
+        base += w[b] * BIOMES[b].h_base;
+        cont += w[b] * BIOMES[b].h_cont;
+        hill += w[b] * BIOMES[b].h_hill;
+    }
+
+    float y = base + c * cont + h * h * hill;
 
     // A little per-block wobble keeps long slopes from looking milled.
     y += (cm_noise2(fx, fz, 7.0f, seed ^ S_DETAIL) - 0.5f) * 1.5f;
@@ -236,6 +306,9 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
     // place, it is an edge, and grass running into the sea looks wrong
     // in every biome there has ever been.
     bool const beach = sy <= CH_SEA_LEVEL + 1;
+    // ... and high ground is bare rock, which is what a mountain looks
+    // like without inventing a block to say so.
+    bool const rock = !beach && sy >= (int)bd->rock_above;
     // Asked once per column, not once per cell: it does not vary
     // with height and it is two octaves of noise.
     bool const mouth = !beach && cave_mouth(wx, wz, seed);
@@ -247,9 +320,9 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
         } else if (y < sy - soil) {
             b = BLK_STONE;
         } else if (y < sy) {
-            b = beach ? BLK_SAND : bd->filler;
+            b = beach ? BLK_SAND : rock ? BLK_STONE : bd->filler;
         } else if (y == sy) {
-            b = beach ? BLK_SAND : bd->surface;
+            b = beach ? BLK_SAND : rock ? BLK_STONE : bd->surface;
         } else if (y <= CH_SEA_LEVEL) {
             b = BLK_WATER;
         }
@@ -323,6 +396,7 @@ static void place_tree(chunk_t* c, int32_t wx, int32_t wz, uint32_t seed) {
     // the generated surface -- not the inside of a hill.
     int const sy = worldgen_height(wx, wz, seed);
     if (sy <= CH_SEA_LEVEL + 1) return;  // no trees on the beach or in the water
+    if (sy >= (int)BIOMES[worldgen_biome(wx, wz, seed)].rock_above) return;  // nor above the treeline
 
     int const h = TREE_MIN_H + (int)(cm_rand2(wx + 1, wz - 1, seed ^ S_TREE) * (TREE_MAX_H - TREE_MIN_H + 1));
     int const top = sy + h;

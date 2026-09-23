@@ -3103,6 +3103,70 @@ static void check_biomes(void) {
     CHECK(cols[BIOME_PLAINS] > 0 && grass_top[BIOME_PLAINS] > cols[BIOME_PLAINS] * 9 / 10,
           "the plains are not mostly grass");
     CHECK(cols[BIOME_FOREST] > 0, "the strip crossed no forest at all");
+
+    // --- The ground is CONTINUOUS ------------------------------------
+    //
+    // This is the check the whole design exists for. Height is blended
+    // from each biome's smooth share of a spot, rather than looked up
+    // by biome id -- and if that ever regresses to a lookup, the symptom
+    // is a vertical cliff at every biome border and NOTHING ELSE here
+    // would notice: the shares would be right, the surface blocks would
+    // be right, and the world would be full of walls.
+    //
+    // So: walk a long line, watch every step, and watch hardest at the
+    // steps that CROSS a border, which is exactly where a lookup breaks
+    // and noise does not.
+    int  worst = 0, worst_cross = 0;
+    long crossings = 0;
+    int32_t worst_x = 0;
+    for (int32_t z = -600; z <= 600; z += 131) {
+        int prev  = worldgen_height(-3000, z, seed);
+        uint8_t pb = worldgen_biome(-3000, z, seed);
+        for (int32_t x = -2999; x <= 3000; x++) {
+            int const     hh = worldgen_height(x, z, seed);
+            uint8_t const bb = worldgen_biome(x, z, seed);
+            int const     d  = hh > prev ? hh - prev : prev - hh;
+            if (d > worst) {
+                worst   = d;
+                worst_x = x;
+            }
+            if (bb != pb) {
+                crossings++;
+                if (d > worst_cross) worst_cross = d;
+            }
+            prev = hh;
+            pb   = bb;
+        }
+    }
+    printf("  %ld biome crossings; biggest step %d blocks, %d of them at a crossing\n", crossings, worst,
+           worst_cross);
+    CHECK(crossings > 100, "only %ld biome crossings in 60000 blocks -- the walk saw nothing", crossings);
+    // Terrain noise alone steps 3-4 blocks at its steepest. A lookup by
+    // biome id would step by the difference between two biomes' bands,
+    // which is twenty or more.
+    CHECK(worst_cross <= 6, "a %d-block step at a biome border (near x=%d) -- the height is not blended",
+          worst_cross, worst_x);
+
+    // Mountains are actually higher, and bare on top.
+    long high = 0, rock = 0, mcols = 0;
+    int  peak = 0;
+    for (int32_t z = -400; z <= 400; z += 7) {
+        for (int32_t x = -3000; x <= 3000; x += 7) {
+            if (worldgen_biome(x, z, seed) != BIOME_MOUNTAIN) continue;
+            int const hh = worldgen_height(x, z, seed);
+            mcols++;
+            if (hh > peak) peak = hh;
+            if (hh > 40) high++;
+            if (hh >= (int)BIOMES[BIOME_MOUNTAIN].rock_above) rock++;
+        }
+    }
+    if (mcols > 0) {
+        printf("  mountains: peak y=%d, %.1f%% above y=40 (bare rock)\n", peak,
+               100.0 * (double)rock / (double)mcols);
+        CHECK(peak > 42, "the highest mountain is y=%d -- that is a hill", peak);
+        CHECK(rock > 0, "no mountain column anywhere reaches bare rock");
+        CHECK(peak <= CH_H - 8, "a mountain reached y=%d, past the generator's ceiling", peak);
+    }
     if (cols[BIOME_FOREST] > 0 && cols[BIOME_PLAINS] > 0) {
         double const fl = (double)logs[BIOME_FOREST] / (double)cols[BIOME_FOREST];
         double const pl = (double)logs[BIOME_PLAINS] / (double)cols[BIOME_PLAINS];
