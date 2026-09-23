@@ -385,7 +385,7 @@ static bool content_select(char const* name) {
     // It lasts for this run, like the other scene options, and never
     // reaches settings.txt -- it is here so a screenful of Bulgarian can
     // be photographed without anybody's saved settings being touched.
-    static char base[64];
+    static char base[48];  // the size of the scene buffers below
     char const* dot = strrchr(name, '.');
     if (dot != NULL) {
         cm_lang_t lang;

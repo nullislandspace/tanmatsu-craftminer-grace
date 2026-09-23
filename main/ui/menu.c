@@ -763,8 +763,10 @@ void menu_draw(pax_buf_t* fb) {
             se_menu_row_t rows[CM_LANG_COUNT + 1];
             memset(rows, 0, sizeof(rows));
             for (int i = 0; i < CM_LANG_COUNT; i++) {
-                rows[i].label   = i18n_language_name((cm_lang_t)i);
-                rows[i].kind    = SE_MENU_VAL_CHECK;
+                rows[i].label = i18n_language_name((cm_lang_t)i);
+                // A radio, not a tick: one of these is the language, and
+                // choosing another unchooses this one (engine 2.1).
+                rows[i].kind    = SE_MENU_VAL_RADIO;
                 rows[i].checked = i == (int)i18n_language();
             }
             rows[CM_LANG_COUNT].label = T(CM_STR_COMMON_BACK);
