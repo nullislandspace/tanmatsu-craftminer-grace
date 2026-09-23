@@ -1,0 +1,164 @@
+# CraftMiner -- Türkçe
+#
+# Bu çeviriyi bir yapay zekâ yaptı ve dili gerçekten bilen birini bekliyor.
+# Daha iyisini biliyorsanız: satırı düzeltin ve
+# `python3 tools/make_lang.py` komutunu çalıştırın. Araçsız da olur --
+# karttaki /sd/craftminer/lang/tr.txt dosyası, aynı satırlarla, gömülü metnin
+# önüne geçer (i18n.h).
+#
+# Anahtarlar lang/en.txt dosyasında. Oradaki % yer tutucuları burada da
+# bulunmalı; %2$s ile yerleri değiştirilebilir, ama atlanamazlar.
+
+menu.play = Oyna
+menu.settings = Ayarlar
+menu.quit = Çık
+
+worlds.title = Dünyalar
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (daha yeni bir sürümden)
+worlds.slot_older = %d  (güncellenmesi gerekiyor)
+worlds.slot_empty = %d  - boş -
+worlds.damaged = (hasarlı)
+
+world.play = Oyna
+world.rename = Yeniden adlandır
+world.delete = Sil
+
+world.sub = yuva %d, tohum %u
+
+new.title = Yeni dünya
+
+new.sub = %d numaralı yuvada
+new.name = Ad
+new.seed = Tohum
+new.seed_random = rastgele
+new.create = Dünyayı oluştur
+new.cancel = İptal
+
+new.default_name = Dünya %d
+
+text.title_rename = Dünyayı yeniden adlandır
+text.title_name = Dünyanın adı
+text.title_seed = Tohum (boş bırakılırsa rastgele)
+text.sub = yazın, sonra saklamak için Enter
+text.hint = Backspace siler, Esc iptal eder
+
+delete.title = „%s“ silinsin mi?
+delete.sub = bu geri alınamaz
+delete.no = Hayır, kalsın
+delete.yes = Evet, temelli sil
+
+settings.title = Ayarlar
+settings.language = Dil
+settings.controls = Denetimler
+settings.graphics = Grafikler
+settings.audio = Ses
+settings.display = Ekran
+
+language.title = Dil
+
+controls.title = Denetimler
+controls.gyro = Jiroskop
+controls.reset = Varsayılanlara dön
+controls.hint = yukarı / aşağı seçer, Enter tuşu değiştirir, Esc geri döner
+
+graphics.title = Grafikler
+graphics.view = Görüş uzaklığı
+graphics.textures = Dokular
+graphics.resolution = Çözünürlük
+graphics.clouds = Bulutlar
+graphics.camera = Kamera
+graphics.hand = Fred'in eli
+view.near = Yakın
+view.medium = Orta
+view.far = Uzak
+res.half = Yarım (daha hızlı)
+res.full = Tam (daha keskin)
+camera.first = Birinci şahıs
+camera.third = Üçüncü şahıs
+hand.left = Sol
+hand.right = Sağ
+
+audio.title = Ses
+audio.sub = henüz ses yok: bu ayarlar onları bekliyor
+audio.volume = Ses düzeyi
+audio.music = Müzik
+audio.sfx = Ses efektleri
+
+display.title = Ekran
+display.sub = başlatıcıyla ve diğer tüm uygulamalarla ortak
+display.screen = Ekran
+display.keyboard = Klavye
+display.leds = LED'ler
+
+pause.title = Duraklatıldı
+pause.resume = Devam et
+pause.save = Kaydet
+pause.quit = Kaydet ve başlığa dön
+
+common.back = Geri
+hint.list = yukarı / aşağı seçer, Enter onaylar, Esc geri döner
+hint.adjust = yukarı / aşağı seçer, sol / sağ değiştirir, Esc geri döner
+
+status.newer = Daha yeni bir CraftMiner ile yapılmış: oynamak için güncelleyin
+status.older = Eski kayıt biçimi: bu sürüm onu henüz dönüştüremiyor
+status.needs_name = Bir dünyanın adı olmalı
+status.renamed = Yeniden adlandırıldı
+status.rename_failed = Yeniden adlandırılamadı
+status.deleted = Dünya silindi
+status.delete_failed = Her şey silinemedi
+status.keys_reset = Bütün tuşlar yeniden varsayılan
+
+loading.plain = Yükleniyor
+loading.world = Dünya yükleniyor
+loading.creating = Dünya oluşturuluyor
+
+hud.inventory = Envanter
+hud.inventory_hint = oklar taşır   F1-F6 çubuğa koyar   Tab kapatır
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = yönü %s (%d)
+
+info.clock = %02d:%02d   gün %lld
+info.recording = KAYDEDİYOR (R durdurur)
+
+info.replay = yeniden oynatma %d / %d
+dir.n = kuzey
+dir.ne = kuzeydoğu
+dir.e = doğu
+dir.se = güneydoğu
+dir.s = güney
+dir.sw = güneybatı
+dir.w = batı
+dir.nw = kuzeybatı
+
+shot.saved = Kaydedildi: screenshots/shot%03d.png
+shot.failed = Ekran görüntüsü alınamadı
+shot.full = screenshots/ dolu (999)
+
+action.forward = İleri
+action.back = Geri
+action.left = Sola
+action.right = Sağa
+action.jump = Zıpla
+action.sneak = Sin
+action.attack = Kır
+action.use = Yerleştir
+action.lookup = Yukarı bak
+action.lookdown = Aşağı bak
+action.lookleft = Sola bak
+action.lookright = Sağa bak
+action.slot1 = Yuva 1
+action.slot2 = Yuva 2
+action.slot3 = Yuva 3
+action.slot4 = Yuva 4
+action.slot5 = Yuva 5
+action.slot6 = Yuva 6
+action.inv = Envanter
+action.pause = Duraklat
+action.drop = Bırak
+action.info = Konumu göster
+action.screenshot = Ekran görüntüsü

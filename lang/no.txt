@@ -1,0 +1,164 @@
+# CraftMiner -- Norsk
+#
+# Denne oversettelsen er laget av en KI og venter på noen som faktisk
+# snakker språket. Vet du bedre: rett linjen og kjør
+# `python3 tools/make_lang.py`. Det går også uten verktøy -- en fil
+# /sd/craftminer/lang/no.txt på kortet, med de samme linjene, går foran det
+# innebygde (i18n.h).
+#
+# Nøklene står i lang/en.txt. %-plassholderne derfra må være med her; de kan
+# flyttes med %2$s, men ikke utelates.
+
+menu.play = Spill
+menu.settings = Innstillinger
+menu.quit = Avslutt
+
+worlds.title = Verdener
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (fra en nyere versjon)
+worlds.slot_older = %d  (må oppdateres)
+worlds.slot_empty = %d  - tom -
+worlds.damaged = (skadet)
+
+world.play = Spill
+world.rename = Gi nytt navn
+world.delete = Slett
+
+world.sub = plass %d, frø %u
+
+new.title = Ny verden
+
+new.sub = på plass %d
+new.name = Navn
+new.seed = Frø
+new.seed_random = tilfeldig
+new.create = Lag verden
+new.cancel = Avbryt
+
+new.default_name = Verden %d
+
+text.title_rename = Gi verdenen nytt navn
+text.title_name = Navnet på verdenen
+text.title_seed = Frø (tomt for tilfeldig)
+text.sub = skriv, og trykk Enter for å beholde det
+text.hint = Rettetast sletter, Esc avbryter
+
+delete.title = Slette «%s»?
+delete.sub = dette kan ikke angres
+delete.no = Nei, behold den
+delete.yes = Ja, slett den for godt
+
+settings.title = Innstillinger
+settings.language = Språk
+settings.controls = Styring
+settings.graphics = Grafikk
+settings.audio = Lyd
+settings.display = Skjerm
+
+language.title = Språk
+
+controls.title = Styring
+controls.gyro = Gyroskop
+controls.reset = Tilbake til standard
+controls.hint = opp / ned velger, Enter endrer tasten, Esc går tilbake
+
+graphics.title = Grafikk
+graphics.view = Synsvidde
+graphics.textures = Teksturer
+graphics.resolution = Oppløsning
+graphics.clouds = Skyer
+graphics.camera = Kamera
+graphics.hand = Freds hånd
+view.near = Nær
+view.medium = Middels
+view.far = Fjern
+res.half = Halv (raskere)
+res.full = Full (skarpere)
+camera.first = Førsteperson
+camera.third = Tredjeperson
+hand.left = Venstre
+hand.right = Høyre
+
+audio.title = Lyd
+audio.sub = ingen lyder ennå: disse venter på dem
+audio.volume = Lydstyrke
+audio.music = Musikk
+audio.sfx = Lydeffekter
+
+display.title = Skjerm
+display.sub = deles med launcheren og alle andre apper
+display.screen = Skjerm
+display.keyboard = Tastatur
+display.leds = LED-er
+
+pause.title = Pause
+pause.resume = Fortsett
+pause.save = Lagre
+pause.quit = Lagre og tilbake til tittelen
+
+common.back = Tilbake
+hint.list = opp / ned velger, Enter bekrefter, Esc går tilbake
+hint.adjust = opp / ned velger, venstre / høyre endrer, Esc går tilbake
+
+status.newer = Laget av en nyere CraftMiner: oppdater for å spille den
+status.older = Eldre lagringsformat: denne versjonen kan ikke oppdatere det ennå
+status.needs_name = En verden trenger et navn
+status.renamed = Fikk nytt navn
+status.rename_failed = Klarte ikke å gi nytt navn
+status.deleted = Verden slettet
+status.delete_failed = Klarte ikke å slette alt
+status.keys_reset = Alle tastene er tilbake på standard
+
+loading.plain = Laster
+loading.world = Laster verdenen
+loading.creating = Lager verdenen
+
+hud.inventory = Beholdning
+hud.inventory_hint = piltastene flytter   F1-F6 legger det i linjen   Tab lukker
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = ser mot %s (%d)
+
+info.clock = %02d:%02d   dag %lld
+info.recording = TAR OPP (R stopper)
+
+info.replay = avspilling %d / %d
+dir.n = nord
+dir.ne = nordøst
+dir.e = øst
+dir.se = sørøst
+dir.s = sør
+dir.sw = sørvest
+dir.w = vest
+dir.nw = nordvest
+
+shot.saved = Lagret: screenshots/shot%03d.png
+shot.failed = Skjermbildet mislyktes
+shot.full = screenshots/ er full (999)
+
+action.forward = Framover
+action.back = Bakover
+action.left = Til venstre
+action.right = Til høyre
+action.jump = Hopp
+action.sneak = Snik
+action.attack = Bryt
+action.use = Plasser
+action.lookup = Se opp
+action.lookdown = Se ned
+action.lookleft = Se til venstre
+action.lookright = Se til høyre
+action.slot1 = Plass 1
+action.slot2 = Plass 2
+action.slot3 = Plass 3
+action.slot4 = Plass 4
+action.slot5 = Plass 5
+action.slot6 = Plass 6
+action.inv = Beholdning
+action.pause = Pause
+action.drop = Slipp
+action.info = Vis posisjonen
+action.screenshot = Skjermbilde

@@ -1,0 +1,164 @@
+# CraftMiner -- Čeština
+#
+# Tento překlad vytvořila umělá inteligence a čeká na někoho, kdo jazyk
+# opravdu umí. Víte to lépe? Opravte řádek a spusťte
+# `python3 tools/make_lang.py`. Jde to i bez nástrojů -- soubor
+# /sd/craftminer/lang/cs.txt na kartě se stejnými řádky má přednost před
+# tím, co je zabudované (i18n.h).
+#
+# Klíče jsou v lang/en.txt. Tamní zástupné symboly % se musí objevit i tady;
+# přesouvat je lze zápisem %2$s, vynechat ne.
+
+menu.play = Hrát
+menu.settings = Nastavení
+menu.quit = Ukončit
+
+worlds.title = Světy
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (z novější verze)
+worlds.slot_older = %d  (potřebuje aktualizaci)
+worlds.slot_empty = %d  - prázdné -
+worlds.damaged = (poškozený)
+
+world.play = Hrát
+world.rename = Přejmenovat
+world.delete = Smazat
+
+world.sub = místo %d, semínko %u
+
+new.title = Nový svět
+
+new.sub = na místě %d
+new.name = Název
+new.seed = Semínko
+new.seed_random = náhodné
+new.create = Vytvořit svět
+new.cancel = Zrušit
+
+new.default_name = Svět %d
+
+text.title_rename = Přejmenovat svět
+text.title_name = Název světa
+text.title_seed = Semínko (prázdné = náhodné)
+text.sub = napište a stiskněte Enter
+text.hint = Backspace maže, Esc ruší
+
+delete.title = Smazat „%s“?
+delete.sub = tohle už nepůjde vzít zpět
+delete.no = Ne, nechat
+delete.yes = Ano, smazat navždy
+
+settings.title = Nastavení
+settings.language = Jazyk
+settings.controls = Ovládání
+settings.graphics = Grafika
+settings.audio = Zvuk
+settings.display = Obrazovka
+
+language.title = Jazyk
+
+controls.title = Ovládání
+controls.gyro = Gyroskop
+controls.reset = Zpět na výchozí
+controls.hint = nahoru / dolů vybírá, Enter mění klávesu, Esc se vrací
+
+graphics.title = Grafika
+graphics.view = Dohlednost
+graphics.textures = Textury
+graphics.resolution = Rozlišení
+graphics.clouds = Mraky
+graphics.camera = Kamera
+graphics.hand = Fredova ruka
+view.near = Blízko
+view.medium = Střední
+view.far = Daleko
+res.half = Poloviční (rychlejší)
+res.full = Plné (ostřejší)
+camera.first = První osoba
+camera.third = Třetí osoba
+hand.left = Levá
+hand.right = Pravá
+
+audio.title = Zvuk
+audio.sub = zvuky zatím nejsou: tohle na ně čeká
+audio.volume = Hlasitost
+audio.music = Hudba
+audio.sfx = Zvukové efekty
+
+display.title = Obrazovka
+display.sub = sdílené se spouštěčem a všemi ostatními aplikacemi
+display.screen = Obrazovka
+display.keyboard = Klávesnice
+display.leds = Diody
+
+pause.title = Pauza
+pause.resume = Pokračovat
+pause.save = Uložit
+pause.quit = Uložit a zpět na titulek
+
+common.back = Zpět
+hint.list = nahoru / dolů vybírá, Enter potvrzuje, Esc se vrací
+hint.adjust = nahoru / dolů vybírá, vlevo / vpravo mění, Esc se vrací
+
+status.newer = Vytvořeno novějším CraftMinerem: aktualizujte, abyste si zahráli
+status.older = Starší formát uložení: tato verze ho zatím neumí převést
+status.needs_name = Svět potřebuje název
+status.renamed = Přejmenováno
+status.rename_failed = Přejmenování se nezdařilo
+status.deleted = Svět smazán
+status.delete_failed = Nepodařilo se smazat všechno
+status.keys_reset = Všechny klávesy jsou zase výchozí
+
+loading.plain = Načítání
+loading.world = Načítání světa
+loading.creating = Vytváření světa
+
+hud.inventory = Inventář
+hud.inventory_hint = šipky přesouvají   F1-F6 dá na lištu   Tab zavírá
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = směr %s (%d)
+
+info.clock = %02d:%02d   den %lld
+info.recording = NAHRÁVÁNÍ (R zastaví)
+
+info.replay = přehrávání %d / %d
+dir.n = sever
+dir.ne = severovýchod
+dir.e = východ
+dir.se = jihovýchod
+dir.s = jih
+dir.sw = jihozápad
+dir.w = západ
+dir.nw = severozápad
+
+shot.saved = Uloženo: screenshots/shot%03d.png
+shot.failed = Snímek se nezdařil
+shot.full = screenshots/ je plná (999)
+
+action.forward = Vpřed
+action.back = Vzad
+action.left = Doleva
+action.right = Doprava
+action.jump = Skok
+action.sneak = Plížení
+action.attack = Těžit
+action.use = Položit
+action.lookup = Podívat se nahoru
+action.lookdown = Podívat se dolů
+action.lookleft = Podívat se doleva
+action.lookright = Podívat se doprava
+action.slot1 = Místo 1
+action.slot2 = Místo 2
+action.slot3 = Místo 3
+action.slot4 = Místo 4
+action.slot5 = Místo 5
+action.slot6 = Místo 6
+action.inv = Inventář
+action.pause = Pauza
+action.drop = Zahodit
+action.info = Zobrazit pozici
+action.screenshot = Snímek obrazovky

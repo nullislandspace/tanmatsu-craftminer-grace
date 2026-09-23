@@ -80,10 +80,10 @@ In a world, **Esc** (or whatever Pause is bound to) opens the pause menu —
 **Resume / Save / Settings / Save and quit to title** — and **saves as it
 opens**, since pausing is what people do before switching a handheld off.
 
-* **Language** — English, Deutsch, Nederlands, Vlaams, Français, Български.
-  First row of Settings, and each language stands under its own name, so the
-  player who needs that row is not asked to read a language they do not have.
-  Takes effect at once and is remembered in `settings.txt`.
+* **Language** — 32 of them, listed under "Languages" below. First row of
+  Settings, and each stands under its own name, so the player who needs that
+  row is not asked to read a language they do not have. Takes effect at once
+  and is remembered in `settings.txt`.
 * **Controls** — **Gyroscope** (off by default): look round by physically
   turning the badge; the cursor keys still work, so you choose when to move
   the badge and when to press keys. Below it, every action can be rebound: pick it, press the new key. A key
@@ -109,44 +109,75 @@ plain `key=value` lines; delete one to get its default back.
 
 ### Languages
 
-The game is translated into English, German, Dutch, Flemish, French and
-Bulgarian. The shipped translations past English are a **machine's work** and
-say so at the top of each file; corrections are welcome and cheap to make.
+CraftMiner speaks **32 languages**. English is the reference; the other 31 are
+a **machine's work**, and every one of them says so at the top of its file.
+They have not been read by anyone who speaks them. **That is where you come in
+— see "Fixing a translation" below.**
 
-The text lives in `lang/*.txt`, one file per language, plain `key = text` lines
-in UTF-8. `lang/en.txt` defines the keys and is the reference: a language
-missing one shows the English, and a key English does not have is an error.
+```
+English    Català     Čeština    Dansk      Deutsch    Eesti      Español
+Français   Gaeilge    Hrvatski   Íslenska   Italiano   Latviešu   Lietuvių
+Magyar     Nederlands Norsk      Polski     Português  Română     Shqip
+Slovenčina Slovenščina Suomi     Svenska    Türkçe     Vlaams
+Ελληνικά   Български  Русский    Српски     Українська
+```
+
+The menu lists them with English first and the rest alphabetically by the name
+each language calls itself — the name you are looking for is the one you can
+read. Settings → Language, two rows in, and it takes effect at once.
+
+Not translated, deliberately: the name CraftMiner, world names (you type
+those), the key names in the Controls list — `Esc`, `Space`, `Left Shift` are
+what is printed on the badge's own keys — and every log line.
+
+### Fixing a translation
+
+**You do not need a toolchain, a compiler, or a GitHub account.** Put a file at
+`/sd/craftminer/lang/<code>.txt` on the SD card — `de.txt`, `nl-BE.txt`,
+`bg.txt` — holding just the lines you want changed:
+
+```
+menu.play = Spelen
+status.deleted = Wereld gewist
+```
+
+Those win over what is built into the game; every other string stays as it
+shipped. One line in the file changes one string. Restart the app, or switch
+the language away and back, and you will see it.
+
+**To fix it for everybody**, send a pull request:
+
+1. Edit `lang/<code>.txt` in this repository. Keys come from `lang/en.txt`,
+   which is the reference — leave the key alone and change the text after `=`.
+2. Run `python3 tools/make_lang.py` to bake them in, and commit both the lang
+   file and the regenerated `main/i18n/strings_gen.*`.
+3. Run `make check`. It fails on a key that is not in `lang/en.txt`, on
+   `%`-placeholders that do not match English's, on a word that mixes two
+   alphabets (a Latin `a` inside a Cyrillic word looks identical and is not),
+   and on any character the font cannot draw.
+4. Open a pull request. **Say which language you actually speak** — that is
+   the whole point, and it is the one thing the checks cannot verify.
+
+Small corrections are as welcome as whole files: one clumsy sentence fixed by
+someone who would never have written it that way is worth more than a hundred
+strings nobody has read.
+
+**A whole new language** needs a `lang/<code>.txt` (copy `en.txt` and
+translate), a row in `tools/make_lang.py`, and — if it needs letters the font
+has never drawn — a pass through `synthengine3D/tools/hershey/README.md`, which
+covers that end and will tell you exactly which letters are missing.
+
+### How the text works
+
+The strings live in `lang/*.txt`, plain `key = text` lines in UTF-8, and
 `tools/make_lang.py` bakes them into `main/i18n/strings_gen.c`, which is what
-the game ships — a lookup at run time is an array index, not a search.
-
-```
-# fix a line, then:
-python3 tools/make_lang.py
-```
-
-`make check` fails if the generated files and the lang files have drifted
-apart, if a translation's `%`-placeholders do not match English's, or if any
-character in any translation is one the font cannot draw.
-
-**Without a toolchain**, put the same `key = text` lines in
-`/sd/craftminer/lang/<code>.txt` on the card — `de.txt`, `nl-BE.txt`, `bg.txt`
-— and they win over what is built in. One line in the file changes one string;
-everything else stays as it shipped. That is meant for exactly the case these
-translations are in: someone who speaks the language, holding a badge, without
-a build environment.
+ships. A lookup at run time is an array index — nothing is parsed and nothing
+allocated while the game runs.
 
 A translation may reorder the values in a line (`%2$s` before `%1$d`) where the
 language needs a different word order. It cannot change what a value *is*: the
 types come from English, so a lang file on a card can be wrong without being
 dangerous.
-
-Not translated, deliberately: the name CraftMiner, world names (the player
-types those), the key names in the Controls list — `Esc`, `Space`, `Left
-Shift` are what is printed on the badge's own keys — and every log line.
-
-Adding a language means a new `lang/<code>.txt`, a row in `tools/make_lang.py`,
-and, if it needs letters the font has never drawn, a pass through
-`synthengine3D/tools/hershey/README.md`, which covers that end.
 
 ### Day, night and light
 

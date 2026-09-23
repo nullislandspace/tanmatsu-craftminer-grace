@@ -1,0 +1,164 @@
+# CraftMiner -- Lietuvių
+#
+# Šį vertimą padarė dirbtinis intelektas ir jis laukia to, kas kalbą iš tikrųjų
+# moka. Jei žinai geriau: pataisyk eilutę ir paleisk
+# `python3 tools/make_lang.py`. Galima ir be įrankių -- kortelėje esantis
+# failas /sd/craftminer/lang/lt.txt su tomis pačiomis eilutėmis turi pirmenybę
+# prieš įkompiliuotą tekstą (i18n.h).
+#
+# Raktai yra faile lang/en.txt. Ten esantys %-žymekliai turi atsirasti ir čia;
+# juos galima perkelti su %2$s, bet ne praleisti.
+
+menu.play = Žaisti
+menu.settings = Nustatymai
+menu.quit = Išeiti
+
+worlds.title = Pasauliai
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (iš naujesnės versijos)
+worlds.slot_older = %d  (reikia atnaujinti)
+worlds.slot_empty = %d  - tuščia -
+worlds.damaged = (sugadinta)
+
+world.play = Žaisti
+world.rename = Pervadinti
+world.delete = Ištrinti
+
+world.sub = vieta %d, sėkla %u
+
+new.title = Naujas pasaulis
+
+new.sub = vietoje %d
+new.name = Pavadinimas
+new.seed = Sėkla
+new.seed_random = atsitiktinė
+new.create = Sukurti pasaulį
+new.cancel = Atšaukti
+
+new.default_name = Pasaulis %d
+
+text.title_rename = Pervadinti pasaulį
+text.title_name = Pasaulio pavadinimas
+text.title_seed = Sėkla (tuščia — atsitiktinė)
+text.sub = rašyk, tada Enter, kad išsaugotum
+text.hint = Backspace trina, Esc atšaukia
+
+delete.title = Ištrinti „%s“?
+delete.sub = to nebus galima atšaukti
+delete.no = Ne, palikti
+delete.yes = Taip, ištrinti visam laikui
+
+settings.title = Nustatymai
+settings.language = Kalba
+settings.controls = Valdymas
+settings.graphics = Grafika
+settings.audio = Garsas
+settings.display = Ekranas
+
+language.title = Kalba
+
+controls.title = Valdymas
+controls.gyro = Giroskopas
+controls.reset = Atkurti numatytuosius
+controls.hint = aukštyn / žemyn renkasi, Enter keičia klavišą, Esc grįžta
+
+graphics.title = Grafika
+graphics.view = Matymo atstumas
+graphics.textures = Tekstūros
+graphics.resolution = Raiška
+graphics.clouds = Debesys
+graphics.camera = Kamera
+graphics.hand = Fredo ranka
+view.near = Arti
+view.medium = Vidutiniškai
+view.far = Toli
+res.half = Pusė (greičiau)
+res.full = Pilna (aiškiau)
+camera.first = Pirmasis asmuo
+camera.third = Trečiasis asmuo
+hand.left = Kairė
+hand.right = Dešinė
+
+audio.title = Garsas
+audio.sub = garsų dar nėra: šie nustatymai jų laukia
+audio.volume = Garsumas
+audio.music = Muzika
+audio.sfx = Garso efektai
+
+display.title = Ekranas
+display.sub = bendras su paleidykle ir visomis kitomis programomis
+display.screen = Ekranas
+display.keyboard = Klaviatūra
+display.leds = Šviesos diodai
+
+pause.title = Pauzė
+pause.resume = Tęsti
+pause.save = Išsaugoti
+pause.quit = Išsaugoti ir grįžti į pradžią
+
+common.back = Atgal
+hint.list = aukštyn / žemyn renkasi, Enter patvirtina, Esc grįžta
+hint.adjust = aukštyn / žemyn renkasi, kairėn / dešinėn keičia, Esc grįžta
+
+status.newer = Sukurta naujesniu CraftMiner: atnaujink, kad galėtum žaisti
+status.older = Senesnis įrašo formatas: ši versija jo dar neatnaujina
+status.needs_name = Pasauliui reikia pavadinimo
+status.renamed = Pervadinta
+status.rename_failed = Nepavyko pervadinti
+status.deleted = Pasaulis ištrintas
+status.delete_failed = Nepavyko ištrinti visko
+status.keys_reset = Visi klavišai vėl numatytieji
+
+loading.plain = Įkeliama
+loading.world = Įkeliamas pasaulis
+loading.creating = Kuriamas pasaulis
+
+hud.inventory = Inventorius
+hud.inventory_hint = rodyklės perkelia   F1-F6 deda į juostą   Tab uždaro
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = žiūri į %s (%d)
+
+info.clock = %02d:%02d   diena %lld
+info.recording = ĮRAŠINĖJA (R stabdo)
+
+info.replay = atkūrimas %d / %d
+dir.n = šiaurė
+dir.ne = šiaurės rytai
+dir.e = rytai
+dir.se = pietryčiai
+dir.s = pietūs
+dir.sw = pietvakariai
+dir.w = vakarai
+dir.nw = šiaurės vakarai
+
+shot.saved = Išsaugota: screenshots/shot%03d.png
+shot.failed = Ekrano nuotrauka nepavyko
+shot.full = screenshots/ pilnas (999)
+
+action.forward = Pirmyn
+action.back = Atgal
+action.left = Kairėn
+action.right = Dešinėn
+action.jump = Šokti
+action.sneak = Sėlinti
+action.attack = Daužyti
+action.use = Padėti
+action.lookup = Žiūrėti aukštyn
+action.lookdown = Žiūrėti žemyn
+action.lookleft = Žiūrėti kairėn
+action.lookright = Žiūrėti dešinėn
+action.slot1 = Vieta 1
+action.slot2 = Vieta 2
+action.slot3 = Vieta 3
+action.slot4 = Vieta 4
+action.slot5 = Vieta 5
+action.slot6 = Vieta 6
+action.inv = Inventorius
+action.pause = Pauzė
+action.drop = Numesti
+action.info = Rodyti padėtį
+action.screenshot = Ekrano nuotrauka

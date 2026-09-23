@@ -1,0 +1,164 @@
+# CraftMiner -- Polski
+#
+# To tłumaczenie zrobiła sztuczna inteligencja i czeka na kogoś, kto naprawdę
+# zna język. Jeśli wiesz lepiej: popraw wiersz i uruchom
+# `python3 tools/make_lang.py`. Da się też bez narzędzi -- plik
+# /sd/craftminer/lang/pl.txt na karcie, z tymi samymi wierszami, ma
+# pierwszeństwo przed wbudowanym tekstem (i18n.h).
+#
+# Klucze są w lang/en.txt. Tamtejsze znaczniki % muszą pojawić się i tutaj;
+# wolno je przestawiać zapisem %2$s, ale nie pomijać.
+
+menu.play = Graj
+menu.settings = Ustawienia
+menu.quit = Wyjdź
+
+worlds.title = Światy
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (z nowszej wersji)
+worlds.slot_older = %d  (wymaga aktualizacji)
+worlds.slot_empty = %d  - puste -
+worlds.damaged = (uszkodzony)
+
+world.play = Graj
+world.rename = Zmień nazwę
+world.delete = Usuń
+
+world.sub = miejsce %d, ziarno %u
+
+new.title = Nowy świat
+
+new.sub = na miejscu %d
+new.name = Nazwa
+new.seed = Ziarno
+new.seed_random = losowe
+new.create = Utwórz świat
+new.cancel = Anuluj
+
+new.default_name = Świat %d
+
+text.title_rename = Zmień nazwę świata
+text.title_name = Nazwa świata
+text.title_seed = Ziarno (puste = losowe)
+text.sub = wpisz, potem Enter, aby zachować
+text.hint = Backspace usuwa, Esc anuluje
+
+delete.title = Usunąć „%s”?
+delete.sub = tego nie da się cofnąć
+delete.no = Nie, zostaw
+delete.yes = Tak, usuń na zawsze
+
+settings.title = Ustawienia
+settings.language = Język
+settings.controls = Sterowanie
+settings.graphics = Grafika
+settings.audio = Dźwięk
+settings.display = Ekran
+
+language.title = Język
+
+controls.title = Sterowanie
+controls.gyro = Żyroskop
+controls.reset = Przywróć domyślne
+controls.hint = góra / dół wybiera, Enter zmienia klawisz, Esc wraca
+
+graphics.title = Grafika
+graphics.view = Zasięg widzenia
+graphics.textures = Tekstury
+graphics.resolution = Rozdzielczość
+graphics.clouds = Chmury
+graphics.camera = Kamera
+graphics.hand = Ręka Freda
+view.near = Blisko
+view.medium = Średnio
+view.far = Daleko
+res.half = Połowa (szybciej)
+res.full = Pełna (ostrzej)
+camera.first = Pierwsza osoba
+camera.third = Trzecia osoba
+hand.left = Lewa
+hand.right = Prawa
+
+audio.title = Dźwięk
+audio.sub = jeszcze nie ma dźwięków: te ustawienia na nie czekają
+audio.volume = Głośność
+audio.music = Muzyka
+audio.sfx = Efekty dźwiękowe
+
+display.title = Ekran
+display.sub = wspólne z launcherem i każdą inną aplikacją
+display.screen = Ekran
+display.keyboard = Klawiatura
+display.leds = Diody
+
+pause.title = Pauza
+pause.resume = Wróć do gry
+pause.save = Zapisz
+pause.quit = Zapisz i wróć do tytułu
+
+common.back = Wstecz
+hint.list = góra / dół wybiera, Enter zatwierdza, Esc wraca
+hint.adjust = góra / dół wybiera, lewo / prawo zmienia, Esc wraca
+
+status.newer = Zrobiony nowszym CraftMinerem: zaktualizuj, żeby zagrać
+status.older = Starszy format zapisu: ta wersja jeszcze go nie zaktualizuje
+status.needs_name = Świat potrzebuje nazwy
+status.renamed = Nazwa zmieniona
+status.rename_failed = Nie udało się zmienić nazwy
+status.deleted = Świat usunięty
+status.delete_failed = Nie udało się usunąć wszystkiego
+status.keys_reset = Wszystkie klawisze wróciły do domyślnych
+
+loading.plain = Wczytywanie
+loading.world = Wczytywanie świata
+loading.creating = Tworzenie świata
+
+hud.inventory = Ekwipunek
+hud.inventory_hint = strzałki przenoszą   F1-F6 kładzie na pasku   Tab zamyka
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = patrzy na %s (%d)
+
+info.clock = %02d:%02d   dzień %lld
+info.recording = NAGRYWANIE (R kończy)
+
+info.replay = powtórka %d / %d
+dir.n = północ
+dir.ne = północny wschód
+dir.e = wschód
+dir.se = południowy wschód
+dir.s = południe
+dir.sw = południowy zachód
+dir.w = zachód
+dir.nw = północny zachód
+
+shot.saved = Zapisano: screenshots/shot%03d.png
+shot.failed = Zrzut ekranu się nie udał
+shot.full = screenshots/ jest pełny (999)
+
+action.forward = Naprzód
+action.back = Do tyłu
+action.left = W lewo
+action.right = W prawo
+action.jump = Skok
+action.sneak = Skradanie
+action.attack = Niszcz
+action.use = Postaw
+action.lookup = Patrz w górę
+action.lookdown = Patrz w dół
+action.lookleft = Patrz w lewo
+action.lookright = Patrz w prawo
+action.slot1 = Pole 1
+action.slot2 = Pole 2
+action.slot3 = Pole 3
+action.slot4 = Pole 4
+action.slot5 = Pole 5
+action.slot6 = Pole 6
+action.inv = Ekwipunek
+action.pause = Pauza
+action.drop = Upuść
+action.info = Pokaż pozycję
+action.screenshot = Zrzut ekranu

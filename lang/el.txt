@@ -1,0 +1,164 @@
+# CraftMiner -- Ελληνικά
+#
+# Αυτή η μετάφραση έγινε από τεχνητή νοημοσύνη και περιμένει κάποιον που
+# μιλάει πραγματικά τη γλώσσα. Αν ξέρετε καλύτερα: διορθώστε τη γραμμή και
+# τρέξτε `python3 tools/make_lang.py`. Γίνεται και χωρίς εργαλεία -- ένα
+# αρχείο /sd/craftminer/lang/el.txt στην κάρτα, με τις ίδιες γραμμές,
+# υπερισχύει του ενσωματωμένου κειμένου (i18n.h).
+#
+# Τα κλειδιά είναι στο lang/en.txt. Οι δείκτες % από εκεί πρέπει να
+# εμφανίζονται και εδώ· μετακινούνται με %2$s, αλλά δεν παραλείπονται.
+
+menu.play = Παίξε
+menu.settings = Ρυθμίσεις
+menu.quit = Έξοδος
+
+worlds.title = Κόσμοι
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (από νεότερη έκδοση)
+worlds.slot_older = %d  (χρειάζεται αναβάθμιση)
+worlds.slot_empty = %d  - άδειο -
+worlds.damaged = (κατεστραμμένος)
+
+world.play = Παίξε
+world.rename = Μετονομασία
+world.delete = Διαγραφή
+
+world.sub = θέση %d, σπόρος %u
+
+new.title = Νέος κόσμος
+
+new.sub = στη θέση %d
+new.name = Όνομα
+new.seed = Σπόρος
+new.seed_random = τυχαίος
+new.create = Δημιουργία κόσμου
+new.cancel = Άκυρο
+
+new.default_name = Κόσμος %d
+
+text.title_rename = Μετονομασία κόσμου
+text.title_name = Όνομα του κόσμου
+text.title_seed = Σπόρος (κενό για τυχαίο)
+text.sub = πληκτρολογήστε και μετά Enter
+text.hint = το Backspace σβήνει, το Esc ακυρώνει
+
+delete.title = Διαγραφή του „%s“;
+delete.sub = αυτό δεν αναιρείται
+delete.no = Όχι, κράτησέ τον
+delete.yes = Ναι, διέγραψέ τον οριστικά
+
+settings.title = Ρυθμίσεις
+settings.language = Γλώσσα
+settings.controls = Χειριστήρια
+settings.graphics = Γραφικά
+settings.audio = Ήχος
+settings.display = Οθόνη
+
+language.title = Γλώσσα
+
+controls.title = Χειριστήρια
+controls.gyro = Γυροσκόπιο
+controls.reset = Επαναφορά προεπιλογών
+controls.hint = πάνω / κάτω επιλέγει, Enter αλλάζει το πλήκτρο, Esc επιστρέφει
+
+graphics.title = Γραφικά
+graphics.view = Απόσταση θέασης
+graphics.textures = Υφές
+graphics.resolution = Ανάλυση
+graphics.clouds = Σύννεφα
+graphics.camera = Κάμερα
+graphics.hand = Το χέρι του Φρεντ
+view.near = Κοντά
+view.medium = Μεσαία
+view.far = Μακριά
+res.half = Μισή (γρηγορότερη)
+res.full = Πλήρης (καθαρότερη)
+camera.first = Πρώτο πρόσωπο
+camera.third = Τρίτο πρόσωπο
+hand.left = Αριστερό
+hand.right = Δεξί
+
+audio.title = Ήχος
+audio.sub = δεν υπάρχουν ήχοι ακόμη: αυτά τα περιμένουν
+audio.volume = Ένταση
+audio.music = Μουσική
+audio.sfx = Ηχητικά εφέ
+
+display.title = Οθόνη
+display.sub = κοινά με τον εκκινητή και κάθε άλλη εφαρμογή
+display.screen = Οθόνη
+display.keyboard = Πληκτρολόγιο
+display.leds = Λυχνίες
+
+pause.title = Παύση
+pause.resume = Συνέχεια
+pause.save = Αποθήκευση
+pause.quit = Αποθήκευση και επιστροφή στον τίτλο
+
+common.back = Πίσω
+hint.list = πάνω / κάτω επιλέγει, Enter επιβεβαιώνει, Esc επιστρέφει
+hint.adjust = πάνω / κάτω επιλέγει, αριστερά / δεξιά αλλάζει, Esc επιστρέφει
+
+status.newer = Φτιαγμένος από νεότερο CraftMiner: αναβαθμίστε για να παίξετε
+status.older = Παλαιότερη μορφή αποθήκευσης: αυτή η έκδοση δεν τη μετατρέπει ακόμη
+status.needs_name = Ο κόσμος χρειάζεται όνομα
+status.renamed = Μετονομάστηκε
+status.rename_failed = Η μετονομασία απέτυχε
+status.deleted = Ο κόσμος διαγράφηκε
+status.delete_failed = Δεν διαγράφηκαν όλα
+status.keys_reset = Όλα τα πλήκτρα είναι πάλι στις προεπιλογές
+
+loading.plain = Φόρτωση
+loading.world = Φόρτωση του κόσμου
+loading.creating = Δημιουργία του κόσμου
+
+hud.inventory = Αποθήκη
+hud.inventory_hint = τα βέλη μετακινούν   F1-F6 το βάζει στη μπάρα   Tab κλείνει
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = κοιτάζει %s (%d)
+
+info.clock = %02d:%02d   ημέρα %lld
+info.recording = ΕΓΓΡΑΦΗ (R σταματά)
+
+info.replay = αναπαραγωγή %d / %d
+dir.n = βορρά
+dir.ne = βορειοανατολικά
+dir.e = ανατολικά
+dir.se = νοτιοανατολικά
+dir.s = νότο
+dir.sw = νοτιοδυτικά
+dir.w = δυτικά
+dir.nw = βορειοδυτικά
+
+shot.saved = Αποθηκεύτηκε: screenshots/shot%03d.png
+shot.failed = Η λήψη απέτυχε
+shot.full = ο φάκελος screenshots/ είναι γεμάτος (999)
+
+action.forward = Εμπρός
+action.back = Πίσω
+action.left = Αριστερά
+action.right = Δεξιά
+action.jump = Άλμα
+action.sneak = Έρπυση
+action.attack = Σπάσιμο
+action.use = Τοποθέτηση
+action.lookup = Κοίτα πάνω
+action.lookdown = Κοίτα κάτω
+action.lookleft = Κοίτα αριστερά
+action.lookright = Κοίτα δεξιά
+action.slot1 = Θέση 1
+action.slot2 = Θέση 2
+action.slot3 = Θέση 3
+action.slot4 = Θέση 4
+action.slot5 = Θέση 5
+action.slot6 = Θέση 6
+action.inv = Αποθήκη
+action.pause = Παύση
+action.drop = Ρίξε
+action.info = Εμφάνιση θέσης
+action.screenshot = Στιγμιότυπο οθόνης

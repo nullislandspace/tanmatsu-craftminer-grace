@@ -1,0 +1,164 @@
+# CraftMiner -- Català
+#
+# Aquesta traducció l'ha feta una IA i espera algú que parli realment la
+# llengua. Si ho sabeu fer millor: corregiu la línia i executeu
+# `python3 tools/make_lang.py`. També es pot sense eines: un fitxer
+# /sd/craftminer/lang/ca.txt a la targeta, amb les mateixes línies, té
+# prioritat sobre el que ve compilat (i18n.h).
+#
+# Les claus són a lang/en.txt. Els marcadors % han de tornar a sortir aquí;
+# es poden moure amb %2$s, però no ometre.
+
+menu.play = Jugar
+menu.settings = Configuració
+menu.quit = Surt
+
+worlds.title = Mons
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (d'una versió més nova)
+worlds.slot_older = %d  (cal actualitzar-lo)
+worlds.slot_empty = %d  - buit -
+worlds.damaged = (malmès)
+
+world.play = Jugar
+world.rename = Canvia el nom
+world.delete = Esborra
+
+world.sub = lloc %d, llavor %u
+
+new.title = Món nou
+
+new.sub = al lloc %d
+new.name = Nom
+new.seed = Llavor
+new.seed_random = a l'atzar
+new.create = Crea el món
+new.cancel = Cancel·la
+
+new.default_name = Món %d
+
+text.title_rename = Canvia el nom del món
+text.title_name = Nom del món
+text.title_seed = Llavor (buit per a l'atzar)
+text.sub = escriviu i premeu Enter per desar
+text.hint = Retrocés esborra, Esc cancel·la
+
+delete.title = Voleu esborrar «%s»?
+delete.sub = això no es pot desfer
+delete.no = No, conserva'l
+delete.yes = Sí, esborra'l per sempre
+
+settings.title = Configuració
+settings.language = Llengua
+settings.controls = Controls
+settings.graphics = Gràfics
+settings.audio = Àudio
+settings.display = Pantalla
+
+language.title = Llengua
+
+controls.title = Controls
+controls.gyro = Giroscopi
+controls.reset = Restableix els valors per defecte
+controls.hint = amunt / avall tria, Enter canvia la tecla, Esc torna
+
+graphics.title = Gràfics
+graphics.view = Distància de visió
+graphics.textures = Textures
+graphics.resolution = Resolució
+graphics.clouds = Núvols
+graphics.camera = Càmera
+graphics.hand = La mà d'en Fred
+view.near = A prop
+view.medium = Mitjana
+view.far = Lluny
+res.half = Meitat (més ràpid)
+res.full = Completa (més nítida)
+camera.first = Primera persona
+camera.third = Tercera persona
+hand.left = Esquerra
+hand.right = Dreta
+
+audio.title = Àudio
+audio.sub = encara no hi ha sons: aquests ajustos els esperen
+audio.volume = Volum
+audio.music = Música
+audio.sfx = Efectes de so
+
+display.title = Pantalla
+display.sub = compartit amb el llançador i totes les altres aplicacions
+display.screen = Pantalla
+display.keyboard = Teclat
+display.leds = LEDs
+
+pause.title = En pausa
+pause.resume = Continua
+pause.save = Desa
+pause.quit = Desa i torna al títol
+
+common.back = Enrere
+hint.list = amunt / avall tria, Enter confirma, Esc torna
+hint.adjust = amunt / avall tria, esquerra / dreta canvia, Esc torna
+
+status.newer = Fet per un CraftMiner més nou: actualitzeu per jugar-hi
+status.older = Format de desament antic: aquesta versió encara no el converteix
+status.needs_name = Un món necessita un nom
+status.renamed = Nom canviat
+status.rename_failed = No s'ha pogut canviar el nom
+status.deleted = Món esborrat
+status.delete_failed = No s'ha pogut esborrar tot
+status.keys_reset = Totes les tecles tornen al valor per defecte
+
+loading.plain = S'està carregant
+loading.world = S'està carregant el món
+loading.creating = S'està creant el món
+
+hud.inventory = Inventari
+hud.inventory_hint = les fletxes mouen   F1-F6 ho posa a la barra   Tab tanca
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = mirant cap a %s (%d)
+
+info.clock = %02d:%02d   dia %lld
+info.recording = ENREGISTRANT (R atura)
+
+info.replay = repetició %d / %d
+dir.n = nord
+dir.ne = nord-est
+dir.e = est
+dir.se = sud-est
+dir.s = sud
+dir.sw = sud-oest
+dir.w = oest
+dir.nw = nord-oest
+
+shot.saved = Desat: screenshots/shot%03d.png
+shot.failed = La captura ha fallat
+shot.full = screenshots/ és ple (999)
+
+action.forward = Endavant
+action.back = Enrere
+action.left = Cap a l'esquerra
+action.right = Cap a la dreta
+action.jump = Salta
+action.sneak = Ajup-te
+action.attack = Trenca
+action.use = Col·loca
+action.lookup = Mira amunt
+action.lookdown = Mira avall
+action.lookleft = Mira a l'esquerra
+action.lookright = Mira a la dreta
+action.slot1 = Casella 1
+action.slot2 = Casella 2
+action.slot3 = Casella 3
+action.slot4 = Casella 4
+action.slot5 = Casella 5
+action.slot6 = Casella 6
+action.inv = Inventari
+action.pause = Pausa
+action.drop = Deixa caure
+action.info = Mostra la posició
+action.screenshot = Captura de pantalla

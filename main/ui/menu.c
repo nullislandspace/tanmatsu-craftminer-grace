@@ -638,6 +638,32 @@ static void draw_list(pax_buf_t* fb, char const* title, char const* subtitle, se
     se_menu_draw(&m, fb);
 }
 
+// The same list, packed tighter. For the languages: there are 32 of them,
+// and at the ordinary seven rows a panel a player would be scrolling past
+// two dozen names to reach their own. Smaller rows show half the list at
+// once, which is what makes an alphabetical list worth being alphabetical.
+#define VISIBLE_DENSE 13
+
+static void draw_list_dense(pax_buf_t* fb, char const* title, se_menu_row_t const* rows, int n, int cursor,
+                            char const* hint, float value_dx) {
+    char const*         sub = status_line();
+    se_menu_def_t const def = {
+        .title        = title,
+        .subtitle     = sub,
+        .rows         = rows,
+        .row_count    = n,
+        .hint         = hint,
+        .title_h      = 28.0f,
+        .row_h        = 27.0f,
+        .value_dx     = value_dx,
+        .panel_w      = 0.80f,
+        .panel_h      = 0.94f,
+        .visible_rows = VISIBLE_DENSE,
+    };
+    se_menu_t const m = {.def = &def, .cursor = cursor};
+    se_menu_draw(&m, fb);
+}
+
 #define HINT_LIST   T(CM_STR_HINT_LIST)
 #define HINT_ADJUST T(CM_STR_HINT_ADJUST)
 
@@ -773,8 +799,8 @@ void menu_draw(pax_buf_t* fb) {
             // 280, not the usual 180: "Nederlands" and "Български" are
             // longer than any label English has, and the tick belongs
             // clear of them.
-            draw_list(fb, T(CM_STR_LANGUAGE_TITLE), NULL, rows, LANGUAGE_ROWS, s_cursor[SCR_LANGUAGE],
-                      HINT_LIST, 280.0f);
+            draw_list_dense(fb, T(CM_STR_LANGUAGE_TITLE), rows, LANGUAGE_ROWS, s_cursor[SCR_LANGUAGE],
+                            HINT_LIST, 280.0f);
         } break;
 
         case SCR_CONTROLS: {

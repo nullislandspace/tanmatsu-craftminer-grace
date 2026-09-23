@@ -1,0 +1,164 @@
+# CraftMiner -- Shqip
+#
+# Këtë përkthim e bëri një inteligjencë artificiale dhe pret dikë që e flet
+# vërtet gjuhën. Nëse e dini më mirë: korrigjoni rreshtin dhe ekzekutoni
+# `python3 tools/make_lang.py`. Bëhet edhe pa vegla -- një skedar
+# /sd/craftminer/lang/sq.txt në kartë, me të njëjtat rreshta, ka përparësi
+# ndaj tekstit të integruar (i18n.h).
+#
+# Çelësat janë në lang/en.txt. Vendmbajtësit % prej andej duhet të shfaqen
+# edhe këtu; mund të zhvendosen me %2$s, por jo të hiqen.
+
+menu.play = Luaj
+menu.settings = Cilësimet
+menu.quit = Dil
+
+worlds.title = Botët
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (nga një version më i ri)
+worlds.slot_older = %d  (duhet përditësuar)
+worlds.slot_empty = %d  - bosh -
+worlds.damaged = (i dëmtuar)
+
+world.play = Luaj
+world.rename = Riemërto
+world.delete = Fshi
+
+world.sub = vendi %d, fara %u
+
+new.title = Botë e re
+
+new.sub = në vendin %d
+new.name = Emri
+new.seed = Fara
+new.seed_random = e rastësishme
+new.create = Krijo botën
+new.cancel = Anulo
+
+new.default_name = Bota %d
+
+text.title_rename = Riemërto botën
+text.title_name = Emri i botës
+text.title_seed = Fara (bosh = e rastësishme)
+text.sub = shkruani, pastaj Enter për ta ruajtur
+text.hint = Backspace fshin, Esc anulon
+
+delete.title = Të fshihet „%s“?
+delete.sub = kjo nuk mund të zhbëhet
+delete.no = Jo, ruaje
+delete.yes = Po, fshije përgjithmonë
+
+settings.title = Cilësimet
+settings.language = Gjuha
+settings.controls = Kontrollet
+settings.graphics = Grafika
+settings.audio = Zëri
+settings.display = Ekrani
+
+language.title = Gjuha
+
+controls.title = Kontrollet
+controls.gyro = Xhiroskopi
+controls.reset = Kthe te parazgjedhjet
+controls.hint = lart / poshtë zgjedh, Enter ndryshon tastin, Esc kthehet
+
+graphics.title = Grafika
+graphics.view = Largësia e pamjes
+graphics.textures = Teksturat
+graphics.resolution = Rezolucioni
+graphics.clouds = Retë
+graphics.camera = Kamera
+graphics.hand = Dora e Fredit
+view.near = Afër
+view.medium = Mesatare
+view.far = Larg
+res.half = Gjysmë (më e shpejtë)
+res.full = E plotë (më e qartë)
+camera.first = Vetë e parë
+camera.third = Vetë e tretë
+hand.left = Majtas
+hand.right = Djathtas
+
+audio.title = Zëri
+audio.sub = ende nuk ka tinguj: këto cilësime i presin
+audio.volume = Volumi
+audio.music = Muzika
+audio.sfx = Efektet zanore
+
+display.title = Ekrani
+display.sub = i përbashkët me nisësin dhe çdo aplikacion tjetër
+display.screen = Ekrani
+display.keyboard = Tastiera
+display.leds = LED-et
+
+pause.title = Pauzë
+pause.resume = Vazhdo
+pause.save = Ruaj
+pause.quit = Ruaj dhe kthehu te titulli
+
+common.back = Prapa
+hint.list = lart / poshtë zgjedh, Enter konfirmon, Esc kthehet
+hint.adjust = lart / poshtë zgjedh, majtas / djathtas ndryshon, Esc kthehet
+
+status.newer = Bërë me një CraftMiner më të ri: përditësoni që ta luani
+status.older = Format i vjetër ruajtjeje: ky version nuk di ta shndërrojë ende
+status.needs_name = Bota ka nevojë për një emër
+status.renamed = U riemërtua
+status.rename_failed = Riemërtimi dështoi
+status.deleted = Bota u fshi
+status.delete_failed = Nuk u fshi gjithçka
+status.keys_reset = Të gjithë tastet janë përsëri të parazgjedhur
+
+loading.plain = Po ngarkohet
+loading.world = Po ngarkohet bota
+loading.creating = Po krijohet bota
+
+hud.inventory = Inventari
+hud.inventory_hint = shigjetat lëvizin   F1-F6 e vendos në shirit   Tab mbyll
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = drejt %s (%d)
+
+info.clock = %02d:%02d   dita %lld
+info.recording = PO REGJISTROHET (R ndalon)
+
+info.replay = riprodhim %d / %d
+dir.n = veri
+dir.ne = verilindje
+dir.e = lindje
+dir.se = juglindje
+dir.s = jug
+dir.sw = jugperëndim
+dir.w = perëndim
+dir.nw = veriperëndim
+
+shot.saved = U ruajt: screenshots/shot%03d.png
+shot.failed = Fotografimi dështoi
+shot.full = screenshots/ është plot (999)
+
+action.forward = Përpara
+action.back = Prapa
+action.left = Majtas
+action.right = Djathtas
+action.jump = Kërce
+action.sneak = Fshehurazi
+action.attack = Thyej
+action.use = Vendos
+action.lookup = Shiko lart
+action.lookdown = Shiko poshtë
+action.lookleft = Shiko majtas
+action.lookright = Shiko djathtas
+action.slot1 = Vendi 1
+action.slot2 = Vendi 2
+action.slot3 = Vendi 3
+action.slot4 = Vendi 4
+action.slot5 = Vendi 5
+action.slot6 = Vendi 6
+action.inv = Inventari
+action.pause = Pauzë
+action.drop = Lësho
+action.info = Shfaq pozicionin
+action.screenshot = Foto e ekranit

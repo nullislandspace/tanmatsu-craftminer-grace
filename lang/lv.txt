@@ -1,0 +1,164 @@
+# CraftMiner -- Latviešu
+#
+# Šo tulkojumu veidoja mākslīgais intelekts, un tas gaida kādu, kurš valodu
+# tiešām prot. Ja zini labāk: izlabo rindu un palaid
+# `python3 tools/make_lang.py`. Var arī bez rīkiem -- fails
+# /sd/craftminer/lang/lv.txt kartē ar tām pašām rindām ir pārāks par
+# iebūvēto (i18n.h).
+#
+# Atslēgas ir failā lang/en.txt. Tur esošajiem %-aizstājējiem jāparādās arī
+# šeit; tos drīkst pārvietot ar %2$s, bet ne izlaist.
+
+menu.play = Spēlēt
+menu.settings = Iestatījumi
+menu.quit = Iziet
+
+worlds.title = Pasaules
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (no jaunākas versijas)
+worlds.slot_older = %d  (jāatjaunina)
+worlds.slot_empty = %d  - tukšs -
+worlds.damaged = (bojāts)
+
+world.play = Spēlēt
+world.rename = Pārdēvēt
+world.delete = Dzēst
+
+world.sub = vieta %d, sēkla %u
+
+new.title = Jauna pasaule
+
+new.sub = vietā %d
+new.name = Nosaukums
+new.seed = Sēkla
+new.seed_random = nejauša
+new.create = Izveidot pasauli
+new.cancel = Atcelt
+
+new.default_name = Pasaule %d
+
+text.title_rename = Pārdēvēt pasauli
+text.title_name = Pasaules nosaukums
+text.title_seed = Sēkla (tukšs — nejauša)
+text.sub = raksti, tad Enter, lai saglabātu
+text.hint = Backspace dzēš, Esc atceļ
+
+delete.title = Dzēst „%s“?
+delete.sub = to nevarēs atsaukt
+delete.no = Nē, paturēt
+delete.yes = Jā, dzēst pavisam
+
+settings.title = Iestatījumi
+settings.language = Valoda
+settings.controls = Vadība
+settings.graphics = Grafika
+settings.audio = Skaņa
+settings.display = Ekrāns
+
+language.title = Valoda
+
+controls.title = Vadība
+controls.gyro = Žiroskops
+controls.reset = Atjaunot noklusējumus
+controls.hint = augšup / lejup izvēlas, Enter maina taustiņu, Esc atpakaļ
+
+graphics.title = Grafika
+graphics.view = Redzamības attālums
+graphics.textures = Tekstūras
+graphics.resolution = Izšķirtspēja
+graphics.clouds = Mākoņi
+graphics.camera = Kamera
+graphics.hand = Freda roka
+view.near = Tuvu
+view.medium = Vidēji
+view.far = Tālu
+res.half = Puse (ātrāk)
+res.full = Pilna (asāk)
+camera.first = Pirmā persona
+camera.third = Trešā persona
+hand.left = Kreisā
+hand.right = Labā
+
+audio.title = Skaņa
+audio.sub = skaņu vēl nav: šie iestatījumi tās gaida
+audio.volume = Skaļums
+audio.music = Mūzika
+audio.sfx = Skaņas efekti
+
+display.title = Ekrāns
+display.sub = kopīgs ar palaidēju un visām citām lietotnēm
+display.screen = Ekrāns
+display.keyboard = Tastatūra
+display.leds = Gaismas diodes
+
+pause.title = Pauze
+pause.resume = Turpināt
+pause.save = Saglabāt
+pause.quit = Saglabāt un atpakaļ uz sākumu
+
+common.back = Atpakaļ
+hint.list = augšup / lejup izvēlas, Enter apstiprina, Esc atpakaļ
+hint.adjust = augšup / lejup izvēlas, pa kreisi / pa labi maina, Esc atpakaļ
+
+status.newer = Veidots ar jaunāku CraftMiner: atjaunini, lai spēlētu
+status.older = Vecāks saglabāšanas formāts: šī versija to vēl neprot atjaunināt
+status.needs_name = Pasaulei vajadzīgs nosaukums
+status.renamed = Pārdēvēts
+status.rename_failed = Neizdevās pārdēvēt
+status.deleted = Pasaule izdzēsta
+status.delete_failed = Neizdevās izdzēst visu
+status.keys_reset = Visi taustiņi atkal ir noklusējuma
+
+loading.plain = Ielādē
+loading.world = Ielādē pasauli
+loading.creating = Veido pasauli
+
+hud.inventory = Inventārs
+hud.inventory_hint = bultiņas pārvieto   F1-F6 liek joslā   Tab aizver
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = skatās uz %s (%d)
+
+info.clock = %02d:%02d   diena %lld
+info.recording = IERAKSTA (R aptur)
+
+info.replay = atkārtojums %d / %d
+dir.n = ziemeļi
+dir.ne = ziemeļaustrumi
+dir.e = austrumi
+dir.se = dienvidaustrumi
+dir.s = dienvidi
+dir.sw = dienvidrietumi
+dir.w = rietumi
+dir.nw = ziemeļrietumi
+
+shot.saved = Saglabāts: screenshots/shot%03d.png
+shot.failed = Ekrānuzņēmums neizdevās
+shot.full = screenshots/ ir pilna (999)
+
+action.forward = Uz priekšu
+action.back = Atpakaļ
+action.left = Pa kreisi
+action.right = Pa labi
+action.jump = Lēkt
+action.sneak = Zagties
+action.attack = Lauzt
+action.use = Novietot
+action.lookup = Skatīties augšup
+action.lookdown = Skatīties lejup
+action.lookleft = Skatīties pa kreisi
+action.lookright = Skatīties pa labi
+action.slot1 = Vieta 1
+action.slot2 = Vieta 2
+action.slot3 = Vieta 3
+action.slot4 = Vieta 4
+action.slot5 = Vieta 5
+action.slot6 = Vieta 6
+action.inv = Inventārs
+action.pause = Pauze
+action.drop = Nomest
+action.info = Rādīt atrašanās vietu
+action.screenshot = Ekrānuzņēmums

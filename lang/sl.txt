@@ -1,0 +1,164 @@
+# CraftMiner -- Slovenščina
+#
+# Ta prevod je naredila umetna inteligenca in čaka na nekoga, ki jezik res
+# zna. Če veste bolje: popravite vrstico in zaženite
+# `python3 tools/make_lang.py`. Gre tudi brez orodij -- datoteka
+# /sd/craftminer/lang/sl.txt na kartici z istimi vrsticami ima prednost pred
+# vgrajenim besedilom (i18n.h).
+#
+# Ključi so v lang/en.txt. Tamkajšnji nadomestni znaki % se morajo pojaviti
+# tudi tukaj; premakniti jih je mogoče z %2$s, izpustiti ne.
+
+menu.play = Igraj
+menu.settings = Nastavitve
+menu.quit = Izhod
+
+worlds.title = Svetovi
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (iz novejše različice)
+worlds.slot_older = %d  (potrebuje posodobitev)
+worlds.slot_empty = %d  - prazno -
+worlds.damaged = (poškodovan)
+
+world.play = Igraj
+world.rename = Preimenuj
+world.delete = Izbriši
+
+world.sub = mesto %d, seme %u
+
+new.title = Nov svet
+
+new.sub = na mestu %d
+new.name = Ime
+new.seed = Seme
+new.seed_random = naključno
+new.create = Ustvari svet
+new.cancel = Prekliči
+
+new.default_name = Svet %d
+
+text.title_rename = Preimenuj svet
+text.title_name = Ime sveta
+text.title_seed = Seme (prazno = naključno)
+text.sub = vtipkajte, nato Enter za shranitev
+text.hint = Backspace briše, Esc prekliče
+
+delete.title = Izbrišem „%s“?
+delete.sub = tega ni mogoče razveljaviti
+delete.no = Ne, obdrži
+delete.yes = Da, izbriši za vedno
+
+settings.title = Nastavitve
+settings.language = Jezik
+settings.controls = Upravljanje
+settings.graphics = Grafika
+settings.audio = Zvok
+settings.display = Zaslon
+
+language.title = Jezik
+
+controls.title = Upravljanje
+controls.gyro = Žiroskop
+controls.reset = Nazaj na privzeto
+controls.hint = gor / dol izbira, Enter zamenja tipko, Esc se vrne
+
+graphics.title = Grafika
+graphics.view = Razdalja vidnosti
+graphics.textures = Teksture
+graphics.resolution = Ločljivost
+graphics.clouds = Oblaki
+graphics.camera = Kamera
+graphics.hand = Fredova roka
+view.near = Blizu
+view.medium = Srednje
+view.far = Daleč
+res.half = Polovična (hitreje)
+res.full = Polna (ostreje)
+camera.first = Prva oseba
+camera.third = Tretja oseba
+hand.left = Leva
+hand.right = Desna
+
+audio.title = Zvok
+audio.sub = zvokov še ni: te nastavitve jih čakajo
+audio.volume = Glasnost
+audio.music = Glasba
+audio.sfx = Zvočni učinki
+
+display.title = Zaslon
+display.sub = skupno z zaganjalnikom in vsemi drugimi aplikacijami
+display.screen = Zaslon
+display.keyboard = Tipkovnica
+display.leds = Diode
+
+pause.title = Premor
+pause.resume = Nadaljuj
+pause.save = Shrani
+pause.quit = Shrani in nazaj na naslov
+
+common.back = Nazaj
+hint.list = gor / dol izbira, Enter potrdi, Esc se vrne
+hint.adjust = gor / dol izbira, levo / desno spremeni, Esc se vrne
+
+status.newer = Narejeno z novejšim CraftMinerjem: posodobite, da ga zaigrate
+status.older = Starejši zapis shranjevanja: ta različica ga še ne zna pretvoriti
+status.needs_name = Svet potrebuje ime
+status.renamed = Preimenovano
+status.rename_failed = Preimenovanje ni uspelo
+status.deleted = Svet izbrisan
+status.delete_failed = Vsega ni bilo mogoče izbrisati
+status.keys_reset = Vse tipke so spet privzete
+
+loading.plain = Nalaganje
+loading.world = Nalaganje sveta
+loading.creating = Ustvarjanje sveta
+
+hud.inventory = Inventar
+hud.inventory_hint = puščice premikajo   F1-F6 da na vrstico   Tab zapre
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = smer %s (%d)
+
+info.clock = %02d:%02d   dan %lld
+info.recording = SNEMANJE (R ustavi)
+
+info.replay = predvajanje %d / %d
+dir.n = sever
+dir.ne = severovzhod
+dir.e = vzhod
+dir.se = jugovzhod
+dir.s = jug
+dir.sw = jugozahod
+dir.w = zahod
+dir.nw = severozahod
+
+shot.saved = Shranjeno: screenshots/shot%03d.png
+shot.failed = Zajem ni uspel
+shot.full = screenshots/ je poln (999)
+
+action.forward = Naprej
+action.back = Nazaj
+action.left = Levo
+action.right = Desno
+action.jump = Skok
+action.sneak = Prikradanje
+action.attack = Razbij
+action.use = Postavi
+action.lookup = Poglej gor
+action.lookdown = Poglej dol
+action.lookleft = Poglej levo
+action.lookright = Poglej desno
+action.slot1 = Mesto 1
+action.slot2 = Mesto 2
+action.slot3 = Mesto 3
+action.slot4 = Mesto 4
+action.slot5 = Mesto 5
+action.slot6 = Mesto 6
+action.inv = Inventar
+action.pause = Premor
+action.drop = Odvrzi
+action.info = Pokaži položaj
+action.screenshot = Zajem zaslona

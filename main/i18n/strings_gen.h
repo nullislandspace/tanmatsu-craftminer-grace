@@ -145,11 +145,37 @@ typedef enum {
 
 typedef enum {
     CM_LANG_EN,       // en     English
+    CM_LANG_CA,       // ca     Català
+    CM_LANG_CS,       // cs     Čeština
+    CM_LANG_DA,       // da     Dansk
     CM_LANG_DE,       // de     Deutsch
-    CM_LANG_NL,       // nl     Nederlands
-    CM_LANG_NL_BE,    // nl-BE  Vlaams
+    CM_LANG_ET,       // et     Eesti
+    CM_LANG_ES,       // es     Español
     CM_LANG_FR,       // fr     Français
+    CM_LANG_GA,       // ga     Gaeilge
+    CM_LANG_HR,       // hr     Hrvatski
+    CM_LANG_IS,       // is     Íslenska
+    CM_LANG_IT,       // it     Italiano
+    CM_LANG_LV,       // lv     Latviešu
+    CM_LANG_LT,       // lt     Lietuvių
+    CM_LANG_HU,       // hu     Magyar
+    CM_LANG_NL,       // nl     Nederlands
+    CM_LANG_NO,       // no     Norsk
+    CM_LANG_PL,       // pl     Polski
+    CM_LANG_PT,       // pt     Português
+    CM_LANG_RO,       // ro     Română
+    CM_LANG_SQ,       // sq     Shqip
+    CM_LANG_SK,       // sk     Slovenčina
+    CM_LANG_SL,       // sl     Slovenščina
+    CM_LANG_FI,       // fi     Suomi
+    CM_LANG_SV,       // sv     Svenska
+    CM_LANG_TR,       // tr     Türkçe
+    CM_LANG_NL_BE,    // nl-BE  Vlaams
+    CM_LANG_EL,       // el     Ελληνικά
     CM_LANG_BG,       // bg     Български
+    CM_LANG_RU,       // ru     Русский
+    CM_LANG_SR,       // sr     Српски
+    CM_LANG_UK,       // uk     Українська
     CM_LANG_COUNT
 } cm_lang_t;
 

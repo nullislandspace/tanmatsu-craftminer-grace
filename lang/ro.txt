@@ -1,0 +1,164 @@
+# CraftMiner -- Română
+#
+# Această traducere a fost făcută de o inteligență artificială și așteaptă pe
+# cineva care chiar vorbește limba. Dacă știți mai bine: corectați rândul și
+# rulați `python3 tools/make_lang.py`. Se poate și fără unelte -- un fișier
+# /sd/craftminer/lang/ro.txt pe card, cu aceleași rânduri, are prioritate față
+# de textul compilat (i18n.h).
+#
+# Cheile sunt în lang/en.txt. Marcajele % de acolo trebuie să apară și aici;
+# pot fi mutate cu %2$s, dar nu omise.
+
+menu.play = Joacă
+menu.settings = Setări
+menu.quit = Ieșire
+
+worlds.title = Lumi
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (dintr-o versiune mai nouă)
+worlds.slot_older = %d  (necesită actualizare)
+worlds.slot_empty = %d  - gol -
+worlds.damaged = (deteriorat)
+
+world.play = Joacă
+world.rename = Redenumește
+world.delete = Șterge
+
+world.sub = locul %d, sămânță %u
+
+new.title = Lume nouă
+
+new.sub = pe locul %d
+new.name = Nume
+new.seed = Sămânță
+new.seed_random = aleatorie
+new.create = Creează lumea
+new.cancel = Anulează
+
+new.default_name = Lumea %d
+
+text.title_rename = Redenumește lumea
+text.title_name = Numele lumii
+text.title_seed = Sămânță (gol = aleatorie)
+text.sub = scrieți, apoi Enter pentru a păstra
+text.hint = Backspace șterge, Esc anulează
+
+delete.title = Ștergeți „%s”?
+delete.sub = acest lucru nu poate fi anulat
+delete.no = Nu, păstreaz-o
+delete.yes = Da, șterge-o definitiv
+
+settings.title = Setări
+settings.language = Limbă
+settings.controls = Comenzi
+settings.graphics = Grafică
+settings.audio = Sunet
+settings.display = Ecran
+
+language.title = Limbă
+
+controls.title = Comenzi
+controls.gyro = Giroscop
+controls.reset = Revino la valorile implicite
+controls.hint = sus / jos alege, Enter schimbă tasta, Esc revine
+
+graphics.title = Grafică
+graphics.view = Distanța de vizibilitate
+graphics.textures = Texturi
+graphics.resolution = Rezoluție
+graphics.clouds = Nori
+graphics.camera = Cameră
+graphics.hand = Mâna lui Fred
+view.near = Aproape
+view.medium = Medie
+view.far = Departe
+res.half = Jumătate (mai rapid)
+res.full = Completă (mai clară)
+camera.first = Persoana întâi
+camera.third = Persoana a treia
+hand.left = Stânga
+hand.right = Dreapta
+
+audio.title = Sunet
+audio.sub = încă nu există sunete: aceste setări le așteaptă
+audio.volume = Volum
+audio.music = Muzică
+audio.sfx = Efecte sonore
+
+display.title = Ecran
+display.sub = comun cu lansatorul și cu toate celelalte aplicații
+display.screen = Ecran
+display.keyboard = Tastatură
+display.leds = LED-uri
+
+pause.title = Pauză
+pause.resume = Continuă
+pause.save = Salvează
+pause.quit = Salvează și înapoi la titlu
+
+common.back = Înapoi
+hint.list = sus / jos alege, Enter confirmă, Esc revine
+hint.adjust = sus / jos alege, stânga / dreapta schimbă, Esc revine
+
+status.newer = Făcută de un CraftMiner mai nou: actualizați pentru a o juca
+status.older = Format de salvare mai vechi: această versiune nu îl poate converti încă
+status.needs_name = O lume are nevoie de un nume
+status.renamed = Redenumită
+status.rename_failed = Redenumirea a eșuat
+status.deleted = Lume ștearsă
+status.delete_failed = Nu s-a putut șterge tot
+status.keys_reset = Toate tastele au revenit la valorile implicite
+
+loading.plain = Se încarcă
+loading.world = Se încarcă lumea
+loading.creating = Se creează lumea
+
+hud.inventory = Inventar
+hud.inventory_hint = săgețile mută   F1-F6 pune pe bară   Tab închide
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = privește spre %s (%d)
+
+info.clock = %02d:%02d   ziua %lld
+info.recording = ÎNREGISTRARE (R oprește)
+
+info.replay = redare %d / %d
+dir.n = nord
+dir.ne = nord-est
+dir.e = est
+dir.se = sud-est
+dir.s = sud
+dir.sw = sud-vest
+dir.w = vest
+dir.nw = nord-vest
+
+shot.saved = Salvat: screenshots/shot%03d.png
+shot.failed = Captura a eșuat
+shot.full = screenshots/ este plin (999)
+
+action.forward = Înainte
+action.back = Înapoi
+action.left = La stânga
+action.right = La dreapta
+action.jump = Sari
+action.sneak = Furișare
+action.attack = Sparge
+action.use = Pune
+action.lookup = Privește în sus
+action.lookdown = Privește în jos
+action.lookleft = Privește la stânga
+action.lookright = Privește la dreapta
+action.slot1 = Locul 1
+action.slot2 = Locul 2
+action.slot3 = Locul 3
+action.slot4 = Locul 4
+action.slot5 = Locul 5
+action.slot6 = Locul 6
+action.inv = Inventar
+action.pause = Pauză
+action.drop = Aruncă
+action.info = Arată poziția
+action.screenshot = Captură de ecran

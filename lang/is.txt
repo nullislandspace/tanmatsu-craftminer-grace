@@ -1,0 +1,164 @@
+# CraftMiner -- Íslenska
+#
+# Þessi þýðing er gerð af gervigreind og bíður einhvers sem talar málið í
+# alvöru. Ef þú veist betur: lagaðu línuna og keyrðu
+# `python3 tools/make_lang.py`. Það má líka gera án verkfæra -- skrá
+# /sd/craftminer/lang/is.txt á kortinu, með sömu línum, gengur fyrir því
+# sem er innbyggt (i18n.h).
+#
+# Lyklarnir eru í lang/en.txt. %-staðgenglarnir þaðan verða að koma fyrir
+# hér líka; færa má þá með %2$s en ekki sleppa þeim.
+
+menu.play = Spila
+menu.settings = Stillingar
+menu.quit = Hætta
+
+worlds.title = Heimar
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (úr nýrri útgáfu)
+worlds.slot_older = %d  (þarf uppfærslu)
+worlds.slot_empty = %d  - tómt -
+worlds.damaged = (skemmt)
+
+world.play = Spila
+world.rename = Endurnefna
+world.delete = Eyða
+
+world.sub = hólf %d, fræ %u
+
+new.title = Nýr heimur
+
+new.sub = í hólfi %d
+new.name = Nafn
+new.seed = Fræ
+new.seed_random = af handahófi
+new.create = Búa til heim
+new.cancel = Hætta við
+
+new.default_name = Heimur %d
+
+text.title_rename = Endurnefna heiminn
+text.title_name = Nafn heimsins
+text.title_seed = Fræ (tómt fyrir handahóf)
+text.sub = skrifaðu og ýttu á Enter til að halda
+text.hint = Backspace eyðir, Esc hættir við
+
+delete.title = Eyða „%s“?
+delete.sub = þetta verður ekki afturkallað
+delete.no = Nei, halda honum
+delete.yes = Já, eyða honum fyrir fullt og allt
+
+settings.title = Stillingar
+settings.language = Tungumál
+settings.controls = Stjórntæki
+settings.graphics = Grafík
+settings.audio = Hljóð
+settings.display = Skjár
+
+language.title = Tungumál
+
+controls.title = Stjórntæki
+controls.gyro = Snúðvísir
+controls.reset = Núllstilla á sjálfgefið
+controls.hint = upp / niður velur, Enter breytir lyklinum, Esc fer til baka
+
+graphics.title = Grafík
+graphics.view = Sjónlengd
+graphics.textures = Áferðir
+graphics.resolution = Upplausn
+graphics.clouds = Ský
+graphics.camera = Myndavél
+graphics.hand = Hönd Freds
+view.near = Nálægt
+view.medium = Miðlungs
+view.far = Langt
+res.half = Hálf (hraðari)
+res.full = Full (skarpari)
+camera.first = Fyrsta persóna
+camera.third = Þriðja persóna
+hand.left = Vinstri
+hand.right = Hægri
+
+audio.title = Hljóð
+audio.sub = engin hljóð enn: þessar stillingar bíða þeirra
+audio.volume = Hljóðstyrkur
+audio.music = Tónlist
+audio.sfx = Hljóðbrellur
+
+display.title = Skjár
+display.sub = deilt með ræsinum og öllum öðrum forritum
+display.screen = Skjár
+display.keyboard = Lyklaborð
+display.leds = Ljósdíóður
+
+pause.title = Í bið
+pause.resume = Halda áfram
+pause.save = Vista
+pause.quit = Vista og fara á titilskjá
+
+common.back = Til baka
+hint.list = upp / niður velur, Enter staðfestir, Esc fer til baka
+hint.adjust = upp / niður velur, vinstri / hægri breytir, Esc fer til baka
+
+status.newer = Gerður með nýrri CraftMiner: uppfærðu til að spila hann
+status.older = Eldra vistunarsnið: þessi útgáfa kann ekki að uppfæra það
+status.needs_name = Heimur þarf nafn
+status.renamed = Endurnefndur
+status.rename_failed = Tókst ekki að endurnefna
+status.deleted = Heiminum eytt
+status.delete_failed = Tókst ekki að eyða öllu
+status.keys_reset = Allir lyklar eru aftur á sjálfgefnu
+
+loading.plain = Hleð
+loading.world = Hleð heiminum
+loading.creating = Bý til heiminn
+
+hud.inventory = Birgðir
+hud.inventory_hint = örvarnar færa   F1-F6 setur í stikuna   Tab lokar
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = horfir í %s (%d)
+
+info.clock = %02d:%02d   dagur %lld
+info.recording = TEK UPP (R stöðvar)
+
+info.replay = endurspilun %d / %d
+dir.n = norður
+dir.ne = norðaustur
+dir.e = austur
+dir.se = suðaustur
+dir.s = suður
+dir.sw = suðvestur
+dir.w = vestur
+dir.nw = norðvestur
+
+shot.saved = Vistað: screenshots/shot%03d.png
+shot.failed = Skjámyndin mistókst
+shot.full = screenshots/ er full (999)
+
+action.forward = Áfram
+action.back = Aftur á bak
+action.left = Til vinstri
+action.right = Til hægri
+action.jump = Stökkva
+action.sneak = Læðast
+action.attack = Brjóta
+action.use = Setja
+action.lookup = Horfa upp
+action.lookdown = Horfa niður
+action.lookleft = Horfa til vinstri
+action.lookright = Horfa til hægri
+action.slot1 = Hólf 1
+action.slot2 = Hólf 2
+action.slot3 = Hólf 3
+action.slot4 = Hólf 4
+action.slot5 = Hólf 5
+action.slot6 = Hólf 6
+action.inv = Birgðir
+action.pause = Bið
+action.drop = Sleppa
+action.info = Sýna staðsetningu
+action.screenshot = Skjámynd

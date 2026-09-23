@@ -25,6 +25,7 @@ forgotten.
 import os
 import re
 import sys
+import unicodedata
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LANG_DIR = os.path.join(ROOT, "lang")
@@ -37,12 +38,44 @@ MAX_ARGS = 6  # keep in step with I18N_FMT_MAX_ARGS (i18n.h)
 # calls itself. That name is NEVER translated: a player who cannot read the
 # language the game is currently in has to be able to find their own.
 LANGUAGES = [
+    # English first -- it is the reference, and the one a player who cannot
+    # read the current setting is most likely to recognise. The rest are
+    # alphabetical BY THE NAME SHOWN, which is the name a player is looking
+    # for; accents are ignored when sorting, so Čeština sits under C and
+    # Íslenska under I. Greek and Cyrillic follow the Latin names, each in
+    # its own alphabet's order.
     ("en", "CM_LANG_EN", "English"),
+    ("ca", "CM_LANG_CA", "Català"),
+    ("cs", "CM_LANG_CS", "Čeština"),
+    ("da", "CM_LANG_DA", "Dansk"),
     ("de", "CM_LANG_DE", "Deutsch"),
-    ("nl", "CM_LANG_NL", "Nederlands"),
-    ("nl-BE", "CM_LANG_NL_BE", "Vlaams"),
+    ("et", "CM_LANG_ET", "Eesti"),
+    ("es", "CM_LANG_ES", "Español"),
     ("fr", "CM_LANG_FR", "Français"),
+    ("ga", "CM_LANG_GA", "Gaeilge"),
+    ("hr", "CM_LANG_HR", "Hrvatski"),
+    ("is", "CM_LANG_IS", "Íslenska"),
+    ("it", "CM_LANG_IT", "Italiano"),
+    ("lv", "CM_LANG_LV", "Latviešu"),
+    ("lt", "CM_LANG_LT", "Lietuvių"),
+    ("hu", "CM_LANG_HU", "Magyar"),
+    ("nl", "CM_LANG_NL", "Nederlands"),
+    ("no", "CM_LANG_NO", "Norsk"),
+    ("pl", "CM_LANG_PL", "Polski"),
+    ("pt", "CM_LANG_PT", "Português"),
+    ("ro", "CM_LANG_RO", "Română"),
+    ("sq", "CM_LANG_SQ", "Shqip"),
+    ("sk", "CM_LANG_SK", "Slovenčina"),
+    ("sl", "CM_LANG_SL", "Slovenščina"),
+    ("fi", "CM_LANG_FI", "Suomi"),
+    ("sv", "CM_LANG_SV", "Svenska"),
+    ("tr", "CM_LANG_TR", "Türkçe"),
+    ("nl-BE", "CM_LANG_NL_BE", "Vlaams"),
+    ("el", "CM_LANG_EL", "Ελληνικά"),
     ("bg", "CM_LANG_BG", "Български"),
+    ("ru", "CM_LANG_RU", "Русский"),
+    ("sr", "CM_LANG_SR", "Српски"),
+    ("uk", "CM_LANG_UK", "Українська"),
 ]
 
 SPEC_RE = re.compile(r"%(?:(\d+)\$)?([-+ #0]*)(\d*)(?:\.(\d+))?(hh|h|ll|l|z|j|t)?([diuxXofFeEgGsc%])")
@@ -101,6 +134,29 @@ def check_specs(key, english, other, code):
                      % (code, key, i + 1, want[i]))
 
 
+def check_scripts(key, text, code):
+    """A word with two alphabets in it.
+
+    This is the typo a machine translation makes and a human never notices:
+    a Latin `a` inside a Cyrillic word looks identical and reads as a box on
+    a badge with no Latin-Cyrillic lookalike merging. The game's own name is
+    the one honest exception -- Serbian declines it as `CraftMiner-ом`."""
+    def script(ch):
+        n = unicodedata.name(ch, "")
+        for s in ("CYRILLIC", "GREEK", "LATIN"):
+            if n.startswith(s):
+                return s
+        return None
+
+    for word in re.findall(r"\S+", text):
+        if "CraftMiner" in word:
+            continue
+        scripts = {script(c) for c in word if script(c)}
+        if len(scripts) > 1:
+            sys.exit("%s.txt: %s: %r mixes %s. One of those letters is not the "
+                     "one it looks like." % (code, key, word, " and ".join(sorted(scripts))))
+
+
 def c_string(s):
     out = []
     for ch in s:
@@ -152,6 +208,7 @@ def build():
         for k in keys:
             if k in pairs:
                 check_specs(k, en_text[k], pairs[k], code)
+                check_scripts(k, pairs[k], code)
             else:
                 pairs[k] = en_text[k]
         tables[code] = pairs

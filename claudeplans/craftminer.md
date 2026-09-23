@@ -950,7 +950,7 @@ frame time than the fell.
 | 6.4 | **Gyroscope look** | done | 2026-09-22, asked for by the user: a Controls checkbox, off by default. The **rate** gyroscope is added up frame by frame and handed to the look beside the cursor keys, one real degree per view degree, so both work at once (D-65). A resting gyroscope's offset is tracked rather than turned into a slow spin. Yaw sign as the diagram in `graceloader_imu.h` predicts; the **pitch sign had to be flipped**, reported by the user on the badge. |
 | 6.2 | Graphics menu: textures, render scale, view distance; settings.txt | done | 2026-09-22: view distance (default near -- medium for a few hours, D-66 then D-76), textures, half / full resolution, in `settings.txt` on the SD card (D-67; NVS under `craftminer` at first, moved the same day). Replaces the T and V debug keys. Full resolution clears its own sky now, which it never had to while it was only the no-PPA fallback. |
 | 6.3 | Audio and display via `se_hw.h` | done | 2026-09-22: device volume and the three brightnesses through `se_hw` (shared with the launcher); music and effects switches stored and wired to the mixer's gates, and labelled as waiting for block 14, since the game makes no sound yet. |
-| 6.5 | **The UI in six languages** (D-81) | done | 2026-09-23, asked for by the user. `lang/*.txt` (English the reference, plus German, Dutch, Flemish, French, Bulgarian), baked by `tools/make_lang.py` into `main/i18n/strings_gen.c`: 126 strings x 6, a lookup is an array index. Language is the first row of Settings, each named in its own language, stored in settings.txt; a player with no toolchain can correct any line from `/sd/craftminer/lang/<code>.txt` on the card. The font was the work, not the text (F-69): the engine drew ASCII only, and now draws Cyrillic, accented Latin, both dashes and the European quotation marks, generated from Hershey's own database with a check that every letter of every declared alphabet exists. `i18n_fmt` does its own `%2$s` substitution and takes the argument types from English, so an edited lang file cannot mislead it (F-70). `make check` gains `langcheck` (keys, placeholders, staleness) and worldcheck's "languages" section (every character drawable, the formatter against six nasty strings). On the badge: the language list, Settings in Bulgarian, Controls in German. The language list first drew tick boxes, which the user rejected -- one choice out of many is a radio button -- so the engine gained `SE_MENU_VAL_RADIO` (their call to add it there rather than work round it). |
+| 6.5 | **The UI in six languages** (D-81) | done | 2026-09-23, asked for by the user. `lang/*.txt` (English the reference, plus German, Dutch, Flemish, French, Bulgarian), baked by `tools/make_lang.py` into `main/i18n/strings_gen.c`: 126 strings x 6, a lookup is an array index. Language is the first row of Settings, each named in its own language, stored in settings.txt; a player with no toolchain can correct any line from `/sd/craftminer/lang/<code>.txt` on the card. The font was the work, not the text (F-69): the engine drew ASCII only, and now draws Cyrillic, accented Latin, both dashes and the European quotation marks, generated from Hershey's own database with a check that every letter of every declared alphabet exists. `i18n_fmt` does its own `%2$s` substitution and takes the argument types from English, so an edited lang file cannot mislead it (F-70). `make check` gains `langcheck` (keys, placeholders, staleness) and worldcheck's "languages" section (every character drawable, the formatter against six nasty strings). On the badge: the language list, Settings in Bulgarian, Controls in German. The language list first drew tick boxes, which the user rejected -- one choice out of many is a radio button -- so the engine gained `SE_MENU_VAL_RADIO` (their call to add it there rather than work round it). **Then 26 more languages, the user's call after asking what was missing** (F-71): 32 in all, English first and the rest alphabetical by the name each calls itself. The font grew seven accents (caron, breve, double acute, macron, dot above, ogonek, comma below), Greek out of Hershey's own SIMPLEX face -- the same weight as the Latin, which the Cyrillic never was -- and a dozen letterforms nobody can compose. 126 strings x 32 = 4032, every character of every one of them drawable. |
 | | **Accept:** every menu reached on the badge, a key rebound and used, a world created, played, saved, reopened with its inventory; the Testworld adopted | **in progress** | 2026-09-22: the Testworld adoption **ran on the user's card** — `worlds/flyover` became `slot1`, named *Testworld*, all five region files with it (a copy of the original is kept off the badge). The title strip renders (screenshot). The user is testing the rest by hand: the gyroscope works after one sign flip (F-55), and the inventory cursor bug (F-54) was found that way. `make check` covers slots, the inventory round trip and the adoption. |
 | **7** | **Far Lands** | | |
 | 7.0 | **Bedrock, gravel, and generated signs** (D-79) | done | 2026-09-22, asked for by the user for the Far Lands: bedrock (unbreakable) and gravel (shovel, drops itself) as blocks 17 and 18; a sign, block 19, a post with a board facing east (`K_SIGN`), not solid, breakable with nothing dropped. Its text -- "Kurt / was here", "Wolfie / was here", "Far Lands / or Bust!" -- is one of three 64x32 textures drawn by `make_textures.py` with its own 5x7 pixel font (so the PNGs do not depend on PIL's fonts), chosen by a hash of where the sign stands (`voxel_sign_text`). Existing textures regenerate byte-identical. |
@@ -1650,6 +1650,24 @@ frame time than the fell.
   (F-40), not undoing features. Lesson recorded with it: a frame rate belongs
   to a scene, and two numbers from two scenes compare nothing -- the same
   mistake as F-36, the other way round.
+- **F-71** 2026-09-23, going from 6 languages to 32 (6.5): **the alphabet
+  check turned a vague question into a costed one.** Asked which major
+  European languages were missing, the generator answered exactly, because
+  coverage was already declared per language rather than per string: nine were
+  free (Russian above all -- 110M speakers, and the Cyrillic import had
+  already taken all 32 letters and composed Ё precisely so it would be), and
+  the rest sorted themselves by what they actually needed. The shape of the
+  answer was not what it looked like from the missing-glyph counts. Greek
+  looked like the most expensive at 58 missing and was among the cheapest:
+  Hershey drew a Greek SIMPLEX face (527-550, 627-650), the same weight as our
+  Latin, so it is a two-line import, while the Cyrillic had only ever been
+  available as the heavier complex. And one accent, the caron, unlocked six
+  languages at once. What cost real work was what no accent can make: Polish's
+  stroked Ł, Icelandic's þ and ð, Serbian's five new Cyrillic forms -- though
+  two of those (Љ Њ) turned out to be ligatures of letters Hershey already
+  drew, joined so they share the upright, which is what they are made of.
+  A mixed-script check was added after a machine translation put a Latin `a`
+  inside a Cyrillic word: identical on screen, and a box on the badge.
 - **F-69** 2026-09-23, translating the UI (6.5): **the font was the whole
   job; the strings were the easy half.** The engine drew ASCII and nothing
   else -- Hershey roman simplex, 95 glyphs, indexed by `char - 32` -- so
@@ -1757,6 +1775,13 @@ frame time than the fell.
   the font lacks. The check therefore runs over alphabets, not over
   translations, and how to extend the font is written down for the next
   language (`synthengine3D/tools/hershey/README.md`).
+  **Amended again 2026-09-23, the user:** all of them -- every European
+  language the font could be made to reach, Turkish included, 32 in total.
+  English first in the list and the rest **alphabetical by the name each
+  language calls itself**, "to make it easy to find": the name a player is
+  looking for is the one they can read, so the list sorts by that and not by
+  English name or by code. The translations past English stay a machine's
+  work, and the README now asks for pull requests by people who speak them.
 - **D-80** 2026-09-22, **the user**: **the player's data lives in
   /sd/craftminer, not in the app's install directory.** The launcher owns
   /sd/apps/<slug> and may empty it on an update or a reinstall; worlds,

@@ -1,0 +1,164 @@
+# CraftMiner -- Suomi
+#
+# Tämän käännöksen teki tekoäly, ja se odottaa jotakuta, joka oikeasti puhuu
+# kieltä. Jos tiedät paremmin: korjaa rivi ja aja
+# `python3 tools/make_lang.py`. Onnistuu myös ilman työkaluja -- kortilla
+# oleva tiedosto /sd/craftminer/lang/fi.txt samoine riveineen menee
+# sisäänrakennetun edelle (i18n.h).
+#
+# Avaimet ovat tiedostossa lang/en.txt. Sen %-paikanpitäjien on oltava
+# täälläkin; niitä saa siirtää merkinnällä %2$s, mutta ei jättää pois.
+
+menu.play = Pelaa
+menu.settings = Asetukset
+menu.quit = Lopeta
+
+worlds.title = Maailmat
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (uudemmasta versiosta)
+worlds.slot_older = %d  (vaatii päivityksen)
+worlds.slot_empty = %d  - tyhjä -
+worlds.damaged = (vioittunut)
+
+world.play = Pelaa
+world.rename = Nimeä uudelleen
+world.delete = Poista
+
+world.sub = paikka %d, siemen %u
+
+new.title = Uusi maailma
+
+new.sub = paikassa %d
+new.name = Nimi
+new.seed = Siemen
+new.seed_random = satunnainen
+new.create = Luo maailma
+new.cancel = Peruuta
+
+new.default_name = Maailma %d
+
+text.title_rename = Nimeä maailma uudelleen
+text.title_name = Maailman nimi
+text.title_seed = Siemen (tyhjä = satunnainen)
+text.sub = kirjoita ja paina Enter
+text.hint = Askelpalautin poistaa, Esc peruuttaa
+
+delete.title = Poistetaanko ”%s”?
+delete.sub = tätä ei voi perua
+delete.no = Ei, säilytä se
+delete.yes = Kyllä, poista lopullisesti
+
+settings.title = Asetukset
+settings.language = Kieli
+settings.controls = Ohjaimet
+settings.graphics = Grafiikka
+settings.audio = Ääni
+settings.display = Näyttö
+
+language.title = Kieli
+
+controls.title = Ohjaimet
+controls.gyro = Gyroskooppi
+controls.reset = Palauta oletukset
+controls.hint = ylös / alas valitsee, Enter vaihtaa näppäimen, Esc palaa
+
+graphics.title = Grafiikka
+graphics.view = Näkyvyysetäisyys
+graphics.textures = Tekstuurit
+graphics.resolution = Tarkkuus
+graphics.clouds = Pilvet
+graphics.camera = Kamera
+graphics.hand = Fredin käsi
+view.near = Lähellä
+view.medium = Keskitaso
+view.far = Kaukana
+res.half = Puolikas (nopeampi)
+res.full = Täysi (terävämpi)
+camera.first = Ensimmäinen persoona
+camera.third = Kolmas persoona
+hand.left = Vasen
+hand.right = Oikea
+
+audio.title = Ääni
+audio.sub = ääniä ei vielä ole: nämä odottavat niitä
+audio.volume = Äänenvoimakkuus
+audio.music = Musiikki
+audio.sfx = Äänitehosteet
+
+display.title = Näyttö
+display.sub = jaettu käynnistimen ja kaikkien muiden sovellusten kanssa
+display.screen = Näyttö
+display.keyboard = Näppäimistö
+display.leds = LEDit
+
+pause.title = Tauko
+pause.resume = Jatka
+pause.save = Tallenna
+pause.quit = Tallenna ja palaa alkuun
+
+common.back = Takaisin
+hint.list = ylös / alas valitsee, Enter vahvistaa, Esc palaa
+hint.adjust = ylös / alas valitsee, vasen / oikea muuttaa, Esc palaa
+
+status.newer = Tehty uudemmalla CraftMinerilla: päivitä pelataksesi
+status.older = Vanha tallennusmuoto: tämä versio ei osaa vielä päivittää sitä
+status.needs_name = Maailma tarvitsee nimen
+status.renamed = Nimetty uudelleen
+status.rename_failed = Uudelleennimeäminen ei onnistunut
+status.deleted = Maailma poistettu
+status.delete_failed = Kaikkea ei voitu poistaa
+status.keys_reset = Kaikki näppäimet ovat taas oletuksissaan
+
+loading.plain = Ladataan
+loading.world = Ladataan maailmaa
+loading.creating = Luodaan maailmaa
+
+hud.inventory = Tavarat
+hud.inventory_hint = nuolet siirtävät   F1-F6 vie palkkiin   Tab sulkee
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = suunta %s (%d)
+
+info.clock = %02d:%02d   päivä %lld
+info.recording = TALLENTAA (R lopettaa)
+
+info.replay = toisto %d / %d
+dir.n = pohjoinen
+dir.ne = koillinen
+dir.e = itä
+dir.se = kaakko
+dir.s = etelä
+dir.sw = lounas
+dir.w = länsi
+dir.nw = luode
+
+shot.saved = Tallennettu: screenshots/shot%03d.png
+shot.failed = Kuvakaappaus epäonnistui
+shot.full = screenshots/ on täynnä (999)
+
+action.forward = Eteenpäin
+action.back = Taaksepäin
+action.left = Vasemmalle
+action.right = Oikealle
+action.jump = Hyppää
+action.sneak = Hiivi
+action.attack = Riko
+action.use = Aseta
+action.lookup = Katso ylös
+action.lookdown = Katso alas
+action.lookleft = Katso vasemmalle
+action.lookright = Katso oikealle
+action.slot1 = Paikka 1
+action.slot2 = Paikka 2
+action.slot3 = Paikka 3
+action.slot4 = Paikka 4
+action.slot5 = Paikka 5
+action.slot6 = Paikka 6
+action.inv = Tavarat
+action.pause = Tauko
+action.drop = Pudota
+action.info = Näytä sijainti
+action.screenshot = Kuvakaappaus

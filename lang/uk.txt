@@ -1,0 +1,164 @@
+# CraftMiner -- Українська
+#
+# Цей переклад зробив штучний інтелект, і він чекає на того, хто мову знає
+# насправді. Знаєте краще: виправте рядок і запустіть
+# `python3 tools/make_lang.py`. Можна й без інструментів -- файл
+# /sd/craftminer/lang/uk.txt на картці з такими самими рядками має перевагу
+# над вбудованим текстом (i18n.h).
+#
+# Ключі є в lang/en.txt. Тамтешні %-заповнювачі мають бути й тут; їх можна
+# переставляти записом %2$s, але не пропускати.
+
+menu.play = Грати
+menu.settings = Налаштування
+menu.quit = Вихід
+
+worlds.title = Світи
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (з новішої версії)
+worlds.slot_older = %d  (потрібне оновлення)
+worlds.slot_empty = %d  - порожньо -
+worlds.damaged = (пошкоджений)
+
+world.play = Грати
+world.rename = Перейменувати
+world.delete = Видалити
+
+world.sub = місце %d, зерно %u
+
+new.title = Новий світ
+
+new.sub = на місці %d
+new.name = Назва
+new.seed = Зерно
+new.seed_random = випадкове
+new.create = Створити світ
+new.cancel = Скасувати
+
+new.default_name = Світ %d
+
+text.title_rename = Перейменувати світ
+text.title_name = Назва світу
+text.title_seed = Зерно (порожньо — випадкове)
+text.sub = введіть, потім Enter, щоб зберегти
+text.hint = Backspace стирає, Esc скасовує
+
+delete.title = Видалити «%s»?
+delete.sub = це неможливо скасувати
+delete.no = Ні, лишити
+delete.yes = Так, видалити назавжди
+
+settings.title = Налаштування
+settings.language = Мова
+settings.controls = Керування
+settings.graphics = Графіка
+settings.audio = Звук
+settings.display = Екран
+
+language.title = Мова
+
+controls.title = Керування
+controls.gyro = Гіроскоп
+controls.reset = Повернути типові
+controls.hint = вгору / вниз обирає, Enter змінює клавішу, Esc повертає
+
+graphics.title = Графіка
+graphics.view = Дальність промальовування
+graphics.textures = Текстури
+graphics.resolution = Роздільність
+graphics.clouds = Хмари
+graphics.camera = Камера
+graphics.hand = Рука Фреда
+view.near = Близько
+view.medium = Середньо
+view.far = Далеко
+res.half = Половинна (швидше)
+res.full = Повна (чіткіше)
+camera.first = Від першої особи
+camera.third = Від третьої особи
+hand.left = Ліва
+hand.right = Права
+
+audio.title = Звук
+audio.sub = звуків ще немає: ці налаштування на них чекають
+audio.volume = Гучність
+audio.music = Музика
+audio.sfx = Звукові ефекти
+
+display.title = Екран
+display.sub = спільне з лаунчером і всіма іншими застосунками
+display.screen = Екран
+display.keyboard = Клавіатура
+display.leds = Світлодіоди
+
+pause.title = Пауза
+pause.resume = Продовжити
+pause.save = Зберегти
+pause.quit = Зберегти і вийти до заголовка
+
+common.back = Назад
+hint.list = вгору / вниз обирає, Enter підтверджує, Esc повертає
+hint.adjust = вгору / вниз обирає, вліво / вправо змінює, Esc повертає
+
+status.newer = Зроблений новішим CraftMiner: оновіться, щоб грати
+status.older = Старіший формат збереження: ця версія ще не вміє його оновити
+status.needs_name = Світові потрібна назва
+status.renamed = Перейменовано
+status.rename_failed = Не вдалося перейменувати
+status.deleted = Світ видалено
+status.delete_failed = Не вдалося видалити все
+status.keys_reset = Усі клавіші знову типові
+
+loading.plain = Завантаження
+loading.world = Завантаження світу
+loading.creating = Створення світу
+
+hud.inventory = Інвентар
+hud.inventory_hint = стрілки переміщають   F1-F6 кладе на панель   Tab закриває
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = дивиться на %s (%d)
+
+info.clock = %02d:%02d   день %lld
+info.recording = ЗАПИС (R зупиняє)
+
+info.replay = відтворення %d / %d
+dir.n = північ
+dir.ne = північний схід
+dir.e = схід
+dir.se = південний схід
+dir.s = південь
+dir.sw = південний захід
+dir.w = захід
+dir.nw = північний захід
+
+shot.saved = Збережено: screenshots/shot%03d.png
+shot.failed = Знімок не вдався
+shot.full = screenshots/ переповнена (999)
+
+action.forward = Вперед
+action.back = Назад
+action.left = Ліворуч
+action.right = Праворуч
+action.jump = Стрибок
+action.sneak = Крастися
+action.attack = Ламати
+action.use = Ставити
+action.lookup = Дивитися вгору
+action.lookdown = Дивитися вниз
+action.lookleft = Дивитися ліворуч
+action.lookright = Дивитися праворуч
+action.slot1 = Комірка 1
+action.slot2 = Комірка 2
+action.slot3 = Комірка 3
+action.slot4 = Комірка 4
+action.slot5 = Комірка 5
+action.slot6 = Комірка 6
+action.inv = Інвентар
+action.pause = Пауза
+action.drop = Кинути
+action.info = Показати позицію
+action.screenshot = Знімок екрана

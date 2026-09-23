@@ -1,0 +1,164 @@
+# CraftMiner -- Gaeilge
+#
+# Rinne intleacht shaorga an t-aistriúchán seo agus tá sé ag fanacht le duine
+# a bhfuil an teanga aige i ndáiríre. Má tá a fhios agat níos fearr: ceartaigh
+# an líne agus rith `python3 tools/make_lang.py`. Is féidir é gan uirlisí
+# freisin -- téann comhad /sd/craftminer/lang/ga.txt ar an gcárta, leis na
+# línte céanna, roimh an méid atá tógtha isteach (i18n.h).
+#
+# Tá na heochracha i lang/en.txt. Caithfidh na sealbhóirí % teacht arís anseo;
+# is féidir iad a bhogadh le %2$s, ach ní féidir iad a fhágáil ar lár.
+
+menu.play = Imir
+menu.settings = Socruithe
+menu.quit = Scoir
+
+worlds.title = Saolta
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (ó leagan níos nuaí)
+worlds.slot_older = %d  (uasghrádú de dhíth)
+worlds.slot_empty = %d  - folamh -
+worlds.damaged = (damáiste)
+
+world.play = Imir
+world.rename = Athainmnigh
+world.delete = Scrios
+
+world.sub = sliotán %d, síol %u
+
+new.title = Saol nua
+
+new.sub = i sliotán %d
+new.name = Ainm
+new.seed = Síol
+new.seed_random = randamach
+new.create = Cruthaigh an saol
+new.cancel = Cealaigh
+
+new.default_name = Saol %d
+
+text.title_rename = Athainmnigh an saol
+text.title_name = Ainm an tsaoil
+text.title_seed = Síol (folamh le haghaidh randamach)
+text.sub = clóscríobh, ansin Enter chun é a choinneáil
+text.hint = Cúlspás a scriosann, Esc a chealaíonn
+
+delete.title = An scriosfar „%s“?
+delete.sub = ní féidir é seo a chealú
+delete.no = Ná scrios é
+delete.yes = Scrios é go deo
+
+settings.title = Socruithe
+settings.language = Teanga
+settings.controls = Rialúcháin
+settings.graphics = Grafaic
+settings.audio = Fuaim
+settings.display = Scáileán
+
+language.title = Teanga
+
+controls.title = Rialúcháin
+controls.gyro = Gíreascóp
+controls.reset = Ar ais go dtí na réamhshocruithe
+controls.hint = suas / síos a roghnaíonn, Enter a athraíonn an eochair, Esc ar ais
+
+graphics.title = Grafaic
+graphics.view = Fad radhairc
+graphics.textures = Uigeachtaí
+graphics.resolution = Taifeach
+graphics.clouds = Scamaill
+graphics.camera = Ceamara
+graphics.hand = Lámh Fred
+view.near = Gar
+view.medium = Meánach
+view.far = I bhfad
+res.half = Leath (níos tapúla)
+res.full = Iomlán (níos géire)
+camera.first = Céad phearsa
+camera.third = Tríú pearsa
+hand.left = Clé
+hand.right = Deas
+
+audio.title = Fuaim
+audio.sub = gan fuaimeanna go fóill: tá siad seo ag fanacht leo
+audio.volume = Airde
+audio.music = Ceol
+audio.sfx = Maisíochtaí fuaime
+
+display.title = Scáileán
+display.sub = roinnte leis an tosaitheoir agus gach aip eile
+display.screen = Scáileán
+display.keyboard = Méarchlár
+display.leds = LEDanna
+
+pause.title = Ar sos
+pause.resume = Lean ar aghaidh
+pause.save = Sábháil
+pause.quit = Sábháil agus fill ar an teideal
+
+common.back = Ar ais
+hint.list = suas / síos a roghnaíonn, Enter a dhearbhaíonn, Esc ar ais
+hint.adjust = suas / síos a roghnaíonn, clé / deas a athraíonn, Esc ar ais
+
+status.newer = Déanta ag CraftMiner níos nuaí: uasghrádaigh chun é a imirt
+status.older = Seanfhormáid sábhála: ní féidir leis an leagan seo é a uasghrádú fós
+status.needs_name = Teastaíonn ainm ó shaol
+status.renamed = Athainmnithe
+status.rename_failed = Níorbh fhéidir é a athainmniú
+status.deleted = Saol scriosta
+status.delete_failed = Níorbh fhéidir gach rud a scriosadh
+status.keys_reset = Tá gach eochair ar ais mar a bhí
+
+loading.plain = Á luchtú
+loading.world = An saol á luchtú
+loading.creating = An saol á chruthú
+
+hud.inventory = Fardal
+hud.inventory_hint = na saigheada a bhogann   F1-F6 a chuireann ar an mbarra   Tab a dhúnann
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = ag breathnú %s (%d)
+
+info.clock = %02d:%02d   lá %lld
+info.recording = AG TAIFEADADH (R a stopann)
+
+info.replay = athimirt %d / %d
+dir.n = ó thuaidh
+dir.ne = soir ó thuaidh
+dir.e = soir
+dir.se = soir ó dheas
+dir.s = ó dheas
+dir.sw = siar ó dheas
+dir.w = siar
+dir.nw = siar ó thuaidh
+
+shot.saved = Sábháilte: screenshots/shot%03d.png
+shot.failed = Theip ar an ngabháil
+shot.full = tá screenshots/ lán (999)
+
+action.forward = Ar aghaidh
+action.back = Ar gcúl
+action.left = Ar chlé
+action.right = Ar dheis
+action.jump = Léim
+action.sneak = Téaltaigh
+action.attack = Bris
+action.use = Cuir síos
+action.lookup = Féach suas
+action.lookdown = Féach síos
+action.lookleft = Féach ar chlé
+action.lookright = Féach ar dheis
+action.slot1 = Sliotán 1
+action.slot2 = Sliotán 2
+action.slot3 = Sliotán 3
+action.slot4 = Sliotán 4
+action.slot5 = Sliotán 5
+action.slot6 = Sliotán 6
+action.inv = Fardal
+action.pause = Sos
+action.drop = Lig titim
+action.info = Taispeáin an suíomh
+action.screenshot = Gabháil scáileáin

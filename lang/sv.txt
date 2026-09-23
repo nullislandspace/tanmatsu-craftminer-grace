@@ -1,0 +1,164 @@
+# CraftMiner -- Svenska
+#
+# Den här översättningen är gjord av en AI och väntar på någon som faktiskt
+# talar språket. Vet du bättre: rätta raden och kör
+# `python3 tools/make_lang.py`. Det går också utan verktyg -- en fil
+# /sd/craftminer/lang/sv.txt på kortet, med samma rader, går före det
+# inbyggda (i18n.h).
+#
+# Nycklarna finns i lang/en.txt. %-platshållarna därifrån måste finnas här
+# också; de får flyttas med %2$s, men inte utelämnas.
+
+menu.play = Spela
+menu.settings = Inställningar
+menu.quit = Avsluta
+
+worlds.title = Världar
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (från en nyare version)
+worlds.slot_older = %d  (behöver uppdateras)
+worlds.slot_empty = %d  - tom -
+worlds.damaged = (skadad)
+
+world.play = Spela
+world.rename = Byt namn
+world.delete = Ta bort
+
+world.sub = plats %d, frö %u
+
+new.title = Ny värld
+
+new.sub = på plats %d
+new.name = Namn
+new.seed = Frö
+new.seed_random = slumpmässigt
+new.create = Skapa världen
+new.cancel = Avbryt
+
+new.default_name = Värld %d
+
+text.title_rename = Byt namn på världen
+text.title_name = Världens namn
+text.title_seed = Frö (tomt för slumpmässigt)
+text.sub = skriv, tryck sedan Enter för att behålla
+text.hint = Backsteg raderar, Esc avbryter
+
+delete.title = Ta bort ”%s”?
+delete.sub = det går inte att ångra
+delete.no = Nej, behåll den
+delete.yes = Ja, ta bort den för gott
+
+settings.title = Inställningar
+settings.language = Språk
+settings.controls = Styrning
+settings.graphics = Grafik
+settings.audio = Ljud
+settings.display = Skärm
+
+language.title = Språk
+
+controls.title = Styrning
+controls.gyro = Gyroskop
+controls.reset = Återställ till standard
+controls.hint = upp / ner väljer, Enter ändrar tangenten, Esc går tillbaka
+
+graphics.title = Grafik
+graphics.view = Siktvidd
+graphics.textures = Texturer
+graphics.resolution = Upplösning
+graphics.clouds = Moln
+graphics.camera = Kamera
+graphics.hand = Freds hand
+view.near = Nära
+view.medium = Mellan
+view.far = Långt
+res.half = Halv (snabbare)
+res.full = Full (skarpare)
+camera.first = Förstaperson
+camera.third = Tredjeperson
+hand.left = Vänster
+hand.right = Höger
+
+audio.title = Ljud
+audio.sub = inga ljud än: de här väntar på dem
+audio.volume = Volym
+audio.music = Musik
+audio.sfx = Ljudeffekter
+
+display.title = Skärm
+display.sub = delas med launchern och alla andra appar
+display.screen = Skärm
+display.keyboard = Tangentbord
+display.leds = Lysdioder
+
+pause.title = Pausad
+pause.resume = Fortsätt
+pause.save = Spara
+pause.quit = Spara och tillbaka till titeln
+
+common.back = Tillbaka
+hint.list = upp / ner väljer, Enter bekräftar, Esc går tillbaka
+hint.adjust = upp / ner väljer, vänster / höger ändrar, Esc går tillbaka
+
+status.newer = Gjord av en nyare CraftMiner: uppdatera för att spela den
+status.older = Äldre sparformat: den här versionen kan inte uppdatera det än
+status.needs_name = En värld behöver ett namn
+status.renamed = Namnet ändrat
+status.rename_failed = Kunde inte byta namn
+status.deleted = Världen borttagen
+status.delete_failed = Kunde inte ta bort allt
+status.keys_reset = Alla tangenter är tillbaka på standard
+
+loading.plain = Läser in
+loading.world = Läser in världen
+loading.creating = Skapar världen
+
+hud.inventory = Förråd
+hud.inventory_hint = piltangenterna flyttar   F1-F6 lägger det i raden   Tab stänger
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = tittar mot %s (%d)
+
+info.clock = %02d:%02d   dag %lld
+info.recording = SPELAR IN (R stoppar)
+
+info.replay = uppspelning %d / %d
+dir.n = norr
+dir.ne = nordost
+dir.e = öster
+dir.se = sydost
+dir.s = söder
+dir.sw = sydväst
+dir.w = väster
+dir.nw = nordväst
+
+shot.saved = Sparad: screenshots/shot%03d.png
+shot.failed = Skärmbilden misslyckades
+shot.full = screenshots/ är full (999)
+
+action.forward = Framåt
+action.back = Bakåt
+action.left = Åt vänster
+action.right = Åt höger
+action.jump = Hoppa
+action.sneak = Smyga
+action.attack = Bryta
+action.use = Placera
+action.lookup = Titta upp
+action.lookdown = Titta ner
+action.lookleft = Titta åt vänster
+action.lookright = Titta åt höger
+action.slot1 = Plats 1
+action.slot2 = Plats 2
+action.slot3 = Plats 3
+action.slot4 = Plats 4
+action.slot5 = Plats 5
+action.slot6 = Plats 6
+action.inv = Förråd
+action.pause = Paus
+action.drop = Släpp
+action.info = Visa positionen
+action.screenshot = Skärmbild

@@ -1,0 +1,164 @@
+# CraftMiner -- Eesti
+#
+# Selle tõlke tegi tehisintellekt ja see ootab kedagi, kes keelt tegelikult
+# räägib. Kui tead paremini: paranda rida ja käivita
+# `python3 tools/make_lang.py`. Saab ka ilma tööriistadeta -- kaardil olev
+# fail /sd/craftminer/lang/et.txt samade ridadega käib sissekompileeritust
+# üle (i18n.h).
+#
+# Võtmed on failis lang/en.txt. Sealsed %-kohahoidjad peavad ka siin olema;
+# neid tohib nihutada kujuga %2$s, kuid mitte ära jätta.
+
+menu.play = Mängi
+menu.settings = Seaded
+menu.quit = Välju
+
+worlds.title = Maailmad
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (uuemast versioonist)
+worlds.slot_older = %d  (vajab uuendamist)
+worlds.slot_empty = %d  - tühi -
+worlds.damaged = (kahjustatud)
+
+world.play = Mängi
+world.rename = Nimeta ümber
+world.delete = Kustuta
+
+world.sub = koht %d, seeme %u
+
+new.title = Uus maailm
+
+new.sub = kohal %d
+new.name = Nimi
+new.seed = Seeme
+new.seed_random = juhuslik
+new.create = Loo maailm
+new.cancel = Loobu
+
+new.default_name = Maailm %d
+
+text.title_rename = Nimeta maailm ümber
+text.title_name = Maailma nimi
+text.title_seed = Seeme (tühi = juhuslik)
+text.sub = kirjuta ja vajuta Enter
+text.hint = Backspace kustutab, Esc loobub
+
+delete.title = Kas kustutada „%s“?
+delete.sub = seda ei saa tagasi võtta
+delete.no = Ei, jäta alles
+delete.yes = Jah, kustuta jäädavalt
+
+settings.title = Seaded
+settings.language = Keel
+settings.controls = Juhtimine
+settings.graphics = Graafika
+settings.audio = Heli
+settings.display = Ekraan
+
+language.title = Keel
+
+controls.title = Juhtimine
+controls.gyro = Güroskoop
+controls.reset = Taasta vaikeväärtused
+controls.hint = üles / alla valib, Enter muudab klahvi, Esc läheb tagasi
+
+graphics.title = Graafika
+graphics.view = Nägemiskaugus
+graphics.textures = Tekstuurid
+graphics.resolution = Eraldusvõime
+graphics.clouds = Pilved
+graphics.camera = Kaamera
+graphics.hand = Fredi käsi
+view.near = Lähedal
+view.medium = Keskmine
+view.far = Kaugel
+res.half = Pool (kiirem)
+res.full = Täis (teravam)
+camera.first = Esimene isik
+camera.third = Kolmas isik
+hand.left = Vasak
+hand.right = Parem
+
+audio.title = Heli
+audio.sub = helisid veel pole: need seaded ootavad neid
+audio.volume = Helitugevus
+audio.music = Muusika
+audio.sfx = Heliefektid
+
+display.title = Ekraan
+display.sub = jagatud käivitaja ja kõigi teiste rakendustega
+display.screen = Ekraan
+display.keyboard = Klaviatuur
+display.leds = LEDid
+
+pause.title = Paus
+pause.resume = Jätka
+pause.save = Salvesta
+pause.quit = Salvesta ja tagasi tiitlisse
+
+common.back = Tagasi
+hint.list = üles / alla valib, Enter kinnitab, Esc läheb tagasi
+hint.adjust = üles / alla valib, vasak / parem muudab, Esc läheb tagasi
+
+status.newer = Tehtud uuema CraftMineriga: mängimiseks uuenda
+status.older = Vanem salvestusvorming: see versioon ei oska seda veel uuendada
+status.needs_name = Maailm vajab nime
+status.renamed = Ümber nimetatud
+status.rename_failed = Ümbernimetamine ebaõnnestus
+status.deleted = Maailm kustutatud
+status.delete_failed = Kõike ei õnnestunud kustutada
+status.keys_reset = Kõik klahvid on jälle vaikeväärtustel
+
+loading.plain = Laadin
+loading.world = Laadin maailma
+loading.creating = Loon maailma
+
+hud.inventory = Varustus
+hud.inventory_hint = nooled liigutavad   F1-F6 paneb ribale   Tab sulgeb
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = vaatab suunas %s (%d)
+
+info.clock = %02d:%02d   päev %lld
+info.recording = SALVESTAB (R peatab)
+
+info.replay = taasesitus %d / %d
+dir.n = põhi
+dir.ne = kirre
+dir.e = ida
+dir.se = kagu
+dir.s = lõuna
+dir.sw = edel
+dir.w = lääs
+dir.nw = loe
+
+shot.saved = Salvestatud: screenshots/shot%03d.png
+shot.failed = Kuvatõmmis ebaõnnestus
+shot.full = screenshots/ on täis (999)
+
+action.forward = Edasi
+action.back = Tagasi
+action.left = Vasakule
+action.right = Paremale
+action.jump = Hüppa
+action.sneak = Hiili
+action.attack = Purusta
+action.use = Aseta
+action.lookup = Vaata üles
+action.lookdown = Vaata alla
+action.lookleft = Vaata vasakule
+action.lookright = Vaata paremale
+action.slot1 = Pesa 1
+action.slot2 = Pesa 2
+action.slot3 = Pesa 3
+action.slot4 = Pesa 4
+action.slot5 = Pesa 5
+action.slot6 = Pesa 6
+action.inv = Varustus
+action.pause = Paus
+action.drop = Viska maha
+action.info = Näita asukohta
+action.screenshot = Kuvatõmmis

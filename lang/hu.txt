@@ -1,0 +1,164 @@
+# CraftMiner -- Magyar
+#
+# Ezt a fordítást mesterséges intelligencia készítette, és arra vár, aki a
+# nyelvet valóban beszéli. Ha jobban tudod: javítsd a sort, és futtasd a
+# `python3 tools/make_lang.py` parancsot. Eszközök nélkül is megy -- a kártyán
+# lévő /sd/craftminer/lang/hu.txt fájl ugyanezekkel a sorokkal megelőzi a
+# beépített szöveget (i18n.h).
+#
+# A kulcsok a lang/en.txt fájlban vannak. Az ottani %-helyőrzőknek itt is meg
+# kell jelenniük; a %2$s alakkal átrendezhetők, de nem hagyhatók el.
+
+menu.play = Játék
+menu.settings = Beállítások
+menu.quit = Kilépés
+
+worlds.title = Világok
+
+worlds.slot = %d  %s
+
+worlds.slot_newer = %d  (újabb változatból)
+worlds.slot_older = %d  (frissítésre szorul)
+worlds.slot_empty = %d  - üres -
+worlds.damaged = (sérült)
+
+world.play = Játék
+world.rename = Átnevezés
+world.delete = Törlés
+
+world.sub = %d. hely, mag %u
+
+new.title = Új világ
+
+new.sub = a %d. helyen
+new.name = Név
+new.seed = Mag
+new.seed_random = véletlen
+new.create = Világ létrehozása
+new.cancel = Mégse
+
+new.default_name = %d. világ
+
+text.title_rename = Világ átnevezése
+text.title_name = A világ neve
+text.title_seed = Mag (üresen véletlen)
+text.sub = írd be, majd Enter a megtartáshoz
+text.hint = a Backspace töröl, az Esc kilép
+
+delete.title = Törlöd ezt: „%s”?
+delete.sub = ezt nem lehet visszavonni
+delete.no = Nem, maradjon
+delete.yes = Igen, töröld véglegesen
+
+settings.title = Beállítások
+settings.language = Nyelv
+settings.controls = Irányítás
+settings.graphics = Grafika
+settings.audio = Hang
+settings.display = Kijelző
+
+language.title = Nyelv
+
+controls.title = Irányítás
+controls.gyro = Giroszkóp
+controls.reset = Vissza az alapértelmezettre
+controls.hint = fel / le választ, az Enter billentyűt cserél, az Esc visszalép
+
+graphics.title = Grafika
+graphics.view = Látótávolság
+graphics.textures = Textúrák
+graphics.resolution = Felbontás
+graphics.clouds = Felhők
+graphics.camera = Kamera
+graphics.hand = Fred keze
+view.near = Közeli
+view.medium = Közepes
+view.far = Távoli
+res.half = Fél (gyorsabb)
+res.full = Teljes (élesebb)
+camera.first = Belső nézet
+camera.third = Külső nézet
+hand.left = Bal
+hand.right = Jobb
+
+audio.title = Hang
+audio.sub = még nincsenek hangok: ezek rájuk várnak
+audio.volume = Hangerő
+audio.music = Zene
+audio.sfx = Hangeffektek
+
+display.title = Kijelző
+display.sub = közös az indítóval és minden más alkalmazással
+display.screen = Képernyő
+display.keyboard = Billentyűzet
+display.leds = LED-ek
+
+pause.title = Szünet
+pause.resume = Folytatás
+pause.save = Mentés
+pause.quit = Mentés és vissza a címképernyőre
+
+common.back = Vissza
+hint.list = fel / le választ, az Enter megerősít, az Esc visszalép
+hint.adjust = fel / le választ, balra / jobbra módosít, az Esc visszalép
+
+status.newer = Újabb CraftMiner készítette: frissíts, hogy játszhass vele
+status.older = Régebbi mentési formátum: ez a változat még nem tudja átalakítani
+status.needs_name = A világnak név kell
+status.renamed = Átnevezve
+status.rename_failed = Az átnevezés nem sikerült
+status.deleted = Világ törölve
+status.delete_failed = Nem sikerült mindent törölni
+status.keys_reset = Minden billentyű újra alapértelmezett
+
+loading.plain = Betöltés
+loading.world = A világ betöltése
+loading.creating = A világ létrehozása
+
+hud.inventory = Tárgyak
+hud.inventory_hint = a nyilak mozgatnak   F1-F6 a sávra teszi   a Tab bezár
+
+info.position = X %.1f   Y %.1f   Z %.1f
+
+info.facing = iránya %s (%d)
+
+info.clock = %02d:%02d   %lld. nap
+info.recording = FELVÉTEL (az R leállítja)
+
+info.replay = visszajátszás %d / %d
+dir.n = észak
+dir.ne = északkelet
+dir.e = kelet
+dir.se = délkelet
+dir.s = dél
+dir.sw = délnyugat
+dir.w = nyugat
+dir.nw = északnyugat
+
+shot.saved = Mentve: screenshots/shot%03d.png
+shot.failed = A képernyőkép nem sikerült
+shot.full = a screenshots/ tele van (999)
+
+action.forward = Előre
+action.back = Hátra
+action.left = Balra
+action.right = Jobbra
+action.jump = Ugrás
+action.sneak = Lopakodás
+action.attack = Bontás
+action.use = Lerakás
+action.lookup = Felnézés
+action.lookdown = Lenézés
+action.lookleft = Balra nézés
+action.lookright = Jobbra nézés
+action.slot1 = 1. hely
+action.slot2 = 2. hely
+action.slot3 = 3. hely
+action.slot4 = 4. hely
+action.slot5 = 5. hely
+action.slot6 = 6. hely
+action.inv = Tárgyak
+action.pause = Szünet
+action.drop = Eldobás
+action.info = Pozíció mutatása
+action.screenshot = Képernyőkép
