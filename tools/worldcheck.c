@@ -2985,6 +2985,129 @@ static void check_furnace(void) {
     blockent_clear();
 }
 
+// ---------------------------------------------------------------------
+//  Ore veins, and caves that reach daylight
+//
+//  Two numbers matter and only one of them is obvious. HOW MUCH ore
+//  there is decides how long a player digs; HOW CLUMPED it is decides
+//  whether digging is worth it at all. Before veins, every ore block
+//  was an independent coin flip -- the share was right and the game was
+//  wrong, and no check that counted only the share would have noticed.
+//
+//  So this counts neighbours as well: for every ore block, how many of
+//  its six faces touch the same ore. Scattered blocks score near zero.
+//  A vein scores two or more.
+// ---------------------------------------------------------------------
+
+static void check_ores(void) {
+    printf("ores: veins, and caves that open\n");
+
+    uint32_t const seed = 0x0DEF17u;
+    long stone = 0, coal = 0, iron = 0;
+    long coal_touch = 0, iron_touch = 0;
+    long surface_air = 0, columns = 0;
+
+    // A block of chunks, generated the way the game generates them.
+    static uint8_t id[CH_CELLS];
+    static uint8_t st[CH_CELLS];
+    chunk_t c;
+    memset(&c, 0, sizeof(c));
+    c.id = id;
+    c.st = st;
+
+    #define AT(cc, X, Y, Z) ((cc)->id[CH_IDX((X), (Y), (Z))])
+
+    for (int32_t cz = 0; cz < 4; cz++) {
+        for (int32_t cx = 0; cx < 4; cx++) {
+            c.cx = cx;
+            c.cz = cz;
+            worldgen_chunk(&c, seed, FARLANDS_NONE);
+
+            for (int lz = 0; lz < CH_D; lz++) {
+                for (int lx = 0; lx < CH_W; lx++) {
+                    columns++;
+                    int const h = worldgen_height(cx * CH_W + lx, cz * CH_D + lz, seed);
+                    if (h > CH_SEA_LEVEL + 1 && h < CH_H && AT(&c, lx, h, lz) == BLK_AIR) surface_air++;
+
+                    for (int y = 1; y < CH_H; y++) {
+                        uint8_t const b = AT(&c, lx, y, lz);
+                        if (b == BLK_STONE) stone++;
+                        if (b != BLK_COAL_ORE && b != BLK_IRON_ORE) continue;
+
+                        // Its six neighbours, inside this chunk only:
+                        // the edges undercount a little and identically
+                        // for both ores, which is fine for a ratio.
+                        int same = 0;
+                        int const dx[6] = {1, -1, 0, 0, 0, 0};
+                        int const dy[6] = {0, 0, 1, -1, 0, 0};
+                        int const dz[6] = {0, 0, 0, 0, 1, -1};
+                        for (int k = 0; k < 6; k++) {
+                            int const nx = lx + dx[k], ny = y + dy[k], nz = lz + dz[k];
+                            if (nx < 0 || nx >= CH_W || nz < 0 || nz >= CH_D || ny < 0 || ny >= CH_H) continue;
+                            if (AT(&c, nx, ny, nz) == b) same++;
+                        }
+                        if (b == BLK_COAL_ORE) {
+                            coal++;
+                            coal_touch += same;
+                        } else {
+                            iron++;
+                            iron_touch += same;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    #undef AT
+
+    double const coal_pct = stone > 0 ? 100.0 * (double)coal / (double)(stone + coal + iron) : 0.0;
+    double const iron_pct = stone > 0 ? 100.0 * (double)iron / (double)(stone + coal + iron) : 0.0;
+    double const coal_nb  = coal > 0 ? (double)coal_touch / (double)coal : 0.0;
+    double const iron_nb  = iron > 0 ? (double)iron_touch / (double)iron : 0.0;
+    double const mouths   = columns > 0 ? 100.0 * (double)surface_air / (double)columns : 0.0;
+
+    printf("  coal %.2f%% of rock, %.2f ore neighbours each\n", coal_pct, coal_nb);
+    printf("  iron %.2f%% of rock, %.2f ore neighbours each\n", iron_pct, iron_nb);
+    printf("  %.2f%% of land columns open to the sky\n", mouths);
+
+    // ENOUGH TO FIND, NOT SO MUCH THAT IT IS EVERYWHERE.
+    CHECK(coal_pct > 0.4 && coal_pct < 4.0, "coal is %.2f%% of rock, wanted 0.4..4", coal_pct);
+    CHECK(iron_pct > 0.1 && iron_pct < 2.0, "iron is %.2f%% of rock, wanted 0.1..2", iron_pct);
+    CHECK(iron_pct < coal_pct, "iron (%.2f%%) is not rarer than coal (%.2f%%)", iron_pct, coal_pct);
+
+    // AND IT IS IN VEINS. This is the check that would have failed
+    // before, when the share was already right: scattered blocks touch
+    // each other about 0.05 times on average, a vein two or more.
+    CHECK(coal_nb > 2.0, "coal blocks touch %.2f others on average -- that is not a vein", coal_nb);
+    CHECK(iron_nb > 1.5, "iron blocks touch %.2f others on average -- that is not a vein", iron_nb);
+
+    // Iron stays deep and coal stays out of the topsoil.
+    for (int32_t cz = 0; cz < 2; cz++) {
+        for (int32_t cx = 0; cx < 2; cx++) {
+            c.cx = cx;
+            c.cz = cz;
+            worldgen_chunk(&c, seed, FARLANDS_NONE);
+            for (int lz = 0; lz < CH_D; lz++) {
+                for (int lx = 0; lx < CH_W; lx++) {
+                    for (int y = 0; y < CH_H; y++) {
+                        uint8_t const b = c.id[CH_IDX(lx, y, lz)];
+                        CHECK(!(b == BLK_IRON_ORE && y > VEIN_IRON_YMAX + 3),
+                              "iron ore at y=%d, above its %d limit", y, VEIN_IRON_YMAX);
+                        CHECK(!(b == BLK_COAL_ORE && y > VEIN_COAL_YMAX + 3),
+                              "coal ore at y=%d, above its %d limit", y, VEIN_COAL_YMAX);
+                    }
+                }
+            }
+        }
+    }
+
+    // CAVES REACH DAYLIGHT SOMEWHERE, and not everywhere: a world with
+    // no entrances is the bug this replaced, and one where every hill
+    // is a colander is the bug it could become.
+    CHECK(mouths > 0.4, "only %.2f%% of land opens to the sky -- the caves are sealed again", mouths);
+    CHECK(mouths < 5.0, "%.2f%% of the surface is a hole -- that is a colander", mouths);
+}
+
 static void check_recipes(void) {
     printf("crafting: the recipe table\n");
 
@@ -4025,6 +4148,7 @@ int main(void) {
     check_chunk_store();
     chunk_store_shutdown();
     check_worldgen();
+    check_ores();
     check_farlands();
     check_codec();
     check_region();

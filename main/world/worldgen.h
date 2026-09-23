@@ -38,3 +38,10 @@ void worldgen_chunk(chunk_t* c, uint32_t seed, int32_t farlands_x);
 // solid ground, before caves and decorations. Exposed because spawn
 // selection and the host checks want it without generating a chunk.
 int worldgen_height(int32_t x, int32_t z, uint32_t seed);
+
+// How deep each ore may appear. Here rather than in the .c so the host
+// check measures the generator's own numbers and not a second copy of
+// them -- the whole point of worldcheck's "ores" section is that these
+// cannot drift without something noticing.
+#define VEIN_COAL_YMAX 40
+#define VEIN_IRON_YMAX 28

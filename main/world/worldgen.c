@@ -9,9 +9,9 @@
 //    strata    bedrock, stone, a few blocks of dirt, and a surface that
 //              is grass above the waterline and sand at it.
 //    sea       air below CH_SEA_LEVEL becomes water.
-//    caves     a 3D density field carves the stone. Kept below the
-//              surface so it opens as cave mouths rather than craters.
-//    ores      single blocks of coal and iron in the stone.
+//    caves     a 3D density field carves the stone, and a broad mouth
+//              field decides the few places it may break the surface.
+//    ores      VEINS of coal and iron, on a coarse candidate grid.
 //    plants    flowers and tall grass on the grass.
 //    trees     the cross-chunk pass described in worldgen.h.
 //    signs     "Kurt was here" and friends, along the Far Lands edge.
@@ -34,7 +34,8 @@
 #define S_HILL   0x2222u
 #define S_CAVE   0x3333u
 #define S_ORE    0x4444u
-#define S_ORE2   0x4545u  // iron: its own hash, so coal's pockets do not move
+#define S_ORE2   0x4545u  // iron: its own hash, so coal's veins do not move
+#define S_MOUTH  0x9999u  // where a cave is allowed to break the surface
 #define S_TREE   0x5555u
 #define S_PLANT  0x6666u
 #define S_DETAIL 0x7777u
@@ -66,12 +67,30 @@ int worldgen_height(int32_t x, int32_t z, uint32_t seed) {
     return iy < 1 ? 1 : iy > CH_H - 8 ? CH_H - 8 : iy;
 }
 
+// WHERE A CAVE MAY REACH DAYLIGHT.
+//
+// A broad, slow field, true over a small part of the world: a tunnel
+// that happens to run near the top opens a mouth there and stays
+// buried everywhere else. Without it every shallow tunnel would break
+// through -- which is the reason cave_at used to refuse the top four
+// blocks outright, and so the reason there were no entrances at all.
+//
+// THE THRESHOLD IS STEEP AND IT WAS MEASURED, not chosen: this field
+// rarely goes above 0.85, so 0.78 opens 8.7% of the land (a colander),
+// 0.84 opens 1.7% (about one column in sixty, which reads as the
+// occasional hole in a hillside) and 0.88 opens none at all.
+// worldcheck's "ores" section prints the number and fails either way
+// off it.
+static bool cave_mouth(int32_t x, int32_t z, uint32_t seed) {
+    return cm_fbm2((float)x, (float)z, 160.0f, 2, seed ^ S_MOUTH) > 0.84f;
+}
+
 // Caves. The field is sampled at block resolution, which is exactly the
 // case the donor's lattice hash could not survive (F-10).
-static bool cave_at(int32_t x, int y, int32_t z, int surface, uint32_t seed) {
-    // No caves in the top few blocks: they would open as holes in the
-    // ground rather than as mouths in a hillside.
-    if (y > surface - 4) return false;
+static bool cave_at(int32_t x, int y, int32_t z, int surface, uint32_t seed, bool mouth) {
+    // Under the lid, unless this is one of the places allowed to open:
+    // there, the tunnel may take the surface block itself.
+    if (y > (mouth ? surface : surface - 4)) return false;
     if (y <= CH_BEDROCK + 1) return false;
 
     // Two fields at right angles to each other carve tunnels where both
@@ -80,10 +99,79 @@ static bool cave_at(int32_t x, int y, int32_t z, int surface, uint32_t seed) {
     float const b = cm_noise3((float)x, (float)y * 2.0f, (float)z, 22.0f, seed ^ (S_CAVE + 0x99u));
     float const da = fabsf(a - 0.5f), db = fabsf(b - 0.5f);
 
-    // Wider with depth, so the deep world is more open than the shallow.
+    // Wider with depth, so the deep world is more open than the shallow
+    // -- and wider again at a mouth, because a one-block hole in a
+    // hillside is a thing you fall down, not a thing you walk into.
     float const depth = (float)(surface - y) / (float)CH_H;
-    float const t     = 0.055f + depth * 0.045f;
+    float       t     = 0.055f + depth * 0.045f;
+    if (mouth) t += 0.022f;
     return da < t && db < t;
+}
+
+// --- Ore veins --------------------------------------------------------
+//
+// ONE CANDIDATE PER COARSE CELL, and a block is ore if it falls inside
+// any candidate near it. That shape is forced by how this generator
+// works: fill_column asks about one cell at a time and must give the
+// same answer from either side of a chunk border, so a vein cannot be
+// grown by walking -- it has to be a function of the position. Same
+// trick as the tree grid below, in three dimensions.
+//
+// Before this, every ore block was an independent coin flip and two
+// together were a coincidence: no veins at all, and no reason to
+// follow one. The user asked for Minecraft's clumps, and for the
+// reason that matters -- a vein you can see the edge of is a reason to
+// dig sideways.
+#define VEIN_GRID 8
+
+// How common each ore is, and how big a lump of it. Measured rather
+// than guessed: worldcheck's "ores" section counts both the share of
+// stone they take and how clustered they are, and fails if either
+// drifts (F-84).
+#define VEIN_COAL_CHANCE 0.30f
+#define VEIN_COAL_R      2.0f
+
+#define VEIN_IRON_CHANCE 0.20f
+#define VEIN_IRON_R      1.7f
+
+// True if (x, y, z) sits inside a vein. `chance` is how many coarse
+// cells carry one, `r` its rough radius in blocks, `ymax` the highest
+// it may appear.
+static bool vein_at(int32_t x, int y, int32_t z, uint32_t seed, uint32_t salt, int ymax, float chance,
+                    float r) {
+    int32_t const cx = (x >= 0 ? x : x - VEIN_GRID + 1) / VEIN_GRID;
+    int32_t const cz = (z >= 0 ? z : z - VEIN_GRID + 1) / VEIN_GRID;
+    int const     cy = (y >= 0 ? y : y - VEIN_GRID + 1) / VEIN_GRID;
+
+    // The 27 cells around this one: a vein reaches at most a little
+    // over one cell, so nothing further can contain this block.
+    for (int dz = -1; dz <= 1; dz++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                int32_t const gx = cx + dx, gz = cz + dz;
+                int const     gy = cy + dy;
+                if (cm_rand3(gx, gy, gz, seed ^ salt) > chance) continue;
+
+                // Where in its cell the vein sits, and how it is shaped.
+                float const ox = (float)(gx * VEIN_GRID) + cm_rand3(gx, gy, gz, seed ^ (salt + 1u)) * VEIN_GRID;
+                float const oy = (float)(gy * VEIN_GRID) + cm_rand3(gx, gy, gz, seed ^ (salt + 2u)) * VEIN_GRID;
+                float const oz = (float)(gz * VEIN_GRID) + cm_rand3(gx, gy, gz, seed ^ (salt + 3u)) * VEIN_GRID;
+                if (oy > (float)ymax) continue;
+
+                // Three radii, not one: a sphere of ore reads as a
+                // decoration, a lumpy blob reads as a vein.
+                float const rx = r * (0.75f + cm_rand3(gx, gy, gz, seed ^ (salt + 4u)) * 0.7f);
+                float const ry = r * (0.60f + cm_rand3(gx, gy, gz, seed ^ (salt + 5u)) * 0.6f);
+                float const rz = r * (0.75f + cm_rand3(gx, gy, gz, seed ^ (salt + 6u)) * 0.7f);
+
+                float const fx = ((float)x + 0.5f - ox) / rx;
+                float const fy = ((float)y + 0.5f - oy) / ry;
+                float const fz = ((float)z + 0.5f - oz) / rz;
+                if (fx * fx + fy * fy + fz * fz <= 1.0f) return true;
+            }
+        }
+    }
+    return false;
 }
 
 static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint32_t seed) {
@@ -94,6 +182,9 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
     int const soil = 3 + (int)(cm_rand2(wx, wz, seed ^ S_DETAIL) * 3.0f);
 
     bool const beach = sy <= CH_SEA_LEVEL + 1;
+    // Asked once per column, not once per cell: it does not vary
+    // with height and it is two octaves of noise.
+    bool const mouth = !beach && cave_mouth(wx, wz, seed);
 
     for (int y = 0; y < CH_H; y++) {
         uint8_t b = BLK_AIR;
@@ -112,22 +203,24 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
         // Carve, but never the bedrock course and never into the sea:
         // a cave under water would flood, and there is no fluid
         // simulation to flood it with.
-        if (b == BLK_STONE && y > CH_BEDROCK && cave_at(wx, y, wz, sy, seed)) {
+        // A cave may take the soil and the turf as well, but ONLY where
+        // a mouth is allowed: that is what turns a tunnel into a way
+        // in. Everywhere else it still stops at the stone, and the
+        // ground above stays whole.
+        bool const soft = (b == BLK_DIRT || b == BLK_GRASS || b == BLK_SAND);
+        if ((b == BLK_STONE || (mouth && soft)) && y > CH_BEDROCK && cave_at(wx, y, wz, sy, seed, mouth)) {
+            // Never into the sea: there is no fluid simulation to flood
+            // what it would open.
             if (sy > CH_SEA_LEVEL + 2 || y < CH_SEA_LEVEL - 3) b = BLK_AIR;
         }
 
-        // Ore in what stone is left. Iron is DEEPER and RARER than
-        // coal, and tested first so the two never fight over a cell.
-        //
-        // ONE BLOCK AT A TIME, NOT VEINS. cm_rand3 hashes the cell, so
-        // every ore block here is an independent coin flip and two
-        // together are a coincidence. Minecraft generates veins (coal
-        // 4-16 blocks, iron 1-10), which would want a pass of its own:
-        // origins on a coarse grid and a short random walk from each.
-        if (b == BLK_STONE && y < 40 && y > CH_BEDROCK) {
-            if (y < 28 && cm_rand3(wx, y, wz, seed ^ S_ORE2) > 0.9935f) {
+        // Ore in what stone is left, in VEINS (above). Iron is deeper
+        // and rarer than coal, and tested first so the two never fight
+        // over a cell -- iron inside a coal vein looks like a bug.
+        if (b == BLK_STONE && y > CH_BEDROCK) {
+            if (vein_at(wx, y, wz, seed, S_ORE2, VEIN_IRON_YMAX, VEIN_IRON_CHANCE, VEIN_IRON_R)) {
                 b = BLK_IRON_ORE;
-            } else if (cm_rand3(wx, y, wz, seed ^ S_ORE) > 0.988f) {
+            } else if (vein_at(wx, y, wz, seed, S_ORE, VEIN_COAL_YMAX, VEIN_COAL_CHANCE, VEIN_COAL_R)) {
                 b = BLK_COAL_ORE;
             }
         }
