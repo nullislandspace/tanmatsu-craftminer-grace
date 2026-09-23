@@ -72,12 +72,38 @@ MESHCHECK_SRCS  := tools/meshcheck.c $(PURE_SRCS)
 WORLDCHECK_SRCS := tools/worldcheck.c $(PURE_SRCS)
 
 .PHONY: check
-check: hostpurity langcheck meshcheck worldcheck
+check: hostpurity lang meshcheck worldcheck
 
-# The translations: lang/*.txt is the source, main/i18n/strings_gen.* the
-# baked copy that ships. This fails if they have drifted apart, and on a
-# translation whose %-placeholders do not match English's. That the FONT
-# can draw every character is worldcheck's "languages" section.
+# ---------------------------------------------------------------------
+# The translations. lang/*.txt is the source and main/i18n/strings_gen.*
+# the baked copy that ships, so this is an ordinary generated file with
+# known inputs -- make owns it. Edit a lang file, build, and it is
+# regenerated; nobody has to remember a second command.
+#
+# The generator validates while it generates: a key English does not
+# have, a %-placeholder that does not match English's, a word mixing two
+# alphabets. Whether the FONT can draw every character is worldcheck's
+# "languages" section, which compiles the file this rule writes.
+#
+# The output is committed, so a clone that only compiles needs no Python
+# -- and `make langcheck` is the CI form, which asks whether what is
+# committed is already up to date instead of bringing it up to date.
+# ---------------------------------------------------------------------
+LANG_SRCS   := $(wildcard lang/*.txt)
+LANG_GEN_C  := main/i18n/strings_gen.c
+LANG_GEN_H  := main/i18n/strings_gen.h
+
+$(LANG_GEN_C): $(LANG_SRCS) tools/make_lang.py
+	python3 tools/make_lang.py
+
+# Written by the same run; this is here so deleting only the header
+# rebuilds it too.
+$(LANG_GEN_H): $(LANG_GEN_C)
+	@test -f $@ || python3 tools/make_lang.py
+
+.PHONY: lang
+lang: $(LANG_GEN_C) $(LANG_GEN_H)
+
 .PHONY: langcheck
 langcheck:
 	python3 tools/make_lang.py --check
@@ -90,14 +116,14 @@ hostpurity:
 # The greedy mesher: closed, consistently wound, outward parts; volume
 # equals the solid cells and surface area equals the exposed faces.
 .PHONY: meshcheck
-meshcheck:
+meshcheck: $(LANG_GEN_C) $(LANG_GEN_H)
 	mkdir -p $(BUILD)/host
 	$(HOSTCC) $(HOSTCFLAGS) $(MESHCHECK_SRCS) -lm -o $(BUILD)/host/meshcheck
 	$(BUILD)/host/meshcheck
 
 # The world, generation, physics, picking and crafting.
 .PHONY: worldcheck
-worldcheck:
+worldcheck: $(LANG_GEN_C) $(LANG_GEN_H)
 	mkdir -p $(BUILD)/host
 	$(HOSTCC) $(HOSTCFLAGS) $(WORLDCHECK_SRCS) -lm -o $(BUILD)/host/worldcheck
 	$(BUILD)/host/worldcheck

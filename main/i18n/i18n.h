@@ -5,9 +5,10 @@
 //  Every word the game shows comes from here. `lang/*.txt` holds them,
 //  one file per language, plain `key = text` lines in UTF-8;
 //  `tools/make_lang.py` bakes those into the arrays in strings_gen.c,
-//  which is what ships. So a translator edits a text file, and the game
-//  pays one array index -- no parsing, no lookup by name, nothing per
-//  frame (D-81).
+//  which is what ships, and the Makefile runs it whenever a lang file
+//  changes. So a translator edits a text file, builds, and the game pays
+//  one array index -- no parsing, no lookup by name, nothing per frame
+//  (D-81).
 //
 //  English is the reference: `lang/en.txt` defines the keys, and a
 //  language missing one falls back to the English text at GENERATION

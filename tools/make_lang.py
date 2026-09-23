@@ -4,6 +4,11 @@
     python3 tools/make_lang.py          # regenerate
     python3 tools/make_lang.py --check  # fail if the generated files are stale
 
+Normally nobody runs either by hand: the Makefile has a rule that regenerates
+the tables whenever a lang file or this script changes, so editing a
+translation and building is enough. --check is the CI form, which asks whether
+what is COMMITTED is up to date instead of bringing it up to date.
+
 `lang/en.txt` defines the keys and the English text. Every other language is
 held against it:
 
@@ -17,9 +22,9 @@ held against it:
     types from English regardless, so a mismatch here is a mistake the
     translator wants to hear about rather than a crash.
 
-The generated files are checked in, so a build needs no Python. `make check`
-runs this with --check, which is what stops an edited lang file from being
-forgotten.
+The generated files are checked in, so a clone that only compiles needs no
+Python -- and so that an edited lang file cannot be committed without the
+tables that came from it, which is what `make langcheck` guards in CI.
 """
 
 import os

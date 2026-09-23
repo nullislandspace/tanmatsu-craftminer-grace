@@ -149,8 +149,10 @@ the language away and back, and you will see it.
 
 1. Edit `lang/<code>.txt` in this repository. Keys come from `lang/en.txt`,
    which is the reference — leave the key alone and change the text after `=`.
-2. Run `python3 tools/make_lang.py` to bake them in, and commit both the lang
-   file and the regenerated `main/i18n/strings_gen.*`.
+2. Build. `make` regenerates `main/i18n/strings_gen.*` from the lang files
+   whenever they change — you do not have to run anything by hand — and the
+   generated files are committed, so **commit those too**, alongside your lang
+   file. (`make lang` on its own does just that step.)
 3. Run `make check`. It fails on a key that is not in `lang/en.txt`, on
    `%`-placeholders that do not match English's, on a word that mixes two
    alphabets (a Latin `a` inside a Cyrillic word looks identical and is not),
@@ -173,6 +175,12 @@ The strings live in `lang/*.txt`, plain `key = text` lines in UTF-8, and
 `tools/make_lang.py` bakes them into `main/i18n/strings_gen.c`, which is what
 ships. A lookup at run time is an array index — nothing is parsed and nothing
 allocated while the game runs.
+
+That baking is an ordinary make rule: edit a lang file and the next `make`
+regenerates the tables, the way `.o` files follow their `.c`. The generated
+files are committed all the same, so a clone that only compiles needs no
+Python; `make langcheck` is the CI form, which asks whether what is committed
+is already up to date rather than bringing it up to date.
 
 A translation may reorder the values in a line (`%2$s` before `%1$d`) where the
 language needs a different word order. It cannot change what a value *is*: the
