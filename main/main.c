@@ -177,7 +177,13 @@ static double      s_title_t0;
 static bool enter_title(void);
 static bool enter_world(int slot, bool create, char const* name, uint32_t seed);
 static void save_world(char const* why);
-static void start_loading(double wx, double wz, app_state_t next, char const* what);
+// How much of the world has to be there before play starts (D-26).
+typedef enum {
+    LOAD_GATE_ALL = 0,  // everything in the view distance
+    LOAD_GATE_3X3,      // the nine chunks around the player, and no more
+} load_gate_t;
+
+static void start_loading(double wx, double wz, app_state_t next, char const* what, load_gate_t gate);
 
 // --- The time of day ------------------------------------------------------
 //
@@ -781,7 +787,7 @@ static bool enter_title(void) {
     title_stream_at(0.5 * 16.0, &px, &pz);  // the middle of the loop
     s_cam_mode = CAM_PLAYER;
     menu_close();  // opened when the loading is done
-    start_loading(px, pz, APP_TITLE, T(CM_STR_LOADING_PLAIN));
+    start_loading(px, pz, APP_TITLE, T(CM_STR_LOADING_PLAIN), LOAD_GATE_ALL);
     return true;
 }
 
@@ -844,7 +850,8 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     // The ground under the player before the player is on it (D-26),
     // behind a progress bar (5.5). The rest streams in behind them while
     // they are already walking, which is what the freeze above covers.
-    start_loading(s_saved.x, s_saved.z, APP_PLAY, T(create ? CM_STR_LOADING_CREATING : CM_STR_LOADING_WORLD));
+    start_loading(s_saved.x, s_saved.z, APP_PLAY, T(create ? CM_STR_LOADING_CREATING : CM_STR_LOADING_WORLD),
+                  create ? LOAD_GATE_ALL : LOAD_GATE_3X3);
     ESP_LOGI(TAG, "entering at %.1f, %.1f, %.1f (%s)", s_saved.x, s_saved.y, s_saved.z,
              s_saved.placed ? "where they left" : "a new player");
     return true;
@@ -962,7 +969,9 @@ static bool enter_flight(void) {
     s_in_replay    = false;
     s_cam_mode     = CAM_PLAYER;
     menu_close();
-    start_loading(wx, wz, APP_PLAY, s_fl_scene ? "Loading the Far Lands" : "Loading flight");
+    // The debug flight is a camera, not a player: it can be anywhere in
+    // the view next frame, so it waits for all of it.
+    start_loading(wx, wz, APP_PLAY, s_fl_scene ? "Loading the Far Lands" : "Loading flight", LOAD_GATE_ALL);
     return true;
 }
 
@@ -1005,7 +1014,9 @@ static bool enter_replay(void) {
     tick_freeze(&s_tick, true);
     s_cam_mode = CAM_PLAYER;
     menu_close();
-    start_loading(st.x, st.z, APP_PLAY, "Loading replay");
+    // A replay must run against the same world every time, so it waits
+    // for the whole view rather than starting on nine chunks.
+    start_loading(st.x, st.z, APP_PLAY, "Loading replay", LOAD_GATE_ALL);
     s_in_replay = true;
     return true;
 }
@@ -1074,33 +1085,57 @@ static struct {
     int64_t     t0;
     int         rounds;
     float       progress;  // 0..1, for the bar
+    load_gate_t gate;
 } s_load;
 
-static void start_loading(double wx, double wz, app_state_t next, char const* what) {
-    s_load = (typeof(s_load)){.wx = wx, .wz = wz, .next = next, .what = what, .t0 = esp_timer_get_time()};
+static void start_loading(double wx, double wz, app_state_t next, char const* what, load_gate_t gate) {
+    // A test that sets the clock needs the whole view present, because a
+    // frame it photographs may look anywhere (D-59). Its reproducibility
+    // beats a fast entry it is not timing.
+    if (devtest_deterministic()) gate = LOAD_GATE_ALL;
+    s_load =
+        (typeof(s_load)){.wx = wx, .wz = wz, .next = next, .what = what, .t0 = esp_timer_get_time(), .gate = gate};
     chunk_worker_set_synchronous(true);
     s_app = APP_LOADING;
 }
 
+
 static void loading_step(void) {
     int64_t const t0      = esp_timer_get_time();
     int           missing = 0, resident = 0;
+    bool          ready   = false;
+    int           nine    = 0;
     do {
         chunk_render_stream(s_load.wx, s_load.wz);
         chunk_render_stats(NULL, NULL, &resident, &missing);
         s_load.rounds++;
+        if (s_load.gate == LOAD_GATE_3X3) {
+            nine  = chunk_render_nine(s_load.wx, s_load.wz);
+            ready = nine == 9;
+        } else {
+            ready = missing == 0;
+        }
         // A test that sets the clock renders a frame or two per moment:
         // for it, loading is one step, however long it takes.
-    } while (missing > 0 && s_load.rounds < LOAD_GUARD &&
+    } while (!ready && s_load.rounds < LOAD_GUARD &&
              (devtest_deterministic() || esp_timer_get_time() - t0 < LOAD_SLICE_US));
-    s_load.progress = resident + missing > 0 ? (float)resident / (float)(resident + missing) : 1.0f;
-    if (missing > 0 && s_load.rounds < LOAD_GUARD) return;
+    // The bar measures what is being WAITED for, not what will eventually
+    // arrive: gated on nine chunks it must not crawl across the whole
+    // view distance and then jump.
+    if (s_load.gate == LOAD_GATE_3X3) {
+        s_load.progress = (float)nine / 9.0f;
+    } else {
+        s_load.progress = resident + missing > 0 ? (float)resident / (float)(resident + missing) : 1.0f;
+    }
+    if (!ready && s_load.rounds < LOAD_GUARD) return;
 
     // Done. Back to streaming on core 1 -- unless a test wants the
     // world to be exactly reproducible (D-59).
     chunk_worker_set_synchronous(devtest_deterministic());
-    ESP_LOGI(TAG, "loaded (%s): %d chunks resident in %d rounds, %lld ms%s", s_load.what, resident, s_load.rounds,
-             (long long)((esp_timer_get_time() - s_load.t0) / 1000), missing == 0 ? "" : " (INCOMPLETE)");
+    ESP_LOGI(TAG, "loaded (%s): %d chunks resident (%d missing) in %d rounds, %lld ms%s", s_load.what, resident,
+             missing, s_load.rounds, (long long)((esp_timer_get_time() - s_load.t0) / 1000),
+             ready ? (s_load.gate == LOAD_GATE_3X3 && missing > 0 ? " -- the rest streams in behind the player" : "")
+                   : " (INCOMPLETE)");
     s_app = s_load.next;
     if (s_app == APP_TITLE) {
         // A test that picked a moment of the title keeps its own clock.

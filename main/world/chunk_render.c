@@ -170,6 +170,18 @@ void chunk_render_stats(int* chunks_drawn, int* sections_drawn, int* resident, i
 
 // --- Streaming --------------------------------------------------------
 
+int chunk_render_nine(double wx, double wz) {
+    int32_t const pcx = chunk_of((int32_t)floor(wx));
+    int32_t const pcz = chunk_of((int32_t)floor(wz));
+    int           n   = 0;
+    for (int32_t dz = -1; dz <= 1; dz++) {
+        for (int32_t dx = -1; dx <= 1; dx++) {
+            if (chunk_find(pcx + dx, pcz + dz) != NULL) n++;
+        }
+    }
+    return n;
+}
+
 void chunk_render_stream(double wx, double wz) {
     if (!s_ready) return;
     int32_t const pcx = chunk_of((int32_t)floor(wx)), pcz = chunk_of((int32_t)floor(wz));

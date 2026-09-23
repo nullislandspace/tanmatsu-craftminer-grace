@@ -88,6 +88,18 @@ static inline void chunk_render_rel(int32_t ox, int32_t oz, double wx, double wy
 // edited). Call once a frame, before submitting.
 void chunk_render_stream(double wx, double wz);
 
+// How many of the NINE chunks around (wx, wz) are resident, 0..9.
+//
+// This is the gate on entering a world (claudeplans/craftminer.md,
+// D-26): the chunk the player stands in and the eight they could step
+// into, and nothing beyond. Play starts when it reaches 9 and the rest
+// of the view distance streams in behind them, so a large view distance
+// costs nothing at the moment of entering. It is also exactly the
+// condition a tick needs -- determinism rule 4 says a tick never
+// branches on load state, which holds because a tick only ever runs
+// with its 3x3 present.
+int chunk_render_nine(double wx, double wz);
+
 // Submit everything visible. The camera must already be set.
 void chunk_render_submit(double eye_wx, double eye_wz);
 
