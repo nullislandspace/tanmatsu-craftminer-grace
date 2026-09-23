@@ -45,3 +45,45 @@ int worldgen_height(int32_t x, int32_t z, uint32_t seed);
 // cannot drift without something noticing.
 #define VEIN_COAL_YMAX 40
 #define VEIN_IRON_YMAX 28
+
+// --- Biomes -----------------------------------------------------------
+//
+// A FOURTH REGISTRY, and for the same reason as the other three: adding
+// a place is a row, not an edit in five functions. Before this, every
+// column in the world was grass over dirt with the same chance of a
+// tree and the same three flowers -- a forest, a plain and a hillside
+// differed only in how high they were.
+//
+// Chosen from two broad, slow fields (temperature and humidity) the way
+// Minecraft chooses, and NOT from the height field: a biome that
+// followed the terrain would put the same place on every hilltop.
+//
+// What is NOT here yet, deliberately: per-biome terrain HEIGHT. Making
+// deserts flat and hills high means blending the height parameters
+// across biome borders, because a lookup that changes abruptly puts a
+// vertical cliff at every boundary -- that is the expensive half, and
+// it can be added without any of this moving.
+typedef enum {
+    BIOME_PLAINS = 0,
+    BIOME_FOREST,
+    BIOME_SAND,
+    BIOME_COUNT
+} biome_t;
+
+typedef struct {
+    char const* name;
+    uint8_t     surface;      // the top block, above the waterline
+    uint8_t     filler;       // what lies under it
+    uint8_t     soil_min;     // how deep that runs, in blocks
+    uint8_t     soil_max;
+    float       tree_chance;  // per candidate on the tree grid
+    float       plant_chance; // that a surface block carries a plant
+    float       flowers;      // of those plants, the share that are flowers
+} biome_def_t;
+
+extern biome_def_t const BIOMES[BIOME_COUNT];
+
+// The biome at (x, z). A pure function of the position, like everything
+// else here, so two chunks agree along their border without either
+// reading the other.
+uint8_t worldgen_biome(int32_t x, int32_t z, uint32_t seed);

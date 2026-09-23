@@ -6,8 +6,11 @@
 //    height    two octave stacks -- a broad one that decides land from
 //              water, a finer one for hills -- added, so coastlines are
 //              large and the ground in between is interesting.
-//    strata    bedrock, stone, a few blocks of dirt, and a surface that
-//              is grass above the waterline and sand at it.
+//    biomes    two broad fields, temperature and humidity, pick one of
+//              three rows: what the surface is, how deep the soil runs,
+//              how many trees and how many flowers.
+//    strata    bedrock, stone, the biome's soil, and its surface block --
+//              except at the waterline, which is sand everywhere.
 //    sea       air below CH_SEA_LEVEL becomes water.
 //    caves     a 3D density field carves the stone, and a broad mouth
 //              field decides the few places it may break the surface.
@@ -40,12 +43,57 @@
 #define S_PLANT  0x6666u
 #define S_DETAIL 0x7777u
 #define S_SIGN   0x8888u
+#define S_TEMP   0xAAAAu
+#define S_HUMID  0xBBBBu
 
 // Height band. Sea level is CH_SEA_LEVEL (24) of 64, so there is room
 // for caves beneath and for building above.
 #define H_BASE 14.0f
 #define H_CONT 20.0f  // how far the broad field lifts the land
 #define H_HILL 12.0f  // how far the fine field roughens it
+
+// --- Biomes -----------------------------------------------------------
+//
+// Three, out of blocks the game already has: no new ids, nothing
+// permanent committed (D-74), and a row here is the whole of what makes
+// one place different from another.
+biome_def_t const BIOMES[BIOME_COUNT] = {
+    // Open ground with the odd tree: what the whole world used to be,
+    // kept at exactly its old numbers so a plains chunk generates as it
+    // always did.
+    [BIOME_PLAINS] = {.name  = "plains",
+                      .surface = BLK_GRASS, .filler = BLK_DIRT,
+                      .soil_min = 3, .soil_max = 5,
+                      .tree_chance = 0.28f, .plant_chance = 0.09f, .flowers = 0.55f},
+
+    // Trees close enough to walk between in shade, and more undergrowth
+    // than flowers.
+    [BIOME_FOREST] = {.name  = "forest",
+                      .surface = BLK_GRASS, .filler = BLK_DIRT,
+                      .soil_min = 3, .soil_max = 6,
+                      .tree_chance = 0.66f, .plant_chance = 0.16f, .flowers = 0.25f},
+
+    // Sand over sand, and nothing growing. No cactus: that would be a
+    // new block, and a new block id is forever.
+    [BIOME_SAND] = {.name  = "sand flats",
+                    .surface = BLK_SAND, .filler = BLK_SAND,
+                    .soil_min = 4, .soil_max = 7,
+                    .tree_chance = 0.0f, .plant_chance = 0.0f, .flowers = 0.0f},
+};
+
+uint8_t worldgen_biome(int32_t x, int32_t z, uint32_t seed) {
+    // SLOWER THAN THE HILLS AND FASTER THAN THE CONTINENTS: at 420 and
+    // 360 blocks a biome is a few minutes across on foot, which is far
+    // enough to feel like somewhere and near enough to find another.
+    float const temp  = cm_fbm2((float)x, (float)z, 420.0f, 3, seed ^ S_TEMP);
+    float const humid = cm_fbm2((float)x, (float)z, 360.0f, 3, seed ^ S_HUMID);
+
+    // Hot AND dry, or it is merely a warm meadow. Tested first, so the
+    // driest ground wins over the wettest.
+    if (temp > 0.60f && humid < 0.42f) return BIOME_SAND;
+    if (humid > 0.56f) return BIOME_FOREST;
+    return BIOME_PLAINS;
+}
 
 int worldgen_height(int32_t x, int32_t z, uint32_t seed) {
     float const fx = (float)x, fz = (float)z;
@@ -178,9 +226,15 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
     uint8_t* id  = &c->id[CH_IDX(lx, 0, lz)];
     int const sy = worldgen_height(wx, wz, seed);
 
-    // How deep the dirt runs here, 3..5 blocks.
-    int const soil = 3 + (int)(cm_rand2(wx, wz, seed ^ S_DETAIL) * 3.0f);
+    biome_def_t const* bd = &BIOMES[worldgen_biome(wx, wz, seed)];
 
+    // How deep the soil runs here, from the biome's band.
+    int const span = (int)bd->soil_max - (int)bd->soil_min + 1;
+    int const soil = (int)bd->soil_min + (int)(cm_rand2(wx, wz, seed ^ S_DETAIL) * (float)span);
+
+    // THE WATERLINE IS SAND WHATEVER THE BIOME IS. A beach is not a
+    // place, it is an edge, and grass running into the sea looks wrong
+    // in every biome there has ever been.
     bool const beach = sy <= CH_SEA_LEVEL + 1;
     // Asked once per column, not once per cell: it does not vary
     // with height and it is two octaves of noise.
@@ -193,9 +247,9 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
         } else if (y < sy - soil) {
             b = BLK_STONE;
         } else if (y < sy) {
-            b = beach ? BLK_SAND : BLK_DIRT;
+            b = beach ? BLK_SAND : bd->filler;
         } else if (y == sy) {
-            b = beach ? BLK_SAND : BLK_GRASS;
+            b = beach ? BLK_SAND : bd->surface;
         } else if (y <= CH_SEA_LEVEL) {
             b = BLK_WATER;
         }
@@ -228,9 +282,11 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
         id[y] = b;
     }
 
-    // Grass needs air above it. A cave mouth or an overhang can leave
-    // it buried, and buried grass is a texture nobody sees.
-    if (!beach && sy + 1 < CH_H && id[sy] == BLK_GRASS && id[sy + 1] != BLK_AIR) id[sy] = BLK_DIRT;
+    // A surface block needs air above it. A cave mouth or an overhang
+    // can leave it buried, and buried grass is a texture nobody sees.
+    if (!beach && sy + 1 < CH_H && id[sy] == bd->surface && id[sy] != bd->filler && id[sy + 1] != BLK_AIR) {
+        id[sy] = bd->filler;
+    }
 }
 
 // --- Decorations ------------------------------------------------------
@@ -238,7 +294,6 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
 // Tree candidates sit on a coarse grid, one per TREE_GRID square, so
 // two trees can never grow into each other.
 #define TREE_GRID   5
-#define TREE_CHANCE 0.28f
 #define TREE_MIN_H  4
 #define TREE_MAX_H  6
 
@@ -259,7 +314,10 @@ static void stamp(chunk_t* c, int32_t wx, int y, int32_t wz, uint8_t block, bool
 // One tree, rooted at (wx, wz). Called for every candidate in the 3 x 3
 // neighbourhood; stamp() drops whatever lands outside this chunk.
 static void place_tree(chunk_t* c, int32_t wx, int32_t wz, uint32_t seed) {
-    if (cm_rand2(wx, wz, seed ^ S_TREE) > TREE_CHANCE) return;
+    // The chance belongs to the biome the tree would stand in, not to
+    // the chunk being filled: a forest that thinned out at its border
+    // because the neighbouring chunk asked would not be a forest.
+    if (cm_rand2(wx, wz, seed ^ S_TREE) > BIOMES[worldgen_biome(wx, wz, seed)].tree_chance) return;
 
     // A tree needs grass to stand on, and the ground under it must be
     // the generated surface -- not the inside of a hill.
@@ -305,16 +363,24 @@ static void decorate_plants(chunk_t* c, uint32_t seed) {
             }
             if (sy < 0 || col[sy + 1] != BLK_AIR) continue;
 
+            biome_def_t const* bd = &BIOMES[worldgen_biome(wx, wz, seed)];
+            if (bd->plant_chance <= 0.0f) continue;
+
             float const r = cm_rand2(wx, wz, seed ^ S_PLANT);
-            uint8_t     p = BLK_AIR;
-            if (r > 0.94f) {
+            float const t = 1.0f - bd->plant_chance;
+            if (r <= t) continue;
+
+            // Where in the biome's share of plants this one falls, so
+            // the flower-to-grass mix is the row's business and not
+            // three thresholds written out here.
+            float const u = (r - t) / bd->plant_chance;
+            uint8_t     p;
+            if (u < bd->flowers) {
+                p = (u < bd->flowers * 0.5f) ? BLK_FLOWER_RED : BLK_FLOWER_YELLOW;
+            } else {
                 p = BLK_TALL_GRASS;
-            } else if (r > 0.925f) {
-                p = BLK_FLOWER_RED;
-            } else if (r > 0.91f) {
-                p = BLK_FLOWER_YELLOW;
             }
-            if (p != BLK_AIR) col[sy + 1] = p;
+            col[sy + 1] = p;
         }
     }
 }

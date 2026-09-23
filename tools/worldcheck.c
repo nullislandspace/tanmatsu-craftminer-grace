@@ -2999,6 +2999,118 @@ static void check_furnace(void) {
 //  A vein scores two or more.
 // ---------------------------------------------------------------------
 
+// ---------------------------------------------------------------------
+//  Biomes
+//
+//  Three questions, and the second is the one that matters. Does every
+//  biome EXIST in a reasonable share of the world -- a biome nobody
+//  ever walks through is a row of dead data. And is each one actually
+//  DIFFERENT: it is easy to add a table, read it everywhere, and still
+//  generate the same world three times over, and nothing about the code
+//  would look wrong.
+// ---------------------------------------------------------------------
+
+static void check_biomes(void) {
+    printf("biomes: three places, and they differ\n");
+
+    uint32_t const seed = 0x81011E5u;
+
+    // The share of the world each one takes, over a wide area so the
+    // fields get to wander.
+    long share[BIOME_COUNT];
+    memset(share, 0, sizeof(share));
+    long total = 0;
+    for (int32_t z = -2000; z <= 2000; z += 17) {
+        for (int32_t x = -2000; x <= 2000; x += 17) {
+            uint8_t const b = worldgen_biome(x, z, seed);
+            CHECK(b < BIOME_COUNT, "worldgen_biome returned %u", b);
+            if (b < BIOME_COUNT) share[b]++;
+            total++;
+        }
+    }
+    for (int b = 0; b < BIOME_COUNT; b++) {
+        double const pct = 100.0 * (double)share[b] / (double)total;
+        printf("  %-12s %5.1f%% of the world\n", BIOMES[b].name, pct);
+        CHECK(pct > 4.0, "%s is %.1f%% of the world -- nobody would ever walk through it", BIOMES[b].name, pct);
+        CHECK(pct < 80.0, "%s is %.1f%% of the world -- the others are garnish", BIOMES[b].name, pct);
+    }
+
+    // Every row has to be filled in, or a biome generates air and dirt.
+    for (int b = 0; b < BIOME_COUNT; b++) {
+        CHECK(BIOMES[b].name != NULL && BIOMES[b].name[0] != '\0', "biome %d has no name", b);
+        CHECK(BIOMES[b].surface != BLK_AIR && BIOMES[b].filler != BLK_AIR, "%s has no blocks", BIOMES[b].name);
+        CHECK(BIOMES[b].soil_min >= 1 && BIOMES[b].soil_max >= BIOMES[b].soil_min, "%s has a bad soil band",
+              BIOMES[b].name);
+    }
+
+    // AND THEY REALLY ARE DIFFERENT. Generate a stretch of each and
+    // count what comes out: this is the check that fails if the table
+    // is read everywhere and says the same thing each time.
+    static uint8_t id[CH_CELLS];
+    static uint8_t st[CH_CELLS];
+    chunk_t        c;
+    memset(&c, 0, sizeof(c));
+    c.id = id;
+    c.st = st;
+
+    long logs[BIOME_COUNT], plants[BIOME_COUNT], sand_top[BIOME_COUNT], grass_top[BIOME_COUNT];
+    long cols[BIOME_COUNT];
+    memset(logs, 0, sizeof(logs));
+    memset(plants, 0, sizeof(plants));
+    memset(sand_top, 0, sizeof(sand_top));
+    memset(grass_top, 0, sizeof(grass_top));
+    memset(cols, 0, sizeof(cols));
+
+    // A long east-west strip, which crosses several biomes.
+    for (int32_t cx = -40; cx <= 40; cx++) {
+        c.cx = cx;
+        c.cz = 0;
+        worldgen_chunk(&c, seed, FARLANDS_NONE);
+        for (int lz = 0; lz < CH_D; lz++) {
+            for (int lx = 0; lx < CH_W; lx++) {
+                int32_t const wx = cx * CH_W + lx, wz = lz;
+                uint8_t const b  = worldgen_biome(wx, wz, seed);
+                if (b >= BIOME_COUNT) continue;
+                int const h = worldgen_height(wx, wz, seed);
+                if (h <= CH_SEA_LEVEL + 1 || h + 1 >= CH_H) continue;  // beaches are not a biome
+                cols[b]++;
+                uint8_t const top = id[CH_IDX(lx, h, lz)];
+                uint8_t const above = id[CH_IDX(lx, h + 1, lz)];
+                if (top == BLK_SAND) sand_top[b]++;
+                if (top == BLK_GRASS) grass_top[b]++;
+                if (above == BLK_TALL_GRASS || above == BLK_FLOWER_RED || above == BLK_FLOWER_YELLOW) plants[b]++;
+                for (int y = h; y < CH_H && y < h + 8; y++) {
+                    if (id[CH_IDX(lx, y, lz)] == BLK_LOG) logs[b]++;
+                }
+            }
+        }
+    }
+
+    for (int b = 0; b < BIOME_COUNT; b++) {
+        if (cols[b] == 0) continue;
+        printf("  %-12s %4.1f%% sand top, %4.1f%% grass top, %4.1f%% plants, %.3f logs a column\n",
+               BIOMES[b].name, 100.0 * (double)sand_top[b] / (double)cols[b],
+               100.0 * (double)grass_top[b] / (double)cols[b], 100.0 * (double)plants[b] / (double)cols[b],
+               (double)logs[b] / (double)cols[b]);
+    }
+
+    CHECK(cols[BIOME_SAND] > 0 && sand_top[BIOME_SAND] > cols[BIOME_SAND] * 9 / 10,
+          "the sand flats are not mostly sand");
+    CHECK(grass_top[BIOME_SAND] == 0, "%ld columns of the sand flats grew grass", grass_top[BIOME_SAND]);
+    CHECK(plants[BIOME_SAND] == 0, "%ld plants grew in the sand flats", plants[BIOME_SAND]);
+    CHECK(logs[BIOME_SAND] == 0, "%ld logs grew in the sand flats", logs[BIOME_SAND]);
+
+    CHECK(cols[BIOME_PLAINS] > 0 && grass_top[BIOME_PLAINS] > cols[BIOME_PLAINS] * 9 / 10,
+          "the plains are not mostly grass");
+    CHECK(cols[BIOME_FOREST] > 0, "the strip crossed no forest at all");
+    if (cols[BIOME_FOREST] > 0 && cols[BIOME_PLAINS] > 0) {
+        double const fl = (double)logs[BIOME_FOREST] / (double)cols[BIOME_FOREST];
+        double const pl = (double)logs[BIOME_PLAINS] / (double)cols[BIOME_PLAINS];
+        CHECK(fl > pl * 1.6, "a forest has %.3f logs a column against the plains' %.3f -- that is the same place",
+              fl, pl);
+    }
+}
+
 static void check_ores(void) {
     printf("ores: veins, and caves that open\n");
 
@@ -4148,6 +4260,7 @@ int main(void) {
     check_chunk_store();
     chunk_store_shutdown();
     check_worldgen();
+    check_biomes();
     check_ores();
     check_farlands();
     check_codec();
