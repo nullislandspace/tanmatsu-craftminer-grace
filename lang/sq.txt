@@ -273,3 +273,10 @@ hud.needs_tool = Kërkon %s
 # --- amount ---
 amount.title = Sa %s?
 amount.hint = shigjetat ose shifrat rregullojnë   enter lëviz   esc anulon
+
+# --- item ---
+item.birch_log = Trung mështekne
+item.birch_leaves = Gjethe mështekne
+item.cactus = Kaktus
+item.snow = Borë
+item.sandstone = Ranor

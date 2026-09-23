@@ -273,3 +273,10 @@ hud.needs_tool = %s gerekir
 # --- amount ---
 amount.title = Kaç %s?
 amount.hint = oklar veya rakamlar ayarlar   enter taşır   esc iptal eder
+
+# --- item ---
+item.birch_log = Huş kütüğü
+item.birch_leaves = Huş yaprakları
+item.cactus = Kaktüs
+item.snow = Kar
+item.sandstone = Kumtaşı

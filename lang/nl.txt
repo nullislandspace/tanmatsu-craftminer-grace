@@ -264,3 +264,10 @@ hud.needs_tool = Vereist %s
 # --- amount ---
 amount.title = Hoeveel %s?
 amount.hint = pijlen of cijfers stellen in   enter verplaatst   esc annuleert
+
+# --- item ---
+item.birch_log = Berkenstam
+item.birch_leaves = Berkenblad
+item.cactus = Cactus
+item.snow = Sneeuw
+item.sandstone = Zandsteen

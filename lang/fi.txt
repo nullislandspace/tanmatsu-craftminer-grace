@@ -273,3 +273,10 @@ hud.needs_tool = Tarvitsee %s
 # --- amount ---
 amount.title = Kuinka monta %s?
 amount.hint = nuolet tai numerot asettavat   enter siirtää   esc peruu
+
+# --- item ---
+item.birch_log = Koivutukki
+item.birch_leaves = Koivunlehdet
+item.cactus = Kaktus
+item.snow = Lumi
+item.sandstone = Hiekkakivi

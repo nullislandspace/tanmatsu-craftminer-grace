@@ -856,6 +856,90 @@ def cm_leaves_fast():
     return cm_rgb(lum, (58, 112, 38))
 
 
+def cm_birch_leaves_lum():
+    gen = cm_gen(42)
+    lum = gen.integers(-16, 17, (B, B)).astype(float)
+    holes = gen.random((B, B)) < 0.24
+    return lum, holes
+
+
+def cm_birch_leaves():
+    """Lighter and yellower than oak: what makes a birch wood read as a
+    different wood from across a valley."""
+    lum, holes = cm_birch_leaves_lum()
+    return cm_alpha(cm_rgb(lum, (108, 152, 62)), holes)
+
+
+def cm_birch_leaves_fast():
+    lum, holes = cm_birch_leaves_lum()
+    lum[holes] = -48
+    return cm_rgb(lum, (108, 152, 62))
+
+
+def cm_birch_side():
+    """White bark with the dark scars birches have, which is the whole
+    signature of the tree."""
+    gen = cm_gen(43)
+    lum = gen.integers(-7, 8, (B, B)).astype(float)
+    for _ in range(5):                       # the scars, short and level
+        y = int(gen.integers(0, B))
+        x = int(gen.integers(0, B))
+        n = int(gen.integers(2, 5))
+        for k in range(n):
+            lum[y, (x + k) % B] -= 58
+            if gen.random() < 0.4:
+                lum[(y + 1) % B, (x + k) % B] -= 34
+    for x in range(B):                       # a faint vertical grain
+        lum[:, x] += int(gen.integers(-5, 6))
+    return cm_rgb(lum, (216, 214, 202))
+
+
+def cm_birch_top():
+    """The cut end: rings, like the oak's but paler."""
+    gen = cm_gen(44)
+    ys, xs = np.mgrid[0:B, 0:B] + 0.5
+    d = np.sqrt((xs - B / 2) ** 2 + (ys - B / 2) ** 2)
+    lum = (np.sin(d * 1.9) * 9.0) + gen.integers(-6, 7, (B, B))
+    lum[d > 7.1] -= 26                       # the bark round the edge
+    return cm_rgb(lum, (196, 184, 156))
+
+
+def cm_cactus():
+    """Green with vertical ribs and a paler edge, so a stack of them
+    still reads as separate blocks."""
+    gen = cm_gen(45)
+    lum = gen.integers(-6, 7, (B, B)).astype(float)
+    for x in range(1, B, 4):                 # the ribs
+        lum[:, x] -= 26
+        lum[:, (x + 1) % B] += 10
+    lum[0, :] += 16
+    lum[15, :] -= 22
+    for _ in range(14):                      # spines
+        lum[int(gen.integers(0, B)), int(gen.integers(0, B))] += 40
+    return cm_rgb(lum, (74, 128, 60))
+
+
+def cm_snow():
+    """Nearly white, and nearly flat: snow has no features, and any it
+    is given read as dirt on it."""
+    gen = cm_gen(46)
+    lum = gen.integers(-5, 6, (B, B)).astype(float)
+    lum += 6.0 * pnoise(B, B, 2.6, 2.6, gen)
+    return cm_rgb(lum, (236, 240, 248))
+
+
+def cm_sandstone():
+    """Sand, pressed: the same colour with level bedding lines through
+    it, which is what tells the two apart underground."""
+    gen = cm_gen(47)
+    lum = gen.integers(-5, 6, (B, B)).astype(float)
+    lum += 4.0 * pnoise(B, B, 3.0, 3.0, gen)
+    for y in (3, 7, 12):                     # bedding
+        lum[y, :] -= 20
+        lum[(y + 1) % B, :] += 7
+    return cm_rgb(lum, (214, 198, 148))
+
+
 def cm_coal_ore():
     img = cm_stone().astype(int)
     gen = cm_gen(12)
@@ -1110,6 +1194,13 @@ TEXTURES = {
     "bedrock.png": cm_bedrock,
     "gravel.png": cm_gravel,
     "iron_ore.png": cm_iron_ore,
+    "birch_side.png": cm_birch_side,
+    "birch_top.png": cm_birch_top,
+    "birch_leaves.png": cm_birch_leaves,
+    "birch_leaves_fast.png": cm_birch_leaves_fast,
+    "cactus.png": cm_cactus,
+    "snow.png": cm_snow,
+    "sandstone.png": cm_sandstone,
     "chest_top.png": cm_chest_top,
     "chest_side.png": cm_chest_side,
     "trash_top.png": cm_trash_top,

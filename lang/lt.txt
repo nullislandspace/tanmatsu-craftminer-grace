@@ -273,3 +273,10 @@ hud.needs_tool = Reikia %s
 # --- amount ---
 amount.title = Kiek %s?
 amount.hint = rodyklės ar skaitmenys nustato   enter perkelia   esc atšaukia
+
+# --- item ---
+item.birch_log = Beržo rąstas
+item.birch_leaves = Beržo lapai
+item.cactus = Kaktusas
+item.snow = Sniegas
+item.sandstone = Smiltainis

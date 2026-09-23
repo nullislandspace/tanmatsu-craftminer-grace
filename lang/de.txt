@@ -265,3 +265,10 @@ hud.needs_tool = Braucht %s
 # --- amount ---
 amount.title = Wie viele %s?
 amount.hint = Pfeile oder Ziffern stellen ein   Enter schiebt   Esc bricht ab
+
+# --- item ---
+item.birch_log = Birkenstamm
+item.birch_leaves = Birkenlaub
+item.cactus = Kaktus
+item.snow = Schnee
+item.sandstone = Sandstein

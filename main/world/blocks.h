@@ -173,7 +173,12 @@ enum {
     BLK_CHEST          = 23,
     BLK_TRASH          = 24,
     BLK_BENCH          = 25,
-    // New blocks here: BLK_SOMETHING = 26, and a line in tools/ids.txt.
+    BLK_BIRCH_LOG      = 26,
+    BLK_BIRCH_LEAVES   = 27,
+    BLK_CACTUS         = 28,
+    BLK_SNOW           = 29,
+    BLK_SANDSTONE      = 30,
+    // New blocks here: BLK_SOMETHING = 31, and a line in tools/ids.txt.
     BLK_COUNT
 };
 

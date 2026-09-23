@@ -273,3 +273,10 @@ hud.needs_tool = Potrebuje %s
 # --- amount ---
 amount.title = Koľko %s?
 amount.hint = šípky alebo číslice nastavia   enter presunie   esc zruší
+
+# --- item ---
+item.birch_log = Brezový kmeň
+item.birch_leaves = Brezové lístie
+item.cactus = Kaktus
+item.snow = Sneh
+item.sandstone = Pieskovec

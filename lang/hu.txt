@@ -273,3 +273,10 @@ hud.needs_tool = Kell hozzá %s
 # --- amount ---
 amount.title = Hány %s?
 amount.hint = nyilak vagy számjegyek állítják   enter átvisz   esc megszakít
+
+# --- item ---
+item.birch_log = Nyírfa rönk
+item.birch_leaves = Nyírfalevél
+item.cactus = Kaktusz
+item.snow = Hó
+item.sandstone = Homokkő

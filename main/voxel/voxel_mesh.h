@@ -89,6 +89,13 @@ typedef enum {
     VM_TRASH_TOP,
     VM_TRASH_SIDE,
     VM_BENCH_TOP,
+    VM_BIRCH_SIDE,
+    VM_BIRCH_TOP,
+    VM_BIRCH_LEAVES,
+    VM_BIRCH_LEAVES_FAST,
+    VM_CACTUS,
+    VM_SNOW,
+    VM_SANDSTONE,
     VM_COUNT
 } vox_mat_t;
 

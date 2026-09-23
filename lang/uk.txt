@@ -273,3 +273,10 @@ hud.needs_tool = Потрібна %s
 # --- amount ---
 amount.title = Скільки %s?
 amount.hint = стрілки або цифри задають   ентер пересуває   есц скасовує
+
+# --- item ---
+item.birch_log = Березова колода
+item.birch_leaves = Березове листя
+item.cactus = Кактус
+item.snow = Сніг
+item.sandstone = Пісковик

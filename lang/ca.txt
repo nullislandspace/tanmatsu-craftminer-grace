@@ -273,3 +273,10 @@ hud.needs_tool = Cal %s
 # --- amount ---
 amount.title = Quants %s?
 amount.hint = fletxes o xifres ajusten   retorn mou   esc cancel·la
+
+# --- item ---
+item.birch_log = Tronc de bedoll
+item.birch_leaves = Fulles de bedoll
+item.cactus = Cactus
+item.snow = Neu
+item.sandstone = Gres

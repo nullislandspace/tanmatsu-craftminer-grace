@@ -273,3 +273,10 @@ hud.needs_tool = Vajab %s
 # --- amount ---
 amount.title = Kui palju %s?
 amount.hint = nooled või numbrid seavad   enter viib üle   esc katkestab
+
+# --- item ---
+item.birch_log = Kasepalk
+item.birch_leaves = Kaselehed
+item.cactus = Kaktus
+item.snow = Lumi
+item.sandstone = Liivakivi

@@ -273,3 +273,10 @@ hud.needs_tool = Wymaga %s
 # --- amount ---
 amount.title = Ile %s?
 amount.hint = strzałki lub cyfry ustawiają   enter przenosi   esc anuluje
+
+# --- item ---
+item.birch_log = Brzozowa kłoda
+item.birch_leaves = Brzozowe liście
+item.cactus = Kaktus
+item.snow = Śnieg
+item.sandstone = Piaskowiec

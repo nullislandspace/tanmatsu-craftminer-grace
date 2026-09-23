@@ -273,3 +273,10 @@ hud.needs_tool = Potrebuje %s
 # --- amount ---
 amount.title = Koliko %s?
 amount.hint = puščice ali številke nastavijo   enter premakne   esc prekliče
+
+# --- item ---
+item.birch_log = Brezov hlod
+item.birch_leaves = Brezovo listje
+item.cactus = Kaktus
+item.snow = Sneg
+item.sandstone = Peščenjak

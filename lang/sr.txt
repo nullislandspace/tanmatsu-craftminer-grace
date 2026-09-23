@@ -273,3 +273,10 @@ hud.needs_tool = Треба %s
 # --- amount ---
 amount.title = Колико %s?
 amount.hint = стрелице или цифре подешавају   ентер помера   есц отказује
+
+# --- item ---
+item.birch_log = Брезов трупац
+item.birch_leaves = Брезово лишће
+item.cactus = Кактус
+item.snow = Снег
+item.sandstone = Пешчар

@@ -161,6 +161,11 @@ typedef enum {
     CM_STR_ITEM_CHEST,                  // item.chest
     CM_STR_ITEM_TRASH_CHEST,            // item.trash_chest
     CM_STR_ITEM_DISASSEMBLY_BENCH,      // item.disassembly_bench
+    CM_STR_ITEM_BIRCH_LOG,              // item.birch_log
+    CM_STR_ITEM_BIRCH_LEAVES,           // item.birch_leaves
+    CM_STR_ITEM_CACTUS,                 // item.cactus
+    CM_STR_ITEM_SNOW,                   // item.snow
+    CM_STR_ITEM_SANDSTONE,              // item.sandstone
     CM_STR_ITEM_COAL,                   // item.coal
     CM_STR_ITEM_STICK,                  // item.stick
     CM_STR_ITEM_PICKAXE_WOOD,           // item.pickaxe_wood

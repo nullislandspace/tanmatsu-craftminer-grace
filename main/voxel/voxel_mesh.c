@@ -41,7 +41,10 @@ static bool face_shows(uint8_t b, uint8_t n, vox_mesh_mode_t mode) {
 // fancy.
 static int mode_mat(uint8_t b, vox_face_t face, vox_mesh_mode_t mode) {
     int const m = voxel_face_mat(b, face);
-    return m == VM_LEAVES && mode != VOX_MESH_FANCY ? VM_LEAVES_FAST : m;
+    if (mode == VOX_MESH_FANCY) return m;
+    if (m == VM_LEAVES) return VM_LEAVES_FAST;
+    if (m == VM_BIRCH_LEAVES) return VM_BIRCH_LEAVES_FAST;
+    return m;
 }
 
 // The six face directions: the axis the face looks along (0 x, 1 y,

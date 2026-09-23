@@ -265,3 +265,10 @@ hud.needs_tool = Нужна е %s
 # --- amount ---
 amount.title = Колко %s?
 amount.hint = стрелки или цифри настройват   ентер мести   есц отказва
+
+# --- item ---
+item.birch_log = Брезов дънер
+item.birch_leaves = Брезови листа
+item.cactus = Кактус
+item.snow = Сняг
+item.sandstone = Пясъчник

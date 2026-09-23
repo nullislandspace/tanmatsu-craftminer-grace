@@ -47,7 +47,9 @@ static uint32_t const BLOCK_ARGB[BLK_COUNT] = {
     [BLK_SIGN] = 0xFFA4804Eu,         [BLK_CRAFTING_TABLE] = 0xFF9C7A4Au,
     [BLK_FURNACE] = 0xFF707072u,        [BLK_IRON_ORE] = 0xFF8E8278u,
     [BLK_CHEST] = 0xFF96703Eu,          [BLK_TRASH] = 0xFF605C5Au,
-    [BLK_BENCH] = 0xFF967446u,
+    [BLK_BENCH] = 0xFF967446u,          [BLK_BIRCH_LOG] = 0xFFD2D0C4u,
+    [BLK_BIRCH_LEAVES] = 0xFF6C983Eu,   [BLK_CACTUS] = 0xFF4A803Cu,
+    [BLK_SNOW] = 0xFFECF0F8u,           [BLK_SANDSTONE] = 0xFFD6C694u,
 };
 
 // What each block is CALLED on screen, beside the colour above. A
@@ -73,6 +75,11 @@ static cm_str_t const BLOCK_LABEL[BLK_COUNT] = {
     [BLK_CHEST] = CM_STR_ITEM_CHEST,
     [BLK_TRASH] = CM_STR_ITEM_TRASH_CHEST,
     [BLK_BENCH] = CM_STR_ITEM_DISASSEMBLY_BENCH,
+    [BLK_BIRCH_LOG] = CM_STR_ITEM_BIRCH_LOG,
+    [BLK_BIRCH_LEAVES] = CM_STR_ITEM_BIRCH_LEAVES,
+    [BLK_CACTUS] = CM_STR_ITEM_CACTUS,
+    [BLK_SNOW] = CM_STR_ITEM_SNOW,
+    [BLK_SANDSTONE] = CM_STR_ITEM_SANDSTONE,
     // Air and the barrier are never in anybody's hands and have none.
 };
 
@@ -83,6 +90,7 @@ static cm_str_t const BLOCK_LABEL[BLK_COUNT] = {
 static uint16_t const BLOCK_FUEL[BLK_COUNT] = {
     [BLK_LOG] = 300, [BLK_PLANKS] = 300, [BLK_CRAFTING_TABLE] = 300,
     [BLK_CHEST] = 300, [BLK_TRASH] = 300, [BLK_BENCH] = 300,
+    [BLK_BIRCH_LOG] = 300,
 };
 
 item_def_t item_def(uint16_t id) {

@@ -273,3 +273,10 @@ hud.needs_tool = Vajag %s
 # --- amount ---
 amount.title = Cik %s?
 amount.hint = bultiņas vai cipari iestata   enter pārvieto   esc atceļ
+
+# --- item ---
+item.birch_log = Bērza baļķis
+item.birch_leaves = Bērza lapas
+item.cactus = Kaktuss
+item.snow = Sniegs
+item.sandstone = Smilšakmens

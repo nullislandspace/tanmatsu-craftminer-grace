@@ -273,3 +273,10 @@ hud.needs_tool = Serve %s
 # --- amount ---
 amount.title = Quanti %s?
 amount.hint = frecce o cifre regolano   invio sposta   esc annulla
+
+# --- item ---
+item.birch_log = Tronco di betulla
+item.birch_leaves = Foglie di betulla
+item.cactus = Cactus
+item.snow = Neve
+item.sandstone = Arenaria

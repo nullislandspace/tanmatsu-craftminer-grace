@@ -196,6 +196,50 @@ block_def_t const BLOCKS[BLK_COUNT] = {
                    .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_WOOD,
                    .flags2   = BF2_USABLE},
 
+    // Birch. A second tree, and the reason it exists is that a stand
+    // of white trunks reads as somewhere else from a long way off.
+    // Fellable like the oak, so the logging rule (Part F) takes it
+    // whole.
+    [BLK_BIRCH_LOG] = {.name     = "birch_log", .drop_item = BLK_BIRCH_LOG, .drop_min = 1, .drop_max = 1,
+                       .kind     = K_CUBE,
+                       .mat      = M3(VM_BIRCH_TOP, VM_BIRCH_SIDE, VM_BIRCH_TOP),
+                       .hardness = 40,
+                       .tool     = TOOL_AXE,
+                       .flags    = BF_SOLID | BF_OPAQUE | BF_FELLABLE, .sound = SND_WOOD},
+
+    [BLK_BIRCH_LEAVES] = {.name     = "birch_leaves",
+                          .kind     = K_SEE,
+                          .mat      = M1(VM_BIRCH_LEAVES),
+                          .hardness = 8,
+                          .tool     = TOOL_SHEARS,
+                          .flags    = BF_SOLID | BF_FELLABLE | BF_SEE_SELF, .sound = SND_SOFT},
+
+    // A cactus is a solid block here rather than the narrow post
+    // Minecraft draws: the mesher has no kind for a thin cube, and a
+    // full one still reads as a cactus at this size.
+    [BLK_CACTUS] = {.name     = "cactus", .drop_item = BLK_CACTUS, .drop_min = 1, .drop_max = 1,
+                    .kind     = K_CUBE,
+                    .mat      = M1(VM_CACTUS),
+                    .hardness = 12,
+                    .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_SOFT},
+
+    [BLK_SNOW] = {.name     = "snow", .drop_item = BLK_SNOW, .drop_min = 1, .drop_max = 1,
+                  .kind     = K_CUBE,
+                  .mat      = M1(VM_SNOW),
+                  .hardness = 10,
+                  .tool     = TOOL_SHOVEL,
+                  .flags    = BF_SOLID | BF_OPAQUE, .sound = SND_SOFT},
+
+    // Under the sand, which is where it is in Minecraft and where it
+    // does the one useful thing it does: tell you how deep the sand is.
+    [BLK_SANDSTONE] = {.name       = "sandstone", .drop_item = BLK_SANDSTONE, .drop_min = 1, .drop_max = 1,
+                       .kind       = K_CUBE,
+                       .mat        = M1(VM_SANDSTONE),
+                       .hardness   = 120,
+                       .tool       = TOOL_PICK,
+                       .tool_level = 1,
+                       .flags      = BF_SOLID | BF_OPAQUE, .sound = SND_STONE},
+
     [BLK_GRAVEL] = {.name     = "gravel", .drop_item = BLK_GRAVEL, .drop_min = 1, .drop_max = 1,
                     .kind     = K_CUBE,
                     .mat      = M1(VM_GRAVEL),

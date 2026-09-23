@@ -265,3 +265,10 @@ hud.needs_tool = Demande %s
 # --- amount ---
 amount.title = Combien de %s ?
 amount.hint = flèches ou chiffres règlent   entrée déplace   échap annule
+
+# --- item ---
+item.birch_log = Bûche de bouleau
+item.birch_leaves = Feuilles de bouleau
+item.cactus = Cactus
+item.snow = Neige
+item.sandstone = Grès

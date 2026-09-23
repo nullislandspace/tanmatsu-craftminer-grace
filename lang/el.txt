@@ -273,3 +273,10 @@ hud.needs_tool = Χρειάζεται %s
 # --- amount ---
 amount.title = Πόσα %s;
 amount.hint = βέλη ή ψηφία ρυθμίζουν   enter μετακινεί   esc ακυρώνει
+
+# --- item ---
+item.birch_log = Κορμός σημύδας
+item.birch_leaves = Φύλλα σημύδας
+item.cactus = Κάκτος
+item.snow = Χιόνι
+item.sandstone = Ψαμμίτης

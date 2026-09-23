@@ -273,3 +273,10 @@ hud.needs_tool = Necesită %s
 # --- amount ---
 amount.title = Câte %s?
 amount.hint = săgețile sau cifrele reglează   enter mută   esc anulează
+
+# --- item ---
+item.birch_log = Buștean de mesteacăn
+item.birch_leaves = Frunze de mesteacăn
+item.cactus = Cactus
+item.snow = Zăpadă
+item.sandstone = Gresie

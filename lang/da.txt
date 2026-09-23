@@ -273,3 +273,10 @@ hud.needs_tool = Kræver %s
 # --- amount ---
 amount.title = Hvor mange %s?
 amount.hint = piletaster eller tal indstiller   enter flytter   esc annullerer
+
+# --- item ---
+item.birch_log = Birkestamme
+item.birch_leaves = Birkeløv
+item.cactus = Kaktus
+item.snow = Sne
+item.sandstone = Sandsten

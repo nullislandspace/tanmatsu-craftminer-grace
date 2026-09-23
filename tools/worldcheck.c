@@ -3054,12 +3054,15 @@ static void check_biomes(void) {
     c.st = st;
 
     long logs[BIOME_COUNT], plants[BIOME_COUNT], sand_top[BIOME_COUNT], grass_top[BIOME_COUNT];
-    long cols[BIOME_COUNT];
+    long cols[BIOME_COUNT], birch[BIOME_COUNT], cacti[BIOME_COUNT], sandstone[BIOME_COUNT];
     memset(logs, 0, sizeof(logs));
     memset(plants, 0, sizeof(plants));
     memset(sand_top, 0, sizeof(sand_top));
     memset(grass_top, 0, sizeof(grass_top));
     memset(cols, 0, sizeof(cols));
+    memset(birch, 0, sizeof(birch));
+    memset(cacti, 0, sizeof(cacti));
+    memset(sandstone, 0, sizeof(sandstone));
 
     // A long east-west strip, which crosses several biomes.
     for (int32_t cx = -40; cx <= 40; cx++) {
@@ -3080,7 +3083,13 @@ static void check_biomes(void) {
                 if (top == BLK_GRASS) grass_top[b]++;
                 if (above == BLK_TALL_GRASS || above == BLK_FLOWER_RED || above == BLK_FLOWER_YELLOW) plants[b]++;
                 for (int y = h; y < CH_H && y < h + 8; y++) {
-                    if (id[CH_IDX(lx, y, lz)] == BLK_LOG) logs[b]++;
+                    uint8_t const t = id[CH_IDX(lx, y, lz)];
+                    if (t == BLK_LOG) logs[b]++;
+                    if (t == BLK_BIRCH_LOG) birch[b]++;
+                    if (t == BLK_CACTUS) cacti[b]++;
+                }
+                for (int y = 1; y < h; y++) {
+                    if (id[CH_IDX(lx, y, lz)] == BLK_SANDSTONE) sandstone[b]++;
                 }
             }
         }
@@ -3088,10 +3097,12 @@ static void check_biomes(void) {
 
     for (int b = 0; b < BIOME_COUNT; b++) {
         if (cols[b] == 0) continue;
-        printf("  %-12s %4.1f%% sand top, %4.1f%% grass top, %4.1f%% plants, %.3f logs a column\n",
+        printf("  %-12s %4.1f%% sand, %4.1f%% grass, %4.1f%% plants, %.3f oak, %.3f birch, %.2f cactus, "
+               "%.2f sandstone a column\n",
                BIOMES[b].name, 100.0 * (double)sand_top[b] / (double)cols[b],
                100.0 * (double)grass_top[b] / (double)cols[b], 100.0 * (double)plants[b] / (double)cols[b],
-               (double)logs[b] / (double)cols[b]);
+               (double)logs[b] / (double)cols[b], (double)birch[b] / (double)cols[b],
+               (double)cacti[b] / (double)cols[b], (double)sandstone[b] / (double)cols[b]);
     }
 
     CHECK(cols[BIOME_SAND] > 0 && sand_top[BIOME_SAND] > cols[BIOME_SAND] * 9 / 10,
@@ -3103,6 +3114,18 @@ static void check_biomes(void) {
     CHECK(cols[BIOME_PLAINS] > 0 && grass_top[BIOME_PLAINS] > cols[BIOME_PLAINS] * 9 / 10,
           "the plains are not mostly grass");
     CHECK(cols[BIOME_FOREST] > 0, "the strip crossed no forest at all");
+
+    // EACH NEW BLOCK WHERE IT BELONGS, AND NOWHERE ELSE. Five permanent
+    // ids went in for these (D-74), and a block that never generates is
+    // an id spent for nothing.
+    CHECK(birch[BIOME_BIRCH] > 0, "no birch grew in the birch wood");
+    CHECK(birch[BIOME_FOREST] == 0, "%ld birch logs grew in the oak forest", birch[BIOME_FOREST]);
+    CHECK(birch[BIOME_PLAINS] == 0, "%ld birch logs grew on the plains", birch[BIOME_PLAINS]);
+    CHECK(logs[BIOME_BIRCH] == 0, "%ld oaks grew in the birch wood", logs[BIOME_BIRCH]);
+    CHECK(cacti[BIOME_SAND] > 0, "no cactus grew in the sand flats");
+    CHECK(cacti[BIOME_PLAINS] == 0 && cacti[BIOME_FOREST] == 0, "a cactus grew somewhere green");
+    CHECK(sandstone[BIOME_SAND] > 0, "there is no sandstone under the sand");
+    CHECK(sandstone[BIOME_PLAINS] == 0, "there is sandstone under the plains");
 
     // --- The ground is CONTINUOUS ------------------------------------
     //
@@ -3146,6 +3169,55 @@ static void check_biomes(void) {
     // which is twenty or more.
     CHECK(worst_cross <= 6, "a %d-block step at a biome border (near x=%d) -- the height is not blended",
           worst_cross, worst_x);
+
+    // SNOW ON ABOUT A FIFTH OF THE TALL GROUND -- the user's number, so
+    // it is checked as a number and not as "some".
+    // SEVERAL ROWS, not one. The first version of this walked a single
+    // strip at z = 0, found no ground above the snow line in it, and
+    // skipped the whole check in silence -- which is the worst thing a
+    // check can do, because it reads exactly like passing.
+    long tall = 0, snowy = 0;
+    for (int32_t cz = -6; cz <= 6; cz += 3) {
+        for (int32_t cx = -40; cx <= 40; cx++) {
+            c.cx = cx;
+            c.cz = cz;
+            worldgen_chunk(&c, seed, FARLANDS_NONE);
+            for (int lz = 0; lz < CH_D; lz++) {
+                for (int lx = 0; lx < CH_W; lx++) {
+                    int32_t const wx = cx * CH_W + lx, wz = cz * CH_D + lz;
+                    if (worldgen_biome(wx, wz, seed) != BIOME_MOUNTAIN) continue;
+                    int const hh = worldgen_height(wx, wz, seed);
+                    if (hh < (int)BIOMES[BIOME_MOUNTAIN].snow_above || hh + 1 >= CH_H) continue;
+                    tall++;
+                    if (id[CH_IDX(lx, hh, lz)] == BLK_SNOW) snowy++;
+                }
+            }
+        }
+    }
+    // What the generated chunks prove: snow EXISTS, and only where it
+    // is allowed. A handful of peaks is enough for that.
+    CHECK(tall > 200, "only %ld columns above the snow line -- the check saw almost nothing", tall);
+    CHECK(snowy > 0, "no snow anywhere on %ld columns of high ground", tall);
+
+    // What the SHARE needs, which those chunks cannot give: the snow
+    // field is slower than a mountain is wide, so a strip of terrain
+    // samples two or three summits and reports 0% or 100%. Measured
+    // over a wide area instead, on the generator's own predicate --
+    // cheap, because it asks no chunk to be built.
+    long wide = 0, wide_snow = 0;
+    for (int32_t z = -6000; z <= 6000; z += 23) {
+        for (int32_t x = -6000; x <= 6000; x += 23) {
+            if (worldgen_biome(x, z, seed) != BIOME_MOUNTAIN) continue;
+            if (worldgen_height(x, z, seed) < (int)BIOMES[BIOME_MOUNTAIN].snow_above) continue;
+            wide++;
+            if (worldgen_snow(x, z, seed)) wide_snow++;
+        }
+    }
+    double const pct = wide > 0 ? 100.0 * (double)wide_snow / (double)wide : 0.0;
+    printf("  snow on %.1f%% of ground above y=%u, over %ld summits' worth\n", pct,
+           BIOMES[BIOME_MOUNTAIN].snow_above, wide);
+    CHECK(wide > 2000, "only %ld samples of high ground -- not enough to call a share", wide);
+    CHECK(pct > 10.0 && pct < 35.0, "snow covers %.1f%% of the tall ground, and the user asked for 20", pct);
 
     // Mountains are actually higher, and bare on top.
     long high = 0, rock = 0, mcols = 0;

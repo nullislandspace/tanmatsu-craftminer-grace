@@ -55,6 +55,13 @@ static struct {
     [VM_TRASH_TOP]     = {"trash_top.png", 0xFF3E3C3Au},
     [VM_TRASH_SIDE]    = {"trash_side.png", 0xFF605C5Au},
     [VM_BENCH_TOP]     = {"bench_top.png", 0xFF967446u},
+    [VM_BIRCH_SIDE]    = {"birch_side.png", 0xFFD2D0C4u},
+    [VM_BIRCH_TOP]     = {"birch_top.png", 0xFFC0B69Au},
+    [VM_BIRCH_LEAVES]  = {"birch_leaves.png", 0xFF6C983Eu},
+    [VM_BIRCH_LEAVES_FAST] = {"birch_leaves_fast.png", 0xFF5C8436u},
+    [VM_CACTUS]        = {"cactus.png", 0xFF4A803Cu},
+    [VM_SNOW]          = {"snow.png", 0xFFECF0F8u},
+    [VM_SANDSTONE]     = {"sandstone.png", 0xFFD6C694u},
 };
 
 char const* chunk_render_mat_file(int mat) {
@@ -130,7 +137,10 @@ void chunk_render_block_mats(uint8_t block, mesh_mat_t out[3]) {
         int const m = voxel_face_mat(block, FACE[i]);
         // Leaves in the hand take the opaque texture: a cube of cut-out
         // leaves at arm's length is mostly holes.
-        out[i] = s_tex_mats[m >= 0 && m != VM_LEAVES ? m : VM_LEAVES_FAST];
+        int mm = m;
+        if (mm == VM_LEAVES) mm = VM_LEAVES_FAST;
+        if (mm == VM_BIRCH_LEAVES) mm = VM_BIRCH_LEAVES_FAST;
+        out[i] = s_tex_mats[mm >= 0 ? mm : VM_LEAVES_FAST];
     }
 }
 

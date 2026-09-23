@@ -45,6 +45,8 @@
 #define S_SIGN   0x8888u
 #define S_TEMP   0xAAAAu
 #define S_HUMID  0xBBBBu
+#define S_VARIANT 0xCCCCu  // which KIND of forest
+#define S_SNOW   0xDDDDu  // where the caps sit on the high ground
 
 // Sea level is CH_SEA_LEVEL (24) of 64, so there is room for caves
 // beneath and for building above. The three height numbers that used to
@@ -67,7 +69,9 @@ biome_def_t const BIOMES[BIOME_COUNT] = {
                       .surface = BLK_GRASS, .filler = BLK_DIRT,
                       .soil_min = 3, .soil_max = 5,
                       .tree_chance = 0.28f, .plant_chance = 0.09f, .flowers = 0.55f,
-                      .h_base = 14.0f, .h_cont = 20.0f, .h_hill = 12.0f, .rock_above = 255},
+                      .h_base = 14.0f, .h_cont = 20.0f, .h_hill = 12.0f,
+                      .log_block = BLK_LOG, .leaf_block = BLK_LEAVES,
+                      .rock_above = 255, .snow_above = 255},
 
     // Trees close enough to walk between in shade, and more undergrowth
     // than flowers.
@@ -75,7 +79,9 @@ biome_def_t const BIOMES[BIOME_COUNT] = {
                       .surface = BLK_GRASS, .filler = BLK_DIRT,
                       .soil_min = 3, .soil_max = 6,
                       .tree_chance = 0.66f, .plant_chance = 0.16f, .flowers = 0.25f,
-                      .h_base = 14.0f, .h_cont = 20.0f, .h_hill = 15.0f, .rock_above = 255},
+                      .h_base = 14.0f, .h_cont = 20.0f, .h_hill = 15.0f,
+                      .log_block = BLK_LOG, .leaf_block = BLK_LEAVES,
+                      .rock_above = 255, .snow_above = 255},
 
     // Sand over sand, and nothing growing. No cactus: that would be a
     // new block, and a new block id is forever.
@@ -85,7 +91,10 @@ biome_def_t const BIOMES[BIOME_COUNT] = {
                     .tree_chance = 0.0f, .plant_chance = 0.0f, .flowers = 0.0f,
                     // FLAT, and that is most of what makes it read as a
                     // desert rather than as pale grassland.
-                    .h_base = 13.0f, .h_cont = 17.0f, .h_hill = 4.0f, .rock_above = 255},
+                    .h_base = 13.0f, .h_cont = 17.0f, .h_hill = 4.0f,
+                    .subsoil = BLK_SANDSTONE, .subsoil_depth = 5,
+                    .column_plant = BLK_CACTUS, .column_chance = 0.010f, .column_min = 1, .column_max = 3,
+                    .rock_above = 255, .snow_above = 255},
 
     // High, steep, and bare above the treeline. No snow and no new
     // stone: the rock is the stone already under everything, shown
@@ -94,7 +103,20 @@ biome_def_t const BIOMES[BIOME_COUNT] = {
                         .surface = BLK_GRASS, .filler = BLK_DIRT,
                         .soil_min = 1, .soil_max = 3,
                         .tree_chance = 0.16f, .plant_chance = 0.05f, .flowers = 0.35f,
-                        .h_base = 17.0f, .h_cont = 25.0f, .h_hill = 27.0f, .rock_above = 40},
+                        .h_base = 17.0f, .h_cont = 25.0f, .h_hill = 27.0f,
+                        .log_block = BLK_LOG, .leaf_block = BLK_LEAVES,
+                        .rock_above = 40, .snow_above = 41},
+
+    // RARE, and the whole point of it is that it is rare: a stand of
+    // white trunks you come across now and then is somewhere; one you
+    // can always see is wallpaper.
+    [BIOME_BIRCH] = {.name  = "birch wood",
+                     .surface = BLK_GRASS, .filler = BLK_DIRT,
+                     .soil_min = 3, .soil_max = 6,
+                     .tree_chance = 0.70f, .plant_chance = 0.12f, .flowers = 0.45f,
+                     .h_base = 14.0f, .h_cont = 20.0f, .h_hill = 13.0f,
+                     .log_block = BLK_BIRCH_LOG, .leaf_block = BLK_BIRCH_LEAVES,
+                     .rock_above = 255, .snow_above = 255},
 };
 
 // A smooth 0..1 crossing of `edge`, over a band either side of it.
@@ -124,6 +146,12 @@ void worldgen_biome_weights(int32_t x, int32_t z, uint32_t seed, float w[BIOME_C
     float const dry  = step_down(humid, 0.42f);
     float const wet  = step_up(humid, 0.56f);
 
+    // A third field, slower still, splitting the wet ground into two
+    // kinds of wood. It is its own field rather than a corner of the
+    // temperature/humidity square because a birch wood is not a
+    // climate -- it is which trees happened to win here.
+    float const birchy = step_up(cm_fbm2((float)x, (float)z, 260.0f, 2, seed ^ S_VARIANT), 0.66f);
+
     // In order of precedence, each one taking what the ones before it
     // left: cold ground is mountains whatever else it is, hot AND dry
     // ground is sand, wet ground is forest, and the rest is plains.
@@ -134,9 +162,19 @@ void worldgen_biome_weights(int32_t x, int32_t z, uint32_t seed, float w[BIOME_C
     // and hard to ever find. worldcheck prints the share of each.
     w[BIOME_MOUNTAIN] = cold;
     w[BIOME_SAND]     = (1.0f - cold) * hot * dry;
-    w[BIOME_FOREST]   = (1.0f - cold) * (1.0f - hot * dry) * wet;
-    float rest        = 1.0f - w[BIOME_MOUNTAIN] - w[BIOME_SAND] - w[BIOME_FOREST];
+    float const wood  = (1.0f - cold) * (1.0f - hot * dry) * wet;
+    w[BIOME_BIRCH]    = wood * birchy;
+    w[BIOME_FOREST]   = wood * (1.0f - birchy);
+    float rest = 1.0f - w[BIOME_MOUNTAIN] - w[BIOME_SAND] - w[BIOME_FOREST] - w[BIOME_BIRCH];
     w[BIOME_PLAINS]   = rest < 0.0f ? 0.0f : rest;
+}
+
+bool worldgen_snow(int32_t x, int32_t z, uint32_t seed) {
+    // 0.67 is where this field puts snow on a fifth of the high
+    // ground, which is the number that was asked for. Swept, like the
+    // cave mouths and the cold edge: 0.74 gives 9%, 0.70 gives 15%,
+    // 0.66 gives 22%. worldcheck prints the share every run.
+    return cm_fbm2((float)x, (float)z, 300.0f, 2, seed ^ S_SNOW) > 0.67f;
 }
 
 uint8_t worldgen_biome(int32_t x, int32_t z, uint32_t seed) {
@@ -309,6 +347,12 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
     // ... and high ground is bare rock, which is what a mountain looks
     // like without inventing a block to say so.
     bool const rock = !beach && sy >= (int)bd->rock_above;
+
+    // SNOW ON ABOUT A FIFTH OF THE TALL GROUND (the user's number),
+    // from a field slower than a mountain is wide -- so a summit is
+    // snowy or it is bare, rather than the cap being speckled.
+    bool const snow = !beach && sy >= (int)bd->snow_above &&
+                      cm_fbm2((float)wx, (float)wz, 300.0f, 2, seed ^ S_SNOW) > 0.67f;
     // Asked once per column, not once per cell: it does not vary
     // with height and it is two octaves of noise.
     bool const mouth = !beach && cave_mouth(wx, wz, seed);
@@ -317,12 +361,17 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
         uint8_t b = BLK_AIR;
         if (y == CH_BEDROCK) {
             b = BLK_STONE;  // the floor of the world; unbreakable stone stands in for bedrock
-        } else if (y < sy - soil) {
+        } else if (y < sy - soil - (int)bd->subsoil_depth) {
             b = BLK_STONE;
+        } else if (y < sy - soil) {
+            // Between the soil and the stone: sandstone under a desert,
+            // and nothing at all anywhere else (subsoil_depth 0, so
+            // this band is empty and the branch never fires).
+            b = bd->subsoil != BLK_AIR ? bd->subsoil : BLK_STONE;
         } else if (y < sy) {
             b = beach ? BLK_SAND : rock ? BLK_STONE : bd->filler;
         } else if (y == sy) {
-            b = beach ? BLK_SAND : rock ? BLK_STONE : bd->surface;
+            b = snow ? BLK_SNOW : beach ? BLK_SAND : rock ? BLK_STONE : bd->surface;
         } else if (y <= CH_SEA_LEVEL) {
             b = BLK_WATER;
         }
@@ -390,13 +439,15 @@ static void place_tree(chunk_t* c, int32_t wx, int32_t wz, uint32_t seed) {
     // The chance belongs to the biome the tree would stand in, not to
     // the chunk being filled: a forest that thinned out at its border
     // because the neighbouring chunk asked would not be a forest.
-    if (cm_rand2(wx, wz, seed ^ S_TREE) > BIOMES[worldgen_biome(wx, wz, seed)].tree_chance) return;
+    biome_def_t const* bd = &BIOMES[worldgen_biome(wx, wz, seed)];
+    if (cm_rand2(wx, wz, seed ^ S_TREE) > bd->tree_chance) return;
+    if (bd->log_block == BLK_AIR) return;
 
     // A tree needs grass to stand on, and the ground under it must be
     // the generated surface -- not the inside of a hill.
     int const sy = worldgen_height(wx, wz, seed);
     if (sy <= CH_SEA_LEVEL + 1) return;  // no trees on the beach or in the water
-    if (sy >= (int)BIOMES[worldgen_biome(wx, wz, seed)].rock_above) return;  // nor above the treeline
+    if (sy >= (int)bd->rock_above) return;  // nor above the treeline
 
     int const h = TREE_MIN_H + (int)(cm_rand2(wx + 1, wz - 1, seed ^ S_TREE) * (TREE_MAX_H - TREE_MIN_H + 1));
     int const top = sy + h;
@@ -412,14 +463,32 @@ static void place_tree(chunk_t* c, int32_t wx, int32_t wz, uint32_t seed) {
                 // is round rather than a slab.
                 if (r == 2 && dx * dx + dz * dz > 5) continue;
                 if (r == 2 && dx * dx + dz * dz == 5 && cm_rand3(wx + dx, y, wz + dz, seed ^ S_TREE) < 0.45f) continue;
-                stamp(c, wx + dx, y, wz + dz, BLK_LEAVES, false);
+                stamp(c, wx + dx, y, wz + dz, bd->leaf_block, false);
             }
         }
     }
-    for (int y = sy; y < top; y++) stamp(c, wx, y, wz, BLK_LOG, true);
+    for (int y = sy; y < top; y++) stamp(c, wx, y, wz, bd->log_block, true);
     // Dirt under the trunk: a tree on a single grass block looks wrong
     // once the grass is gone.
     stamp(c, wx, sy - 1, wz, BLK_DIRT, true);
+}
+
+// A plant that stands more than one block: the cactus, so far. Placed
+// from the biome row, so a second one is a row and not a function.
+static void place_column_plant(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint32_t seed,
+                               biome_def_t const* bd, int sy) {
+    if (bd->column_plant == BLK_AIR || bd->column_chance <= 0.0f) return;
+    if (cm_rand2(wx, wz, seed ^ (S_PLANT + 0x51u)) > bd->column_chance) return;
+
+    uint8_t* col = &c->id[CH_IDX(lx, 0, lz)];
+    // It stands ON the surface, so the surface has to be there and the
+    // air above it has to be air.
+    if (sy + 1 >= CH_H || col[sy] != bd->surface || col[sy + 1] != BLK_AIR) return;
+
+    int const span = (int)bd->column_max - (int)bd->column_min + 1;
+    int       h    = (int)bd->column_min + (int)(cm_rand2(wx + 7, wz - 3, seed ^ S_PLANT) * (float)span);
+    if (sy + h >= CH_H - 1) h = CH_H - 2 - sy;
+    for (int i = 1; i <= h; i++) col[sy + i] = bd->column_plant;
 }
 
 static void decorate_plants(chunk_t* c, uint32_t seed) {
@@ -428,17 +497,23 @@ static void decorate_plants(chunk_t* c, uint32_t seed) {
             int32_t const wx = c->cx * CH_W + lx, wz = c->cz * CH_D + lz;
             uint8_t*      col = &c->id[CH_IDX(lx, 0, lz)];
 
+            biome_def_t const* bd = &BIOMES[worldgen_biome(wx, wz, seed)];
+
+            // THE BIOME'S OWN SURFACE BLOCK, not grass: a desert has no
+            // grass to find, and looking for it is why the cactus pass
+            // below would never have fired.
             int sy = -1;
             for (int y = CH_H - 2; y > 0; y--) {
-                if (col[y] == BLK_GRASS) {
+                if (col[y] == bd->surface) {
                     sy = y;
                     break;
                 }
             }
             if (sy < 0 || col[sy + 1] != BLK_AIR) continue;
 
-            biome_def_t const* bd = &BIOMES[worldgen_biome(wx, wz, seed)];
+            place_column_plant(c, lx, lz, wx, wz, seed, bd, sy);
             if (bd->plant_chance <= 0.0f) continue;
+            if (col[sy + 1] != BLK_AIR) continue;  // a cactus went there
 
             float const r = cm_rand2(wx, wz, seed ^ S_PLANT);
             float const t = 1.0f - bd->plant_chance;
@@ -475,7 +550,7 @@ static void place_edge_sign(chunk_t* c, uint32_t seed, int32_t edge_x) {
     int       y   = CH_H - 2;
     while (y > 0 && !block_solid(col[y])) y--;
     // On dry ground, with room above: not in the sea, not under a tree.
-    if (y <= CH_SEA_LEVEL || col[y] == BLK_LEAVES || col[y] == BLK_LOG) return;
+    if (y <= CH_SEA_LEVEL || block_fellable(col[y])) return;  // not in the sea, not under a tree
     if (col[y + 1] != BLK_AIR && !block_replaceable(col[y + 1])) return;
     col[y + 1] = BLK_SIGN;
 }

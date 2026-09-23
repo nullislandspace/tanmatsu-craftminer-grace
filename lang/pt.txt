@@ -273,3 +273,10 @@ hud.needs_tool = Precisa de %s
 # --- amount ---
 amount.title = Quantos %s?
 amount.hint = setas ou dígitos ajustam   enter move   esc cancela
+
+# --- item ---
+item.birch_log = Tronco de bétula
+item.birch_leaves = Folhas de bétula
+item.cactus = Cato
+item.snow = Neve
+item.sandstone = Arenito

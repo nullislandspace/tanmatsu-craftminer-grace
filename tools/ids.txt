@@ -44,6 +44,11 @@ block 22 iron_ore
 block 23 chest
 block 24 trash_chest
 block 25 disassembly_bench
+block 26 birch_log
+block 27 birch_leaves
+block 28 cactus
+block 29 snow
+block 30 sandstone
 item coal
 item stick
 item pickaxe_wood

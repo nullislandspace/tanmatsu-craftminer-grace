@@ -76,6 +76,7 @@ typedef enum {
     BIOME_FOREST,
     BIOME_SAND,
     BIOME_MOUNTAIN,
+    BIOME_BIRCH,
     BIOME_COUNT
 } biome_t;
 
@@ -95,10 +96,30 @@ typedef struct {
     float       h_cont;       // how far the broad field lifts it
     float       h_hill;       // how far the fine field roughens it
 
+    // Which tree grows here. Two species so far, and adding a third is
+    // this pair plus its blocks -- nothing in place_tree changes.
+    uint8_t     log_block;
+    uint8_t     leaf_block;
+
+    // What lies under the soil before the stone starts, and how deep:
+    // sandstone under a desert. BLK_AIR for "straight to stone".
+    uint8_t     subsoil;
+    uint8_t     subsoil_depth;
+
+    // A plant that stands more than one block tall -- the cactus, so
+    // far. BLK_AIR for none.
+    uint8_t     column_plant;
+    float       column_chance;
+    uint8_t     column_min, column_max;
+
     // Bare rock at or above this height, whatever the surface block
     // would have been. What makes a mountain read as a mountain without
     // a single new block id. 255 for a biome that never shows rock.
     uint8_t     rock_above;
+
+    // ... and snow above THIS height, where the snow field allows it.
+    // 255 for a biome that never sees any.
+    uint8_t     snow_above;
 } biome_def_t;
 
 extern biome_def_t const BIOMES[BIOME_COUNT];
@@ -112,3 +133,9 @@ uint8_t worldgen_biome(int32_t x, int32_t z, uint32_t seed);
 // above is simply the largest of these, so the block on the ground and
 // the shape of the ground can never disagree about where a place is.
 void worldgen_biome_weights(int32_t x, int32_t z, uint32_t seed, float w[BIOME_COUNT]);
+
+// Does snow lie at (x, z), if the ground there is high enough? A field
+// SLOWER THAN A MOUNTAIN IS WIDE, so a whole summit is snowy or bare
+// rather than the cap being speckled -- which means the share has to be
+// measured over many peaks, not along one ridge.
+bool worldgen_snow(int32_t x, int32_t z, uint32_t seed);
