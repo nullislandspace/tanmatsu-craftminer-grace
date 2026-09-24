@@ -225,6 +225,10 @@ static bool  s_force_left;
 // Test-only overrides for the replay scenes (see content_select).
 static int  s_force_view = -1;
 static bool s_force_noclouds, s_force_nolight;
+// ... and for comparing the engine's renderers on the same walk:
+// `_banded` draws with SE_RENDER_BANDED, `_fullres` at full resolution
+// whatever the half-resolution setting says.
+static bool s_force_banded, s_force_fullres;
 
 static int view_setting(void) {
     return s_force_view >= 0 ? s_force_view : settings_view();
@@ -432,7 +436,8 @@ static bool content_select(char const* name) {
     // scratch world: the reproducible walk the perf and shots tests want.
     // Options follow as _words, for measuring one feature against another
     // on the same walk: third, left, near / medium / far, nolight,
-    // noclouds. They last for this run only; settings.txt is untouched.
+    // noclouds, banded, fullres. They last for this run only; settings.txt
+    // is untouched.
     if (strcmp(name, "replay") == 0 || strncmp(name, "replay_", 7) == 0) {
         static char scene[48];
         snprintf(scene, sizeof(scene), "%s", name);
@@ -444,13 +449,15 @@ static bool content_select(char const* name) {
         s_force_noclouds = strstr(name, "_noclouds") != NULL;
         chunkmesh_set_lighting(strstr(name, "_nolight") == NULL);
         s_force_nolight = strstr(name, "_nolight") != NULL;
+        s_force_banded  = strstr(name, "_banded") != NULL;
+        s_force_fullres = strstr(name, "_fullres") != NULL;
         return enter_replay();
     }
     // "flight" -- the scripted debug flight (fly_pose) over a scratch world
     // of the old flyover's seed: the scene the frame rates of 2026-09-21
     // were measured on (F-36, F-39), so today's build can be held against
     // them. Near view unless told otherwise; _nolight / _noclouds as for
-    // the replays.
+    // the replays, and _banded / _fullres.
     // "farlands" -- walk up to the Far Lands wall (fly_pose), same options.
     if (strcmp(name, "flight") == 0 || strncmp(name, "flight_", 7) == 0 || strcmp(name, "farlands") == 0 ||
         strncmp(name, "farlands_", 9) == 0) {
@@ -466,6 +473,8 @@ static bool content_select(char const* name) {
         s_force_view     = strstr(name, "_medium") ? 1 : strstr(name, "_far") ? 2 : 0;
         s_force_noclouds = strstr(name, "_noclouds") != NULL;
         s_force_nolight  = strstr(name, "_nolight") != NULL;
+        s_force_banded   = strstr(name, "_banded") != NULL;
+        s_force_fullres  = strstr(name, "_fullres") != NULL;
         chunkmesh_set_lighting(!s_force_nolight);
         return enter_flight();
     }
@@ -1769,7 +1778,7 @@ static void on_render(pax_buf_t* fb, void* user) {
             .x = rx + d.x * 5000.0f, .y = ry + d.y * 5000.0f, .z = rz + d.z * 5000.0f, .brightness = 0.45f});
     }
 
-    bool const       half   = s_half_ok && settings_half_res();
+    bool const       half   = s_half_ok && settings_half_res() && !s_force_fullres;
     pax_buf_t* const target = half ? &s_half.buf : fb;
     scene_set_render_scale(half ? 2 : 1);
 
@@ -1840,12 +1849,13 @@ static void on_render(pax_buf_t* fb, void* user) {
     prof_end(PROF_SUBMIT);
 
     prof_begin(PROF_PREPARE);
-    scene_prepare(SE_RENDER_ZBUFFER);
+    se_render_mode_t const mode = s_force_banded ? SE_RENDER_BANDED : SE_RENDER_ZBUFFER;
+    scene_prepare(mode);
     prof_end(PROF_PREPARE);
 
     prof_begin(PROF_RASTER);
     int64_t const t0 = esp_timer_get_time();
-    scene_rasterize(SE_RENDER_ZBUFFER);
+    scene_rasterize(mode);
     int64_t const rast_us = esp_timer_get_time() - t0;
     prof_end(PROF_RASTER);
 

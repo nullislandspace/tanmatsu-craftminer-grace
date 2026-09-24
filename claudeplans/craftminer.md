@@ -628,7 +628,9 @@ terrain-hugging one does not.
   `voxel_render.c` already builds for its fog path. 3-4x cheaper fill.
 - **Render scale**: `scene_set_render_scale(2)` default; Full offered, labelled slow.
 - `scene_set_options({.frustum_cull = true, .depth_order = true})` always.
-- **Stay on `SE_RENDER_ZBUFFER`.** Raycast is 2.5-5x slower on voxels.
+- **Stay on `SE_RENDER_ZBUFFER`.** Raycast was 2.5-5x slower on voxels, and
+  has since been removed from the engine (D-88). `SE_RENDER_BANDED` is being
+  measured against it (G6).
 - `SE_SCENE_TRI_CAP` stays 4096; **`SE_SCENE_TEXTURED_TRI_CAP` -> 2048**
   (~70 KiB PSRAM, no per-frame cost). The showreel peaked at 1785 textured with a
   showreel camera; a player facing a forest will pass 1024. `scenecheck` guards it.
@@ -699,6 +701,106 @@ Two engine-side routes exist if the game-side work is not enough, and both are
 Order of work: game side first. It is the larger single win, it carries no
 engine risk, and it makes any later engine measurement cleaner by removing
 geometry that should never have been submitted.
+
+### G6 — page flipping, and the rasteriser band by band (2026-09-24)
+
+The engine-side route G5 left open, taken with the user (D-87, D-88, D-89).
+Three changes, all in SynthEngine3D 2.2, and one of them needs graceloader
+2.6.0.
+
+**(a) The present flips pages instead of copying (D-87, step 36).** The
+engine used to draw into two buffers of its own and copy each finished frame,
+768 KB, into the display driver's buffer on DMA2D, then wait on the panel's
+tearing-effect line. It now draws straight into the driver's own buffers,
+**three** of them, and a present only selects the finished one for the next
+refresh. The refresh signal comes from graceloader 2.6.0's
+`graceloader_display_register_callbacks()`, because the DSI driver only
+accepts IRAM callbacks and our code is in PSRAM. Three, not two: this game
+runs at 11-17 fps, and with two buffers every frame would wait for the
+refresh that frees the other one -- half a 60 Hz refresh on average, ~8 ms,
+about 10% of our frame (F-88). With three, a game slower than the refresh
+never waits. PSRAM is unchanged (three buffers before as well).
+
+**(b) The raycast renderer is gone (D-88, step 37).** It never won (G3), and
+every renderer change had to be made twice.
+
+**(c) `SE_RENDER_BANDED` (D-89, step 38).** The z-buffer renderer's passes,
+run one vertical band of `SE_SCENE_BAND_W` = 32 logical columns at a time. A
+logical column is one raw row of the rotated framebuffer, so a band is one
+contiguous block: it is copied into a colour buffer in internal SRAM (with the
+backdrop), drawn against a plain 16-bit depth buffer there, and copied back.
+The per-pixel work never touches PSRAM; bands with nothing in them are
+skipped. 60 KB of internal SRAM on first use; the band spans (~23 KB with our
+list caps) are in PSRAM. **Same pixels as the z-buffer**, checked on the host
+(F-90). Selected per run with the `_banded` scene suffix; `_fullres` forces
+full resolution for the run, whatever settings.txt says.
+
+What to expect, honestly: at **quarter** resolution this game already has its
+depth test in SRAM (`SE_SCENE_DEPTH16_INTERNAL`, step 25, F-67), which was the
+bigger half of what banding removes. What is left there is the colour writes
+into the 190 KB half-size layer, which misses a 128 KB cache. At **full**
+resolution banding removes both, the stamped 1.5 MB depth plane included. So
+full resolution is where it should show first, and where it is measured
+first.
+
+**The tests it needs, in order:**
+
+1. **Install graceloader 2.6.0** on the badge. Start an app built against the
+   OLD engine (another grace app, or last week's CraftMiner): it must run as
+   it did -- that is 2.6.0's compatibility promise (old apps on a new loader).
+2. **The flip, by eye and under load.** Play: no tearing when turning fast.
+   Save settings and the world while playing (flash writes switch the cache
+   off, and the app's refresh callback is skipped then): the display must not
+   glitch, and the frame may stall only for the write itself.
+3. **Present cost, measured.** `PROF_BLIT` / `PROF_VSYNC` are in every PERF
+   record but have never been fed, so they read 0.0 (F-88). Feed them from
+   `se_present_stats()` (the showreel does) before comparing anything, so the
+   flip's cache write-back is on the record rather than hidden in the loop.
+4. **Same image.** `shots` of `flight` and `flight_banded` at the same `ms=`,
+   and of `flight_fullres` and `flight_fullres_banded`: the framebuffer
+   hashes must be equal pairwise. A difference is a bug in the banded
+   renderer, not a tolerance.
+5. **Speed.** `perf` at `secs=20` on `flight_fullres` against
+   `flight_fullres_banded` first, then `flight` against `flight_banded`, then
+   the replay walk (`replay_near` / `replay_far` and their `_banded`). Compare
+   `rast`, fps, and the tri/ttri pixel and span counts (which must match
+   between the two, being the same image).
+6. **SRAM.** The log line `banded renderer: 32-column bands, 2 x 30KB
+   internal`, and `sram` / `sram_big` in the PERF records, with and without
+   banding. If the band buffers do not fit, the renderer says so once and
+   draws with the z-buffer -- a run that "is no faster" may simply not be
+   banded.
+7. **Band width.** If banding wins, try `SE_SCENE_BAND_W` 16 and 64: narrower
+   sets up spanning triangles more often, wider costs SRAM.
+
+**The decision rule (D-89):** if banded is faster at full resolution and not
+slower at quarter resolution here, and not slower in synthracer and the
+showreel, it becomes the default and the z-buffer rasteriser is removed. If
+it loses, it is removed. Either way one renderer is left. Should banded win,
+`SE_SCENE_DEPTH16_INTERNAL` (188 KB of internal SRAM) is no longer needed
+either, and that SRAM goes to (d).
+
+**(d) Bands on both cores -- designed, not built (step 40).** Only if (c)
+wins. The single-core version was written for it: every raster pass draws
+through one raster target (colour, depth, index offset, clip rectangle, fill
+counters), and a band reads only the lists and spans, which are read-only
+after `scene_prepare()`. What remains:
+
+- the target becomes a parameter of the raster passes instead of one
+  `static`, and the fill counters are summed per worker;
+- a worker task on core 1 that takes bands from a shared counter (one atomic
+  increment per band), with its own target and band buffers (another 60 KB of
+  internal SRAM -- the 188 KB of (c)'s last point pays for it);
+- **its priority goes below the chunk worker**, e.g. `configMAX_PRIORITIES - 7`
+  (Part K has -6): chunk streaming must never wait for pixels, holes at the
+  edge of the world are worse than a lower frame rate. Core 0 draws bands
+  itself and never waits for core 1 beyond the band it is on, so the frame is
+  never slower than single-core;
+- the chunk worker spends much of its time blocked on the SD card, which is
+  exactly when core 1 would help;
+- the risk is the PSRAM bus, which the chunk worker's meshing and SD
+  transfers share with the band copies: measure with a streaming walk
+  (`replay_far`), not only a still view.
 
 ---
 
@@ -1202,6 +1304,11 @@ reason Minecraft chose the other rule.
 | 29 | **Torches on walls** | done | 2026-09-23, asked for by the user. The mesher can now see each cell's block-data field -- a third plane beside cells and lights, carrying `st_data()` already extracted, because `voxel_mesh.c` may not include `chunk.h` -- and the torch reads it: upright in the middle of its cell, or shifted 0.30 to whichever wall was pointed at and lifted 0.20 off the floor. No tilt: a greedy voxel mesher emits axis-aligned boxes, and a rotated stick would be a second kind of geometry for one block. Placing picks the wall from the face that was struck, refuses the underside of a block (nothing here hangs) and refuses a wall that is not solid -- the first placement in this game to say no for a reason other than the cell being full. meshcheck pins where the stick ends up, not merely that something was drawn. **Known gap:** breaking the block a torch leans on leaves it floating; that wants block-update propagation, which leaves-decay and falling sand will want too, so it is worth building once rather than special-casing here. |
 | 30 | **Item icons, a bigger inventory, and the arm** | done | 2026-09-23, asked for by the user: the slots were flat average colours (D-03's placeholder) and three stone tools were three grey squares. A block is now drawn with **its own side texture** -- one table of files, no second copy, and a new block brings its icon with it -- and the eight things that are not blocks got drawn 16x16s with cut-out backgrounds. Tab slots 44 -> 60 px. The first-person arm got a mesh of its own, the sleeve running back past the camera: its flat cut end had been sitting just inside the bottom of the frustum, which is what made it read as a severed arm hanging in the air. |
 | 28 | **Water you can see into, and swim in** (D-86) | done | 2026-09-23, the user: water was an opaque cube, so putting your eyes under it broke the picture, and there was no swimming. Their rule, and it is the whole of it: **do not draw the sides or the bottom of a water block, and draw its top only when the block above is air.** That became `K_LIQUID`. Two things follow that the rule does not say out loud and the picture needs: a liquid must stop HIDING its neighbours, or the lake bed is never meshed and the surface is a lid over nothing; and the surface needs a second, downward-facing copy, emitted by the air cell above it, because an axis-aligned face is visible only from the side its normal points at -- which is exactly why it vanished as the eye went under. `water.png` became a cut-out checkerboard (the engine's one-bit alpha, the leaves' mechanism) so you see through the surface both ways. Swimming is buoyancy in `player.c`: jump rises, sneak dives, and the numbers come from `phys_gravity`'s recurrence rather than from feel. meshcheck pins the rule per material and per direction, and caught a real bug on the way -- the extra slice let a border cell act as an owner and doubled every face at a section seam. **And the blue.** The user's read of it was right and mine was wrong: the renderer already touches the brightness of every pixel, so the tint belongs there. `se_scene_set_tint()` scales the red and green of every triangle by one factor and the blue by another; the sky and the fog go to a dark blue and the sun, moon, clouds and stars are not drawn from under the surface. |
+| 36 | **Page flipping on the display's own buffers** (D-87) | done, device test todo | 2026-09-24, the user's call after looking at another engine's numbers. Engine 2.2: three driver framebuffers, present = select for the next refresh, no copy; the flip also writes back and drops the frame from the cache (F-89). Needs **graceloader 2.6.0** (`graceloader_display_register_callbacks`, IRAM trampolines chaining the BSP's callback, `esp_lcd_dpi_panel_get_frame_buffer` exported). Engine `4ac29d8`, graceloader `89fb785`, template `0c62ac4`, CraftMiner `cee4e24`. G6 tests 1-3 outstanding. |
+| 37 | **The raycast renderer removed from the engine** (D-88) | done | 2026-09-24, the user's call. Engine `929f12d`; synthracer's debug key R went with it (`7e7e139`). Recorded under 2.2 as a deliberate exception to MAJOR. |
+| 38 | **`SE_RENDER_BANDED`: the z-buffer, band by band in internal SRAM** (D-89) | in progress | 2026-09-24: implemented single-core in the engine, `_banded` / `_fullres` scene suffixes here. Host check: identical to the z-buffer in 1000 random scenes, and it catches a deliberately broken copy (F-90). Engine `39ec8b4`. G6 tests 4-7 outstanding. |
+| 39 | **Measure, and keep one renderer** | todo | G6's tests and decision rule. Also: move the host equivalence check out of the scratchpad into the repo (a `renderercheck` beside `meshcheck`), so `make check` guards it. |
+| 40 | **Bands on both cores** | todo (only if 38 wins) | G6 (d). |
 
 ---
 
@@ -2326,6 +2433,45 @@ reason Minecraft chose the other rule.
   compiler cannot see wants a check that can. "Every character is drawable"
   and "every label fits" look like the same question and are not.
 
+- **F-88** 2026-09-24, pricing the page flip: **the present has never been
+  on the record.** Every PERF record since block 2 shows `blit` and `vsync`
+  at 0.0, and not because they were free: `PROF_BLIT` / `PROF_VSYNC` exist in
+  `testkit/profile.h` and nothing in this game feeds them. What the old
+  present did cost can be read off the engine instead: the copy ran on
+  DMA2D (little CPU), and the tearing-effect wait returned at once whenever
+  a frame had taken longer than a refresh, because a binary semaphore given
+  mid-frame is still there. At 11-17 fps that was every frame.
+
+  The panel refreshes at 30 MHz / (590 x 848) = **59.96 Hz**, from the ST7701
+  timing in the DSI abstraction. That number decided three buffers over two
+  (D-87): a double-buffered flip must wait for the refresh that frees the
+  other buffer, half a refresh on average, ~8 ms of a 60-90 ms frame.
+
+- **F-89** 2026-09-24, while building the banded renderer: **the engine's
+  cache argument for the framebuffer was luck, and banding would have broken
+  it.** `docs/ppa.md` held that a framebuffer needs no invalidate because
+  each frame's working set (768 KB of framebuffer plus the depth plane) far
+  exceeds the 128 KB L2, so a buffer's old lines are gone before it is drawn
+  into again. With depth in internal SRAM and empty bands skipped, that is no
+  longer certain: a line still cached from two frames ago, hit by a partial
+  CPU write (a HUD glyph) after the PPA has DMA'd the new sky under it,
+  would write the old pixels back over the new sky. The flip now writes the
+  frame back AND drops it from the cache, and a band writes back and drops
+  its own lines before it reads the backdrop in.
+
+- **F-90** 2026-09-24: **the banded renderer draws the z-buffer's pixels,
+  and the check that says so can fail.** `se_scene.c` compiled on the host
+  against six small stub headers (ESP-IDF heap, log, timer, cache, memory
+  utils, and four PAX symbols), then 1000 random scenes drawn both ways:
+  dense (400-1500 primitives, some of them huge and crossing the near plane)
+  and sparse (5-60 small ones, so most bands are skipped), full and quarter
+  resolution, with and without `SE_SCENE_DEPTH16_INTERNAL`, with viewports,
+  cull and depth order, a light, a tint, cut-out textures and both byte
+  orders. **No pixel differed.** The same test against a copy whose band
+  spans were made one band too narrow failed 25 runs of 40, so it does see
+  a mistake of that kind. The harness is in the session scratchpad, not the
+  repo (step 39).
+
 ### Decisions (D-n), each with date and who decided
 
 - **D-81** 2026-09-23, **the user**: **the UI is translated, English by
@@ -2957,6 +3103,47 @@ reason Minecraft chose the other rule.
   still unreleased and still being worked on, so 2.2 collects the whole
   round (D-39's rule, restated).
 
+- **D-87** 2026-09-24, **the user**: **flip pages on the display's own
+  buffers, and put the callback it needs in graceloader.** The starting
+  point was another engine's numbers (Jet, 70k tris/s on an ESP32-S3) and
+  the question whether any of it applied here; the per-frame 768 KB copy
+  was the first thing it did.
+
+  The display driver only accepts IRAM callbacks while graceloader is built
+  with `CONFIG_LCD_DSI_ISR_CACHE_SAFE`. The user first asked to switch that
+  off; it stays on, because it also keeps IRAM-safe the DMA interrupt that
+  restarts the panel refresh every frame, and a flash erase would stall the
+  display without it. So, the user's call: **"implement a callback inside
+  graceloader itself. Then have that call back to the app if an app
+  callback is registered."** Graceloader 2.6.0 wraps the driver's
+  registration (`-Wl,--wrap`, as its volume limit does), keeps the BSP's
+  callback, and calls the app's after it -- skipped while the cache is off,
+  which costs a waiter at most one refresh because the app cannot run then
+  either. Old apps on 2.6.0 get exactly the driver setup they had.
+
+  The user asked "why 3 display buffers? I thought we could do it with
+  TWO?" -- two are enough to be correct, and Claude first agreed. Three was
+  chosen when F-88's frame times showed what two would cost. Also the user's
+  standing rule from this round: **a newer app is never run on an older
+  graceloader**, so the engine calls the new symbols directly with no
+  fallback; only old apps on a new loader must keep working.
+
+- **D-88** 2026-09-24, **the user**: **remove the raycast renderer.** "so it
+  won't hold us back and we reduce complexity". Removing a public symbol is
+  MAJOR by the engine's own rules; the user's call was to keep 2.2 and
+  record it as a deliberate exception, and to leave synthracer on its old
+  engine but drop its debug key R, the only thing that selected it.
+
+- **D-89** 2026-09-24, **the user**: **banded rendering as a selectable
+  mode, single-core, built so a second core can join later.** Claude's
+  recommendation, accepted: a second built-in beside the z-buffer so both
+  draw the same geometry and can be compared on the device, with an exit
+  rule decided before measuring -- whichever loses is removed, so the engine
+  does not end up carrying two renderers the way it carried the raycaster.
+  Measured at full resolution first, where it should matter most (G6); the
+  second core only if the single-core numbers justify it, and then below the
+  chunk worker's priority.
+
 ## Verification
 
 - **Host:** `make check` = `worldcheck` + `scenecheck` + `meshcheck` +
@@ -2964,6 +3151,8 @@ reason Minecraft chose the other rule.
 - **Device:** `make cycle TEST="perf scene=flyover secs=20"` for the frame rate
   and phase split; `make testrefs` / `make testcompare` with
   `TEST="shots scene=replay_walk ms=..."` for framebuffer-hash regressions.
+  Renderer comparisons: the same scene with and without `_banded` (and
+  `_fullres`), whose shot hashes must be equal (G6).
 - **Build hygiene:** `make build` clean with no new warnings, `make verify`
   (every undefined symbol exists in fakelib), `make format`.
 - **By hand:** the user plays step 5 and gives feedback before step 8 starts.
@@ -3049,6 +3238,12 @@ untouched chunks keep their old ids) must be fixed before any block id moves.
     `audio_mixer_keep_awake()`, which holds the amplifier up through the
     quiet so a short one-shot is not eaten by its turn-on (D-85, F-75).
     The engine is **2.2** from here.
+  * `src/se_run.c`, `include/se_run.h`: the present flips between the
+    display driver's three buffers, on graceloader 2.6.0's refresh
+    callback, and drops the frame from the cache (D-87, F-89).
+  * `src/se_scene.c`, `include/se_scene.h`: the raycast renderer removed
+    (D-88); `SE_RENDER_BANDED` and the raster target it draws through
+    (D-89); `include/se_config.h`: `SE_SCENE_BAND_W`.
   * `CMakeLists.txt`: built `-O2`, not `-Os` (F-39).
   * `src/se_scene.c`: `ceil_i` / `floor_i` instead of the libm calls in the
     column scans, and per-pass pixel and span counters.
