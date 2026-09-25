@@ -1,9 +1,9 @@
-# CraftMiner -- Latviešu
+# SynthMiner -- Latviešu
 #
 # Šo tulkojumu veidoja mākslīgais intelekts, un tas gaida kādu, kurš valodu
 # tiešām prot. Ja zini labāk: izlabo rindu un palaid
 # `python3 tools/make_lang.py`. Var arī bez rīkiem -- fails
-# /sd/craftminer/lang/lv.txt kartē ar tām pašām rindām ir pārāks par
+# /sd/synthminer/lang/lv.txt kartē ar tām pašām rindām ir pārāks par
 # iebūvēto (i18n.h).
 #
 # Atslēgas ir failā lang/en.txt. Tur esošajiem %-aizstājējiem jāparādās arī
@@ -104,7 +104,7 @@ common.back = Atpakaļ
 hint.list = augšup / lejup izvēlas, Enter apstiprina, Esc atpakaļ
 hint.adjust = augšup / lejup izvēlas, pa kreisi / pa labi maina, Esc atpakaļ
 
-status.newer = Veidots ar jaunāku CraftMiner: atjaunini, lai spēlētu
+status.newer = Veidots ar jaunāku SynthMiner: atjaunini, lai spēlētu
 status.older = Vecāks saglabāšanas formāts: šī versija to vēl neprot atjaunināt
 status.needs_name = Pasaulei vajadzīgs nosaukums
 status.renamed = Pārdēvēts

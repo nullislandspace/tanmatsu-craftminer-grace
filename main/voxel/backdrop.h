@@ -21,7 +21,7 @@
 //  pixel-free work (submit, prepare) while the PPA runs, then
 //  backdrop_finish() before the first framebuffer write.
 //  Lifted from tanmatsu-showreel-grace,
-//  main/backdrop.h. Changes here are CraftMiner's;
+//  main/backdrop.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  region files (see region.h)
+//  SynthMiner  --  region files (see region.h)
 // ---------------------------------------------------------------------
 //  On-disk layout, little-endian throughout:
 //
@@ -42,7 +42,7 @@
 // nibble table is 64 bytes, against 1 KiB for the byte-wise one, and a
 // directory is 516 bytes checked twice a save -- nowhere near hot enough
 // to want the bigger table.
-static uint32_t cm_crc32(uint8_t const* buf, size_t len) {
+static uint32_t sm_crc32(uint8_t const* buf, size_t len) {
     static uint32_t const T[16] = {
         0x00000000u, 0x1DB71064u, 0x3B6E20C8u, 0x26D930ACu, 0x76DC4190u, 0x6B6B51F4u,
         0x4DB26158u, 0x5005713Cu, 0xEDB88320u, 0xF00F9344u, 0xD6D6A3E8u, 0xCB61B38Cu,
@@ -91,7 +91,7 @@ static uint32_t get_u32(uint8_t const* p) {
 }
 
 bool region_path(char* out, size_t cap, char const* dir, int32_t rx, int32_t rz) {
-    int const n = snprintf(out, cap, "%s/r.%ld.%ld.cmr", dir, (long)rx, (long)rz);
+    int const n = snprintf(out, cap, "%s/r.%ld.%ld.smr", dir, (long)rx, (long)rz);
     return n > 0 && (size_t)n < cap;
 }
 
@@ -123,7 +123,7 @@ static bool header_read(FILE* f, uint32_t* waste) {
     uint8_t h[HDR_SIZE];
     if (fseek(f, 0, SEEK_SET) != 0) return false;
     if (fread(h, 1, sizeof(h), f) != sizeof(h)) return false;
-    if (memcmp(h, REGION_MAGIC, 4) != 0) return false;
+    if (memcmp(h, REGION_MAGIC, 4) != 0 && memcmp(h, REGION_MAGIC_WAS, 4) != 0) return false;
     if (get_u16(h + 4) != REGION_VERSION) return false;
     if (get_u16(h + 6) != REGION_DIM) return false;
     if (get_u16(h + 16) != CH_W || get_u16(h + 18) != CH_H || get_u16(h + 20) != CH_D) return false;
@@ -137,7 +137,7 @@ static bool dir_read(FILE* f, int slot, entry_t* dir, uint32_t* serial) {
     uint8_t buf[DIR_BLOCK];
     if (fseek(f, dir_off(slot), SEEK_SET) != 0) return false;
     if (fread(buf, 1, sizeof(buf), f) != sizeof(buf)) return false;
-    if (get_u32(buf + DIR_SIGNED) != cm_crc32(buf, DIR_SIGNED)) return false;
+    if (get_u32(buf + DIR_SIGNED) != sm_crc32(buf, DIR_SIGNED)) return false;
 
     for (int i = 0; i < REGION_CHUNKS; i++) {
         uint8_t const* e = buf + (size_t)i * ENT_SIZE;
@@ -161,7 +161,7 @@ static bool dir_write(FILE* f, int slot, entry_t const* dir, uint32_t serial) {
         e[7] = dir[i].flags;
     }
     put_u32(buf + DIR_ENTRIES, serial);
-    put_u32(buf + DIR_SIGNED, cm_crc32(buf, DIR_SIGNED));
+    put_u32(buf + DIR_SIGNED, sm_crc32(buf, DIR_SIGNED));
     if (fseek(f, dir_off(slot), SEEK_SET) != 0) return false;
     if (fwrite(buf, 1, sizeof(buf), f) != sizeof(buf)) return false;
     return fflush(f) == 0;
@@ -385,12 +385,12 @@ bool region_compact(char const* dir, int32_t rx, int32_t rz) {
     fclose(in);
     fclose(out);
     // Not remove()/rename(): graceloader exports neither (F-06).
-    if (!cm_remove(path)) return false;
-    return cm_rename(tmp, path);
+    if (!sm_remove(path)) return false;
+    return sm_rename(tmp, path);
 
 fail:
     fclose(in);
     fclose(out);
-    cm_remove(tmp);
+    sm_remove(tmp);
     return false;
 }

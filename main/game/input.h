@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  controls
+//  SynthMiner  --  controls
 // ---------------------------------------------------------------------
 //  Every key is remappable, which is why nothing below the surface ever
 //  names one. The game declares its ACTIONS; se_bindings.h owns which
@@ -27,38 +27,38 @@
 // the per-tick mask, so THEY MUST NOT BE REORDERED once a replay or a
 // saved binding exists.
 typedef enum {
-    CM_FORWARD = 0,
-    CM_BACK,
-    CM_LEFT,
-    CM_RIGHT,
-    CM_JUMP,
-    CM_SNEAK,
-    CM_ATTACK,     // "left mouse button" -- break
-    CM_USE,        // "right mouse button" -- place
-    CM_LOOK_UP,
-    CM_LOOK_DOWN,
-    CM_LOOK_LEFT,
-    CM_LOOK_RIGHT,
-    CM_SLOT1,
-    CM_SLOT2,
-    CM_SLOT3,
-    CM_SLOT4,
-    CM_SLOT5,
-    CM_SLOT6,
-    CM_INVENTORY,
-    CM_PAUSE,
-    CM_DROP,
-    CM_INFO,        // the coordinates-and-heading overlay
-    CM_SCREENSHOT,  // save what is on screen to screenshots/ on the card
-    CM_CRAFT,       // open the crafting book (ui/craft_ui.h)
-    CM_ACTION_COUNT
-} cm_action_t;
+    SM_FORWARD = 0,
+    SM_BACK,
+    SM_LEFT,
+    SM_RIGHT,
+    SM_JUMP,
+    SM_SNEAK,
+    SM_ATTACK,     // "left mouse button" -- break
+    SM_USE,        // "right mouse button" -- place
+    SM_LOOK_UP,
+    SM_LOOK_DOWN,
+    SM_LOOK_LEFT,
+    SM_LOOK_RIGHT,
+    SM_SLOT1,
+    SM_SLOT2,
+    SM_SLOT3,
+    SM_SLOT4,
+    SM_SLOT5,
+    SM_SLOT6,
+    SM_INVENTORY,
+    SM_PAUSE,
+    SM_DROP,
+    SM_INFO,        // the coordinates-and-heading overlay
+    SM_SCREENSHOT,  // save what is on screen to screenshots/ on the card
+    SM_CRAFT,       // open the crafting book (ui/craft_ui.h)
+    SM_ACTION_COUNT
+} sm_action_t;
 
 // The per-tick mask. 24 actions, so a uint32 with room to spare.
-typedef uint32_t cm_actions_t;
+typedef uint32_t sm_actions_t;
 
-static inline bool act_held(cm_actions_t m, cm_action_t a) {
-    return (m & ((cm_actions_t)1u << a)) != 0;
+static inline bool act_held(sm_actions_t m, sm_action_t a) {
+    return (m & ((sm_actions_t)1u << a)) != 0;
 }
 
 // Register the control set with the engine and load any saved
@@ -67,17 +67,17 @@ void input_init(void);
 
 // Read the keyboard NOW and return the mask. Called once per
 // simulation tick, not once per frame.
-cm_actions_t input_sample(void);
+sm_actions_t input_sample(void);
 
 // A mask from somewhere other than the keyboard -- a replay -- put
 // through the same edge detection input_sample() does, so
 // input_pressed() means the same thing either way. Returns `mask`.
-cm_actions_t input_feed(cm_actions_t mask);
+sm_actions_t input_feed(sm_actions_t mask);
 
 // Edges: actions that went down between the last two samples. What a
 // hotbar slot, the inventory key and a single block placement want --
 // holding a key must not fire them sixty times.
-cm_actions_t input_pressed(void);
+sm_actions_t input_pressed(void);
 
 // Looking by turning the badge. Called once a FRAME with the frame's
 // length while the player is the one looking (not paused, no inventory,
@@ -95,25 +95,25 @@ void input_gyro_set_owed(float dyaw, float dpitch);
 // The look delta for this tick, in radians. The abstraction a mouse
 // will one day feed instead of the cursor keys; `mask` is the tick's
 // own sample, so a replay looks exactly where the recording did.
-void input_look(cm_actions_t mask, float* dyaw, float* dpitch);
+void input_look(sm_actions_t mask, float* dyaw, float* dpitch);
 
 // The action's name, for the controls menu ("Forward", "Jump", ...).
 // In the player's language (i18n.h). The stable id an action is saved
 // by is input_action_id(), which is never translated.
-char const* input_action_label(cm_action_t a);
+char const* input_action_label(sm_action_t a);
 
 // The action's stable short id ("fwd", "jump"): what settings.txt keys
 // its binding by. Never changes once shipped.
-char const* input_action_id(cm_action_t a);
+char const* input_action_id(sm_action_t a);
 
 // The scancode an action is bound to NOW, and the one it shipped with.
-uint16_t input_key(cm_action_t a);
-uint16_t input_default_key(cm_action_t a);
+uint16_t input_key(sm_action_t a);
+uint16_t input_default_key(sm_action_t a);
 
 // Bind `a` to `sc`, saved to settings.txt. If another action already had `sc`, it
 // takes `a`'s old key instead -- a SWAP, so two actions never share a
 // key and no action is ever left with none.
-void input_bind(cm_action_t a, uint16_t sc);
+void input_bind(sm_action_t a, uint16_t sc);
 
 // Every action back to its default, saved to settings.txt.
 void input_reset_defaults(void);

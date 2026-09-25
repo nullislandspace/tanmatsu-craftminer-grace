@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # =====================================================================
-#  CraftMiner  --  fetch and verify the soundtrack
+#  SynthMiner  --  fetch and verify the soundtrack
 # ---------------------------------------------------------------------
 #  The music in assets/music comes from the Mutopia Project, and the
 #  rule it has to keep is in assets/music/MUSIC.md: a MIDI file carries
@@ -41,7 +41,7 @@ MANIFEST = os.path.join(MUSIC_DIR, "manifest.json")
 # piano, and dead long enough that the composition is unarguable.
 COMPOSERS = ["SatieE", "SchumannR", "DebussyC", "ChopinFF", "BachJS"]
 
-UA = {"User-Agent": "craftminer-music/1.0 (+https://github.com/cavac)"}
+UA = {"User-Agent": "synthminer-music/1.0 (+https://github.com/cavac)"}
 
 
 def get(url):

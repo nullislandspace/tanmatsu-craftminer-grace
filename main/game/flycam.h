@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  a camera you can fly by hand
+//  SynthMiner  --  a camera you can fly by hand
 // ---------------------------------------------------------------------
 //  There is no player yet (that is block 2: physics, picking, the tick).
 //  This is what stands in until there is: a camera with no body and no

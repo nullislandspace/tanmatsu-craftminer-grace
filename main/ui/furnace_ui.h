@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the furnace screen
+//  SynthMiner  --  the furnace screen
 // ---------------------------------------------------------------------
 //  Three rows -- Input, Fuel, Output -- and the user's design:
 //

@@ -1,9 +1,9 @@
-# CraftMiner -- Español
+# SynthMiner -- Español
 #
 # Esta traducción la hizo una IA y espera a alguien que hable el idioma de
 # verdad. Si sabe hacerlo mejor: corrija la línea y ejecute
 # `python3 tools/make_lang.py`. También se puede sin herramientas: un fichero
-# /sd/craftminer/lang/es.txt en la tarjeta, con las mismas líneas, tiene
+# /sd/synthminer/lang/es.txt en la tarjeta, con las mismas líneas, tiene
 # prioridad sobre lo que viene compilado (i18n.h).
 #
 # Las claves están en lang/en.txt. Los %-marcadores deben aparecer aquí
@@ -104,7 +104,7 @@ common.back = Atrás
 hint.list = arriba / abajo elige, Enter confirma, Esc vuelve
 hint.adjust = arriba / abajo elige, izquierda / derecha cambia, Esc vuelve
 
-status.newer = Creado por un CraftMiner más nuevo: actualice para jugarlo
+status.newer = Creado por un SynthMiner más nuevo: actualice para jugarlo
 status.older = Formato de guardado antiguo: esta versión no sabe convertirlo
 status.needs_name = Un mundo necesita un nombre
 status.renamed = Renombrado

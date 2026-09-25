@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  folding text down to what the badge can type
+//  SynthMiner  --  folding text down to what the badge can type
 // ---------------------------------------------------------------------
 //  THE TANMATSU HAS ONE FIXED QWERTY, and the game speaks 32 languages.
 //  A player reading "Кирка" cannot type К; neither can a Turk type the

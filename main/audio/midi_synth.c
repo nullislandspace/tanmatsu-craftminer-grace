@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the MIDI voice pool. See midi_synth.h.
+//  SynthMiner  --  the MIDI voice pool. See midi_synth.h.
 // =====================================================================
 
 #include "audio/midi_synth.h"

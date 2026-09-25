@@ -1,7 +1,7 @@
 // =====================================================================
-//  CraftMiner  --  Fred (see fred.h)
+//  SynthMiner  --  Fred (see fred.h)
 //  Ported from tanmatsu-showreel-grace, main/craftminer/assets/miner.c.
-//  Changes here are CraftMiner's; the showreel stays the origin.
+//  Changes here are SynthMiner's; the showreel stays the origin.
 // =====================================================================
 
 #include "fred/fred.h"

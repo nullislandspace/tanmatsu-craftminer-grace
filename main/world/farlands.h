@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the Far Lands (claudeplans/craftminer.md, Part X)
+//  SynthMiner  --  the Far Lands (claudeplans/synthminer.md, Part X)
 // ---------------------------------------------------------------------
 //  West of a world's edge (`farlands_x`, -2048 unless the world says
 //  otherwise) every column is Far Lands: Minecraft Beta 1.7.3's own

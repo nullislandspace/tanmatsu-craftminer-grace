@@ -1,12 +1,12 @@
 // =====================================================================
-//  CraftMiner  --  host-side check of the pure game modules
+//  SynthMiner  --  host-side check of the pure game modules
 // ---------------------------------------------------------------------
 //  Built and run by `make worldcheck` with the host compiler. No badge,
-//  no engine, no RTOS: everything here compiles with CM_HOST and plain
+//  no engine, no RTOS: everything here compiles with SM_HOST and plain
 //  malloc (main/common/psram.h). Exit status 0 = all checks passed.
 //
 //  Sections arrive with the milestones they guard
-//  (claudeplans/craftminer.md, Part H):
+//  (claudeplans/synthminer.md, Part H):
 //    registries   now      the block table's invariants
 //    worldgen     step 1   determinism, cross-chunk equivalence
 //    far lands    step 7   Java's maths, the wall, the tunnels, the cliff, the asymmetry
@@ -315,11 +315,11 @@ static void check_rng(void) {
     printf("hashing and noise\n");
 
     // Determinism: the same point always gives the same value.
-    CHECK(cm_hash2(3, -9, 42) == cm_hash2(3, -9, 42), "cm_hash2 is not deterministic");
-    CHECK(cm_hash3(3, 4, -9, 42) == cm_hash3(3, 4, -9, 42), "cm_hash3 is not deterministic");
+    CHECK(sm_hash2(3, -9, 42) == sm_hash2(3, -9, 42), "sm_hash2 is not deterministic");
+    CHECK(sm_hash3(3, 4, -9, 42) == sm_hash3(3, 4, -9, 42), "sm_hash3 is not deterministic");
 
     // A different seed gives a different world.
-    CHECK(cm_hash2(3, -9, 42) != cm_hash2(3, -9, 43), "the seed does not change cm_hash2");
+    CHECK(sm_hash2(3, -9, 42) != sm_hash2(3, -9, 43), "the seed does not change sm_hash2");
 
     // Injectivity where it matters: hash a 200 x 200 lattice block
     // AROUND THE FAR LANDS and count collisions. The old formulation
@@ -328,7 +328,7 @@ static void check_rng(void) {
     static uint32_t h[N * N];
     int             n = 0;
     for (int32_t dz = 0; dz < N; dz++) {
-        for (int32_t dx = 0; dx < N; dx++) h[n++] = cm_hash2(-100000 + dx, -50 + dz, 12345u);
+        for (int32_t dx = 0; dx < N; dx++) h[n++] = sm_hash2(-100000 + dx, -50 + dz, 12345u);
     }
     qsort(h, (size_t)n, sizeof(h[0]), cmp_u32);
     int dup = 0;
@@ -340,26 +340,26 @@ static void check_rng(void) {
 
     // The donor's exact aliasing pair: 104729 in x and -7919 in z left
     // its key unchanged, so those two points grew identical terrain.
-    CHECK(cm_hash2(0, 0, 7u) != cm_hash2(104729, -7919, 7u), "cm_hash2 aliases the donor's way");
-    CHECK(cm_hash3(0, 5, 0, 7u) != cm_hash3(104729, 5, -7919, 7u), "cm_hash3 aliases the donor's way");
+    CHECK(sm_hash2(0, 0, 7u) != sm_hash2(104729, -7919, 7u), "sm_hash2 aliases the donor's way");
+    CHECK(sm_hash3(0, 5, 0, 7u) != sm_hash3(104729, 5, -7919, 7u), "sm_hash3 aliases the donor's way");
 
     // The donor's overflow range: |iz| = 20505 is where iz * 104729
     // left int32. A block-resolution density field reaches that in
     // ordinary play, so hash and noise must stay healthy well past it.
     for (int32_t z = 20000; z <= 21000; z += 250) {
-        CHECK(cm_hash3(7, 30, z, 3u) != cm_hash3(7, 30, z + 1, 3u), "cm_hash3 degenerates around z = %d", z);
+        CHECK(sm_hash3(7, 30, z, 3u) != sm_hash3(7, 30, z + 1, 3u), "sm_hash3 degenerates around z = %d", z);
     }
     {
         float lo3 = 1.0f, hi3 = 0.0f;
         for (int i = 0; i < 4000; i++) {
             // scale 1: the lattice index IS the block coordinate, which
             // is the case the donor could not survive.
-            float const v = cm_noise3(9.5f, 30.25f, 20000.0f + (float)i * 0.5f, 1.0f, 3u);
+            float const v = sm_noise3(9.5f, 30.25f, 20000.0f + (float)i * 0.5f, 1.0f, 3u);
             if (v < lo3) lo3 = v;
             if (v > hi3) hi3 = v;
         }
         printf("  noise3 at block resolution near z=20000: range %.3f..%.3f\n", lo3, hi3);
-        CHECK(hi3 - lo3 > 0.5f, "cm_noise3 went degenerate past the donor's overflow point (%g..%g)", lo3, hi3);
+        CHECK(hi3 - lo3 > 0.5f, "sm_noise3 went degenerate past the donor's overflow point (%g..%g)", lo3, hi3);
     }
 
     // Noise stays in range, including far from the origin, and is
@@ -367,7 +367,7 @@ static void check_rng(void) {
     float lo = 1.0f, hi = 0.0f, maxstep = 0.0f, prev = 0.0f;
     for (int i = 0; i < 20000; i++) {
         float const x = -100000.0f + (float)i * 0.25f;
-        float const v = cm_noise2(x, 17.0f, 24.0f, 99u);
+        float const v = sm_noise2(x, 17.0f, 24.0f, 99u);
         if (v < lo) lo = v;
         if (v > hi) hi = v;
         if (i > 0) {
@@ -377,27 +377,27 @@ static void check_rng(void) {
         prev = v;
     }
     printf("  noise2 near x=-100000: range %.3f..%.3f, largest step over 0.25 blocks %.4f\n", lo, hi, maxstep);
-    CHECK(lo >= 0.0f && hi < 1.0f, "cm_noise2 left [0,1): %g..%g", lo, hi);
-    CHECK(hi - lo > 0.5f, "cm_noise2 barely varies near the Far Lands (%g..%g): it has gone degenerate", lo, hi);
-    CHECK(maxstep < 0.08f, "cm_noise2 is not continuous near the Far Lands (step %g)", maxstep);
+    CHECK(lo >= 0.0f && hi < 1.0f, "sm_noise2 left [0,1): %g..%g", lo, hi);
+    CHECK(hi - lo > 0.5f, "sm_noise2 barely varies near the Far Lands (%g..%g): it has gone degenerate", lo, hi);
+    CHECK(maxstep < 0.08f, "sm_noise2 is not continuous near the Far Lands (step %g)", maxstep);
 
     // fbm stays in range too.
     lo = 1.0f;
     hi = 0.0f;
     for (int i = 0; i < 5000; i++) {
-        float const v = cm_fbm2((float)i * 0.7f, (float)i * -0.3f, 64.0f, 4, 5u);
+        float const v = sm_fbm2((float)i * 0.7f, (float)i * -0.3f, 64.0f, 4, 5u);
         if (v < lo) lo = v;
         if (v > hi) hi = v;
     }
-    CHECK(lo >= 0.0f && hi < 1.0f, "cm_fbm2 left [0,1): %g..%g", lo, hi);
+    CHECK(lo >= 0.0f && hi < 1.0f, "sm_fbm2 left [0,1): %g..%g", lo, hi);
 
     // The stream never sticks and never repeats too soon.
-    cm_rng_t r;
-    cm_rng_seed(&r, 0);
-    uint32_t const first = cm_rng_u32(&r);
+    sm_rng_t r;
+    sm_rng_seed(&r, 0);
+    uint32_t const first = sm_rng_u32(&r);
     int            same  = 0;
-    for (int i = 0; i < 1000; i++) same += (cm_rng_u32(&r) == first);
-    CHECK(same == 0, "cm_rng repeated its first value %d times in 1000 draws", same);
+    for (int i = 0; i < 1000; i++) same += (sm_rng_u32(&r) == first);
+    CHECK(same == 0, "sm_rng repeated its first value %d times in 1000 draws", same);
 }
 
 // ---------------------------------------------------------------------
@@ -809,14 +809,14 @@ static void check_codec(void) {
 
 static void check_region(void) {
     printf("region files\n");
-    CHECK(cm_mkdir_p(TEST_DIR), "could not create " TEST_DIR);
+    CHECK(sm_mkdir_p(TEST_DIR), "could not create " TEST_DIR);
 
     // Clear anything a previous run left.
     for (int32_t rz = -1; rz <= 1; rz++) {
         for (int32_t rx = -1; rx <= 1; rx++) {
             char path[192];
             region_path(path, sizeof(path), TEST_DIR, rx, rz);
-            cm_remove(path);
+            sm_remove(path);
         }
     }
 
@@ -940,7 +940,7 @@ static void check_region_damage(void) {
     // not as broken terrain.
     char path2[192];
     region_path(path2, sizeof(path2), TEST_DIR, -1, -1);
-    cm_remove(path2);
+    sm_remove(path2);
     fill_chunk(&a, g_ia, g_sa, -8, -8, GEN_SEED);
     CHECK(region_write_chunk(TEST_DIR, &a), "setup write failed");
     poke(path2, 0x480 + 8, 200, 0xEE);
@@ -974,7 +974,7 @@ static void check_torn_write(void) {
     printf("torn write\n");
     char path[192];
     region_path(path, sizeof(path), TEST_DIR, 1, 0);
-    cm_remove(path);
+    sm_remove(path);
 
     chunk_t a, b;
     size_t const marker = CH_IDX(6, 35, 6);
@@ -1031,7 +1031,7 @@ static void check_compaction(void) {
     printf("compaction\n");
     char path[192];
     region_path(path, sizeof(path), TEST_DIR, 0, 1);
-    cm_remove(path);
+    sm_remove(path);
 
     chunk_t a;
     // Rewrite the same few chunks many times, so the file fills with
@@ -1382,10 +1382,10 @@ static void check_worldstore(void) {
     player_state_t player;
 
     // Delete anything a previous run left, so the check is repeatable.
-    world_meta_t old[CM_WORLDS_MAX];
-    int const    prior = worldstore_list(old, CM_WORLDS_MAX);
+    world_meta_t old[SM_WORLDS_MAX];
+    int const    prior = worldstore_list(old, SM_WORLDS_MAX);
     for (int i = 0; i < prior; i++) worldstore_delete(old[i].slug);
-    CHECK(worldstore_list(old, CM_WORLDS_MAX) == 0, "could not clear the world directory");
+    CHECK(worldstore_list(old, SM_WORLDS_MAX) == 0, "could not clear the world directory");
 
     // Create. The slug must be a legal FAT name whatever was typed.
     CHECK(worldstore_create("Kurt's Far Lands!", 12345u, &meta, &player), "worldstore_create failed");
@@ -1431,8 +1431,8 @@ static void check_worldstore(void) {
     CHECK(strcmp(m3.slug, meta.slug) != 0, "two worlds of the same name got the same slug (%s)", m3.slug);
 
     // Listing finds both.
-    world_meta_t list[CM_WORLDS_MAX];
-    int const    n = worldstore_list(list, CM_WORLDS_MAX);
+    world_meta_t list[SM_WORLDS_MAX];
+    int const    n = worldstore_list(list, SM_WORLDS_MAX);
     printf("  %d worlds listed\n", n);
     CHECK(n == 2, "expected 2 worlds, listed %d", n);
 
@@ -1455,22 +1455,22 @@ static void check_worldstore(void) {
 
     // Deleting removes the world and its regions.
     CHECK(worldstore_delete(m3.slug), "worldstore_delete failed");
-    CHECK(worldstore_list(list, CM_WORLDS_MAX) == 1, "the deleted world is still listed");
+    CHECK(worldstore_list(list, SM_WORLDS_MAX) == 1, "the deleted world is still listed");
     CHECK(!worldstore_open(m3.slug, &m3, &p3, NULL), "a deleted world still opens");
 }
 
-// A level.cmw exactly as the builds before save slots wrote it: no
+// A level.smw exactly as the builds before save slots wrote it: no
 // "placed", no inventory. The Testworld people already have on their
 // cards looks like this, so this is the file the adoption must handle.
 static void write_legacy_level(char const* slug, double x, double y, double z) {
     char dir[192], path[224];
     snprintf(dir, sizeof(dir), "%s/worlds/%s/region", STORE_BASE, slug);
-    CHECK(cm_mkdir_p(dir), "could not make the legacy world's directory");
-    snprintf(path, sizeof(path), "%s/worlds/%s/level.cmw", STORE_BASE, slug);
+    CHECK(sm_mkdir_p(dir), "could not make the legacy world's directory");
+    snprintf(path, sizeof(path), "%s/worlds/%s/level.smw", STORE_BASE, slug);
     FILE* f = fopen(path, "wb");
-    CHECK(f != NULL, "could not write the legacy level.cmw");
+    CHECK(f != NULL, "could not write the legacy level.smw");
     if (f == NULL) return;
-    fwrite("CMW1", 1, 4, f);
+    fwrite("SMW1", 1, 4, f);
     NbtWriter w;
     nbt_write_open(&w, f);
     nbt_write_compound(&w, "level");
@@ -1501,8 +1501,8 @@ static void write_legacy_level(char const* slug, double x, double y, double z) {
 }
 
 static void clear_store(void) {
-    world_meta_t old[CM_WORLDS_MAX];
-    int const    prior = worldstore_list(old, CM_WORLDS_MAX);
+    world_meta_t old[SM_WORLDS_MAX];
+    int const    prior = worldstore_list(old, SM_WORLDS_MAX);
     for (int i = 0; i < prior; i++) worldstore_delete(old[i].slug);
 }
 
@@ -1534,52 +1534,185 @@ static bool dd_exists(char const* path) {
 
 static void check_datadir(void) {
     printf("the data directory\n");
-    char const* const OLD = "build/host/ddtest/apps/at.cavac.craftminer";
-    char const* const NEW = "build/host/ddtest/craftminer";
+    char const* const OLD = "build/host/ddtest/apps/at.cavac.synthminer";
+    char const* const NEW = "build/host/ddtest/synthminer";
     // A clean slate: what an earlier run left is renamed out of the way
     // by removing the files it could have made.
-    char const* const LEFT[] = {"build/host/ddtest/craftminer/worlds/slot1/level.cmw", "build/host/ddtest/craftminer/settings.txt",
-                                "build/host/ddtest/craftminer/replays/last.cmr", "build/host/ddtest/craftminer/screenshots/shot001.png"};
+    char const* const LEFT[] = {"build/host/ddtest/synthminer/worlds/slot1/level.smw", "build/host/ddtest/synthminer/settings.txt",
+                                "build/host/ddtest/synthminer/replays/last.smr", "build/host/ddtest/synthminer/screenshots/shot001.png"};
     for (size_t i = 0; i < sizeof(LEFT) / sizeof(LEFT[0]); i++) remove(LEFT[i]);
-    remove("build/host/ddtest/craftminer/worlds/slot1");
-    remove("build/host/ddtest/craftminer/worlds");
-    remove("build/host/ddtest/craftminer/replays");
-    remove("build/host/ddtest/craftminer/screenshots");
-    remove("build/host/ddtest/craftminer");
+    remove("build/host/ddtest/synthminer/worlds/slot1");
+    remove("build/host/ddtest/synthminer/worlds");
+    remove("build/host/ddtest/synthminer/replays");
+    remove("build/host/ddtest/synthminer/screenshots");
+    remove("build/host/ddtest/synthminer");
 
     // An install directory as a build before this left it.
-    CHECK(cm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1"), "could not make the old worlds");
-    CHECK(cm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/replays"), "could not make the old replays");
-    CHECK(cm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/screenshots"), "could not make the old screenshots");
-    CHECK(cm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/textures"), "could not make the textures");
-    dd_write("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1/level.cmw", "testworld");
-    dd_write("build/host/ddtest/apps/at.cavac.craftminer/settings.txt", "view=2");
-    dd_write("build/host/ddtest/apps/at.cavac.craftminer/replays/last.cmr", "replay");
-    dd_write("build/host/ddtest/apps/at.cavac.craftminer/screenshots/shot001.png", "png");
-    dd_write("build/host/ddtest/apps/at.cavac.craftminer/textures/dirt.png", "dirt");
+    CHECK(sm_mkdir_p("build/host/ddtest/apps/at.cavac.synthminer/worlds/slot1"), "could not make the old worlds");
+    CHECK(sm_mkdir_p("build/host/ddtest/apps/at.cavac.synthminer/replays"), "could not make the old replays");
+    CHECK(sm_mkdir_p("build/host/ddtest/apps/at.cavac.synthminer/screenshots"), "could not make the old screenshots");
+    CHECK(sm_mkdir_p("build/host/ddtest/apps/at.cavac.synthminer/textures"), "could not make the textures");
+    dd_write("build/host/ddtest/apps/at.cavac.synthminer/worlds/slot1/level.smw", "testworld");
+    dd_write("build/host/ddtest/apps/at.cavac.synthminer/settings.txt", "view=2");
+    dd_write("build/host/ddtest/apps/at.cavac.synthminer/replays/last.smr", "replay");
+    dd_write("build/host/ddtest/apps/at.cavac.synthminer/screenshots/shot001.png", "png");
+    dd_write("build/host/ddtest/apps/at.cavac.synthminer/textures/dirt.png", "dirt");
 
     char      report[1024];
-    int const moved = datadir_adopt(OLD, NEW, report, sizeof(report));
+    int const moved = datadir_adopt(OLD, NEW, DD_INSTALL, report, sizeof(report));
     printf("  %d entries moved\n", moved);
     CHECK(moved == 4, "%d entries moved, expected 4 (worlds, settings.txt, replays, screenshots)", moved);
-    CHECK(dd_reads("build/host/ddtest/craftminer/worlds/slot1/level.cmw", "testworld"), "the world did not arrive");
-    CHECK(dd_reads("build/host/ddtest/craftminer/settings.txt", "view=2"), "settings.txt did not arrive");
-    CHECK(dd_reads("build/host/ddtest/craftminer/replays/last.cmr", "replay"), "the replay did not arrive");
-    CHECK(dd_reads("build/host/ddtest/craftminer/screenshots/shot001.png", "png"), "the screenshot did not arrive");
-    CHECK(!dd_exists("build/host/ddtest/apps/at.cavac.craftminer/worlds"), "the old worlds are still there");
-    CHECK(dd_reads("build/host/ddtest/apps/at.cavac.craftminer/textures/dirt.png", "dirt"),
+    CHECK(dd_reads("build/host/ddtest/synthminer/worlds/slot1/level.smw", "testworld"), "the world did not arrive");
+    CHECK(dd_reads("build/host/ddtest/synthminer/settings.txt", "view=2"), "settings.txt did not arrive");
+    CHECK(dd_reads("build/host/ddtest/synthminer/replays/last.smr", "replay"), "the replay did not arrive");
+    CHECK(dd_reads("build/host/ddtest/synthminer/screenshots/shot001.png", "png"), "the screenshot did not arrive");
+    CHECK(!dd_exists("build/host/ddtest/apps/at.cavac.synthminer/worlds"), "the old worlds are still there");
+    CHECK(dd_reads("build/host/ddtest/apps/at.cavac.synthminer/textures/dirt.png", "dirt"),
           "the app's own files were touched");
 
     // Started again: nothing to do.
-    CHECK(datadir_adopt(OLD, NEW, report, sizeof(report)) == 0, "a second start moved something");
+    CHECK(datadir_adopt(OLD, NEW, DD_INSTALL, report, sizeof(report)) == 0, "a second start moved something");
 
     // An old build run after this one writes settings into the install
     // directory again: the new place's copy wins, nothing is overwritten.
-    dd_write("build/host/ddtest/apps/at.cavac.craftminer/settings.txt", "view=0");
-    CHECK(datadir_adopt(OLD, NEW, report, sizeof(report)) == 0, "an entry was moved over an existing one");
-    CHECK(dd_reads("build/host/ddtest/craftminer/settings.txt", "view=2"), "the new settings.txt was overwritten");
+    dd_write("build/host/ddtest/apps/at.cavac.synthminer/settings.txt", "view=0");
+    CHECK(datadir_adopt(OLD, NEW, DD_INSTALL, report, sizeof(report)) == 0, "an entry was moved over an existing one");
+    CHECK(dd_reads("build/host/ddtest/synthminer/settings.txt", "view=2"), "the new settings.txt was overwritten");
     CHECK(strstr(report, "left") != NULL, "a clash was not reported: \"%s\"", report);
-    remove("build/host/ddtest/apps/at.cavac.craftminer/settings.txt");
+    remove("build/host/ddtest/apps/at.cavac.synthminer/settings.txt");
+}
+
+// --- The rename ------------------------------------------------------
+//
+// A card as CraftMiner left it (D-91), start to finish: the data in
+// /sd/craftminer and every saved file ending in .cmw or .cmr. After a
+// start there must be nothing left under the old name and nothing lost
+// under the new one -- and a second start must be a quiet no-op, since
+// this runs every time.
+static void check_rename(void) {
+    printf("the rename from CraftMiner\n");
+    char const* const WAS = "build/host/ddtest/craftminer";
+    char const* const NOW = "build/host/ddtest/renamed";
+
+    // A clean slate.
+    char const* const JUNK[] = {
+        "build/host/ddtest/renamed/worlds/slot1/region/r.0.0.smr", "build/host/ddtest/renamed/worlds/slot1/region/r.-1.2.smr",
+        "build/host/ddtest/renamed/worlds/slot1/level.smw",        "build/host/ddtest/renamed/worlds/slot2/level.smw",
+        "build/host/ddtest/renamed/bench/region/r.0.0.smr",        "build/host/ddtest/renamed/bench/level.smw",
+        "build/host/ddtest/renamed/replays/last.smr",              "build/host/ddtest/renamed/settings.txt",
+    };
+    for (size_t i = 0; i < sizeof(JUNK) / sizeof(JUNK[0]); i++) remove(JUNK[i]);
+    char const* const DIRS[] = {
+        "build/host/ddtest/renamed/worlds/slot1/region", "build/host/ddtest/renamed/worlds/slot1",
+        "build/host/ddtest/renamed/worlds/slot2",        "build/host/ddtest/renamed/worlds",
+        "build/host/ddtest/renamed/bench/region",        "build/host/ddtest/renamed/bench",
+        "build/host/ddtest/renamed/replays",             "build/host/ddtest/renamed",
+    };
+    for (size_t i = 0; i < sizeof(DIRS) / sizeof(DIRS[0]); i++) remove(DIRS[i]);
+
+    // The card, exactly as the old name left it.
+    CHECK(sm_mkdir_p("build/host/ddtest/craftminer/worlds/slot1/region"), "could not make slot 1");
+    CHECK(sm_mkdir_p("build/host/ddtest/craftminer/worlds/slot2"), "could not make slot 2");
+    CHECK(sm_mkdir_p("build/host/ddtest/craftminer/bench/region"), "could not make the bench world");
+    CHECK(sm_mkdir_p("build/host/ddtest/craftminer/replays"), "could not make the replays");
+    dd_write("build/host/ddtest/craftminer/worlds/slot1/level.cmw", "CMW1 slot one");
+    dd_write("build/host/ddtest/craftminer/worlds/slot1/region/r.0.0.cmr", "CMR1 terrain");
+    dd_write("build/host/ddtest/craftminer/worlds/slot1/region/r.-1.2.cmr", "CMR1 more terrain");
+    dd_write("build/host/ddtest/craftminer/worlds/slot2/level.cmw", "CMW1 slot two");
+    dd_write("build/host/ddtest/craftminer/bench/level.cmw", "CMW1 the bench world");
+    dd_write("build/host/ddtest/craftminer/bench/region/r.0.0.cmr", "CMR1 bench terrain");
+    dd_write("build/host/ddtest/craftminer/replays/last.cmr", "CMRP a replay");
+    dd_write("build/host/ddtest/craftminer/settings.txt", "view=1");
+
+    // What main() does on start, in that order.
+    char      report[1024];
+    int const moved = datadir_adopt(WAS, NOW, DD_DATA, report, sizeof(report));
+    printf("  %d entries moved out of /sd/craftminer\n", moved);
+    CHECK(moved == 4, "%d entries moved, expected 4 (worlds, bench, settings.txt, replays)", moved);
+
+    int const renamed = datadir_rename_saves(NOW, report, sizeof(report));
+    printf("  %d file(s) given their new extension\n", renamed);
+    CHECK(renamed == 7, "%d files renamed, expected 7", renamed);
+
+    // Every byte is where it should be, under the new name.
+    CHECK(dd_reads("build/host/ddtest/renamed/worlds/slot1/level.smw", "CMW1 slot one"), "slot 1's level did not survive");
+    CHECK(dd_reads("build/host/ddtest/renamed/worlds/slot1/region/r.0.0.smr", "CMR1 terrain"), "slot 1's terrain did not survive");
+    CHECK(dd_reads("build/host/ddtest/renamed/worlds/slot1/region/r.-1.2.smr", "CMR1 more terrain"),
+          "a negative region coordinate did not survive");
+    CHECK(dd_reads("build/host/ddtest/renamed/worlds/slot2/level.smw", "CMW1 slot two"), "slot 2's level did not survive");
+    CHECK(dd_reads("build/host/ddtest/renamed/bench/level.smw", "CMW1 the bench world"), "the bench world did not survive");
+    CHECK(dd_reads("build/host/ddtest/renamed/bench/region/r.0.0.smr", "CMR1 bench terrain"), "the bench terrain did not survive");
+    CHECK(dd_reads("build/host/ddtest/renamed/replays/last.smr", "CMRP a replay"), "the replay did not survive");
+    CHECK(dd_reads("build/host/ddtest/renamed/settings.txt", "view=1"), "settings.txt did not survive");
+
+    // And nothing is left under the old name.
+    CHECK(!dd_exists("build/host/ddtest/renamed/worlds/slot1/level.cmw"), "slot 1 still has a .cmw");
+    CHECK(!dd_exists("build/host/ddtest/renamed/worlds/slot1/region/r.0.0.cmr"), "slot 1 still has a .cmr");
+    CHECK(!dd_exists("build/host/ddtest/craftminer/worlds"), "the old data directory still has the worlds");
+
+    // A second start finds nothing to do -- it runs every time.
+    CHECK(datadir_adopt(WAS, NOW, DD_DATA, report, sizeof(report)) == 0, "a second start moved something");
+    CHECK(datadir_rename_saves(NOW, report, sizeof(report)) == 0, "a second start renamed something");
+
+    // The readers take the old magic, so a file that never got renamed
+    // -- a card pulled mid-way -- still loads (worldstore.h, region.h).
+    CHECK(memcmp("CMW1 slot one", SM_LEVEL_MAGIC_WAS, 3) == 0, "the legacy level magic is not what CraftMiner wrote");
+    CHECK(memcmp("CMR1 terrain", REGION_MAGIC_WAS, 4) == 0, "the legacy region magic is not what CraftMiner wrote");
+
+    // --- and then the old game goes (D-92) ---------------------------
+    //
+    // The adoption above emptied /sd/craftminer, so retiring it must
+    // take the directory itself. The old INSTALL directory still has
+    // the app's own files in it -- textures, music, app.so -- and those
+    // go too: they are CraftMiner's, not the player's.
+    char const* const OLD_APP = "build/host/ddtest/apps/at.cavac.craftminer";
+    CHECK(sm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/textures"), "could not make the old textures");
+    CHECK(sm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/music"), "could not make the old music");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/app.so", "an old binary");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/metadata.json", "{}");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/textures/dirt.png", "dirt");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/music/satie.mid", "notes");
+
+    // IT REFUSES while a world is still in there. This is the case that
+    // matters: adoption leaves an entry whose destination exists, and
+    // that entry is somebody's world.
+    CHECK(sm_mkdir_p("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1"), "could not make a stranded world");
+    dd_write("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1/level.cmw", "SMW1 stranded");
+    CHECK(datadir_retire(OLD_APP, "build/host/ddtest/apps/at.cavac.synthminer", DD_INSTALL, report, sizeof(report)) == -1,
+          "a directory with a world still in it was retired anyway");
+    CHECK(dd_reads("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1/level.cmw", "SMW1 stranded"),
+          "the stranded world was deleted");
+    CHECK(strstr(report, "still in it") != NULL, "the refusal was not reported: \"%s\"", report);
+    printf("  refused while a world was in it: %s", report);
+
+    // It refuses a path that reaches the live one, whatever is in it.
+    CHECK(datadir_retire("build/host/ddtest/apps", "build/host/ddtest/apps/at.cavac.synthminer", DD_INSTALL, report,
+                         sizeof(report)) == -1,
+          "the parent of the live install directory was retired");
+    CHECK(datadir_retire(OLD_APP, OLD_APP, DD_INSTALL, report, sizeof(report)) == -1, "a directory retired itself");
+    CHECK(dd_exists(OLD_APP), "a refusal deleted something anyway");
+
+    // With the world gone -- adopted, as it would have been -- it goes,
+    // shipped files and all.
+    remove("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1/level.cmw");
+    remove("build/host/ddtest/apps/at.cavac.craftminer/worlds/slot1");
+    remove("build/host/ddtest/apps/at.cavac.craftminer/worlds");
+    int const gone = datadir_retire(OLD_APP, "build/host/ddtest/apps/at.cavac.synthminer", DD_INSTALL, report, sizeof(report));
+    printf("  %d entries removed with the old install directory\n", gone);
+    CHECK(gone == 7, "%d entries removed, expected 7 (4 files, 2 directories, the directory itself)", gone);
+    CHECK(!dd_exists(OLD_APP), "the old install directory is still there");
+    CHECK(!dd_exists("build/host/ddtest/apps/at.cavac.craftminer/textures/dirt.png"), "a shipped texture survived");
+
+    // The old data directory was emptied by the adoption, so it goes too.
+    int const dgone = datadir_retire(WAS, NOW, DD_DATA, report, sizeof(report));
+    CHECK(dgone >= 1, "the emptied data directory was not removed");
+    CHECK(!dd_exists("build/host/ddtest/craftminer"), "the old data directory is still there");
+    printf("  %s", report);
+
+    // Started again with both already gone: quiet, and not a refusal.
+    CHECK(datadir_retire(WAS, NOW, DD_DATA, report, sizeof(report)) == 0, "retiring a directory that is gone complained");
+    CHECK(datadir_retire(OLD_APP, "build/host/ddtest/apps/at.cavac.synthminer", DD_INSTALL, report, sizeof(report)) == 0,
+          "retiring an install directory that is gone complained");
 }
 
 static void check_slots(void) {
@@ -1589,7 +1722,7 @@ static void check_slots(void) {
 
     world_meta_t   meta, peek;
     player_state_t player;
-    for (int i = 0; i < CM_SLOTS; i++) CHECK(!worldstore_slot_peek(i, &peek), "slot %d is not empty", i + 1);
+    for (int i = 0; i < SM_SLOTS; i++) CHECK(!worldstore_slot_peek(i, &peek), "slot %d is not empty", i + 1);
 
     // Nothing to adopt on a fresh card: the common case, and it must be
     // a quiet no-op.
@@ -1717,21 +1850,21 @@ static void check_slots(void) {
     {
         char dir[192], path[224];
         snprintf(dir, sizeof(dir), "%s/worlds/slot8", STORE_BASE);
-        CHECK(cm_mkdir_p(dir), "could not make slot 8's directory");
-        snprintf(path, sizeof(path), "%s/level.cmw", dir);
+        CHECK(sm_mkdir_p(dir), "could not make slot 8's directory");
+        snprintf(path, sizeof(path), "%s/level.smw", dir);
         FILE* f = fopen(path, "wb");
         if (f != NULL) {
-            fwrite("CMW9 something a later build understands", 1, 41, f);
+            fwrite("SMW9 something a later build understands", 1, 41, f);
             fclose(f);
         }
         CHECK(worldstore_slot_state(7, &peek) == SLOT_NEWER, "a world from a newer build does not read as newer");
         CHECK(!worldstore_create_in(7, "Over it", 1u, &meta, &player), "a world was created over a newer build's");
         f = fopen(path, "wb");
         if (f != NULL) {
-            fwrite("CMW1 not nbt at all", 1, 19, f);
+            fwrite("SMW1 not nbt at all", 1, 19, f);
             fclose(f);
         }
-        CHECK(worldstore_slot_state(7, &peek) == SLOT_DAMAGED, "an unreadable level.cmw does not read as damaged");
+        CHECK(worldstore_slot_state(7, &peek) == SLOT_DAMAGED, "an unreadable level.smw does not read as damaged");
         CHECK(worldstore_slot_state(6, &peek) == SLOT_EMPTY, "an empty slot does not read as empty");
         CHECK(worldstore_slot_state(0, &peek) == SLOT_WORLD && strcmp(peek.name, "Testworld") == 0,
               "a readable world does not read as a world");
@@ -1749,17 +1882,17 @@ static void check_slots(void) {
 
 // The remap is what lets block ids be added, reordered or removed
 // without breaking existing worlds. Two things have to hold: the
-// palette really is written into level.cmw (so a future build can read
+// palette really is written into level.smw (so a future build can read
 // what the ids meant), and chunk_decode really applies a remap.
 static void check_palette(void) {
     printf("block palette\n");
 
-    // 1. level.cmw carries every block's NAME. Without that, a future
+    // 1. level.smw carries every block's NAME. Without that, a future
     //    build has nothing to map old ids by.
     char path[256];
-    snprintf(path, sizeof(path), "%s/worlds/kurt_s_far_lands/level.cmw", STORE_BASE);
+    snprintf(path, sizeof(path), "%s/worlds/kurt_s_far_lands/level.smw", STORE_BASE);
     FILE* f = fopen(path, "rb");
-    CHECK(f != NULL, "no level.cmw at %s", path);
+    CHECK(f != NULL, "no level.smw at %s", path);
     if (f == NULL) return;
     static char blob[16384];
     size_t const got = fread(blob, 1, sizeof(blob) - 1, f);
@@ -1767,9 +1900,9 @@ static void check_palette(void) {
     blob[got] = '\0';
 
     // The magic carries the major version, ahead of the NBT.
-    CHECK(got > 4 && memcmp(blob, CM_LEVEL_MAGIC, 3) == 0, "level.cmw does not start with its magic");
-    CHECK(blob[3] == CM_LEVEL_MAJOR, "level.cmw's major version byte is '%c', expected '%c'", blob[3],
-          CM_LEVEL_MAJOR);
+    CHECK(got > 4 && memcmp(blob, SM_LEVEL_MAGIC, 3) == 0, "level.smw does not start with its magic");
+    CHECK(blob[3] == SM_LEVEL_MAJOR, "level.smw's major version byte is '%c', expected '%c'", blob[3],
+          SM_LEVEL_MAJOR);
 
     int found = 0;
     for (int i = 0; i < BLK_COUNT; i++) {
@@ -1781,7 +1914,7 @@ static void check_palette(void) {
             }
         }
     }
-    printf("  level.cmw names %d of %d blocks\n", found, BLK_COUNT);
+    printf("  level.smw names %d of %d blocks\n", found, BLK_COUNT);
     CHECK(found == BLK_COUNT, "the palette names only %d of %d blocks", found, BLK_COUNT);
 
     // 2. A remap really is applied on decode. Stand in for "a future
@@ -2129,9 +2262,9 @@ static void check_replay(void) {
     st.inv[5] = (inv_slot_t){BLK_TORCH, 17, 0};
     CHECK(replay_record_begin(&st), "could not start recording");
     for (int i = 0; i < 300; i++) replay_record_tick((uint32_t)(i * 2654435761u), (float)i * 0.01f, -(float)i * 0.02f);
-    CHECK(replay_record_end("build/host/test.cmr"), "could not write the replay");
+    CHECK(replay_record_end("build/host/test.smr"), "could not write the replay");
     replay_start_t back;
-    CHECK(replay_load("build/host/test.cmr", &back), "could not read the replay back");
+    CHECK(replay_load("build/host/test.smr", &back), "could not read the replay back");
     CHECK(back.seed == st.seed && back.time_of_day == 4242 && back.x == 12.5 && back.z == -7.25 &&
               back.yaw == 1.25f && back.selected == 3,
           "the replay's start did not survive");
@@ -3633,19 +3766,19 @@ static void check_crafting(void) {
 static void check_fold(void) {
     printf("crafting: folding 32 languages onto one keyboard\n");
 
-    cm_lang_t const was = i18n_language();
+    sm_lang_t const was = i18n_language();
 
     int holes = 0, chars = 0;
-    for (int l = 0; l < CM_LANG_COUNT; l++) {
-        i18n_set_language((cm_lang_t)l);
-        for (int k = 0; k < CM_STR_COUNT; k++) {
-            char const* p = i18n_text((cm_str_t)k);
+    for (int l = 0; l < SM_LANG_COUNT; l++) {
+        i18n_set_language((sm_lang_t)l);
+        for (int k = 0; k < SM_STR_COUNT; k++) {
+            char const* p = i18n_text((sm_str_t)k);
             uint32_t    cp;
             while ((p = fold_utf8_next(p, &cp)) != NULL) {
                 chars++;
                 if (!fold_known(cp)) {
                     if (holes < 8) {
-                        printf("  FAIL: %s has U+%04X, which nothing folds\n", i18n_language_code((cm_lang_t)l),
+                        printf("  FAIL: %s has U+%04X, which nothing folds\n", i18n_language_code((sm_lang_t)l),
                                (unsigned)cp);
                     }
                     holes++;
@@ -3659,21 +3792,21 @@ static void check_fold(void) {
     // Every name a player can search for survives the fold as
     // something they can actually type: a name that folds away to
     // nothing is a row that can never be found.
-    for (int l = 0; l < CM_LANG_COUNT; l++) {
-        i18n_set_language((cm_lang_t)l);
+    for (int l = 0; l < SM_LANG_COUNT; l++) {
+        i18n_set_language((sm_lang_t)l);
         for (uint16_t id = 1; id < ITEM_COUNT; id++) {
             if (id == BLK_AIR || id == BLK_BARRIER) continue;
-            cm_str_t const lab = item_label(id);
+            sm_str_t const lab = item_label(id);
             CHECK(lab != 0, "%s has no name on screen", item_def(id).name);
             if (lab == 0) continue;
             char folded[FOLD_MAX];
             fold_text(i18n_text(lab), folded, sizeof(folded));
             CHECK(folded[0] != '\0', "%s in %s folds away to nothing", item_def(id).name,
-                  i18n_language_code((cm_lang_t)l));
+                  i18n_language_code((sm_lang_t)l));
             for (char const* c = folded; *c; c++) {
                 CHECK((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9'),
                       "%s in %s folds to '%s', which is not typable", item_def(id).name,
-                      i18n_language_code((cm_lang_t)l), folded);
+                      i18n_language_code((sm_lang_t)l), folded);
             }
         }
     }
@@ -3720,7 +3853,7 @@ static void check_fold(void) {
     CHECK(strlen(out) == sizeof(out) - 1, "a long name folded to %u characters, not %u", (unsigned)strlen(out),
           (unsigned)(sizeof(out) - 1));
 
-    printf("  %d characters across %d languages, every one of them foldable\n", chars, CM_LANG_COUNT);
+    printf("  %d characters across %d languages, every one of them foldable\n", chars, SM_LANG_COUNT);
 }
 
 static void check_inv_cursor(void) {
@@ -3862,26 +3995,26 @@ static void check_drops(void) {
 // ---------------------------------------------------------------------
 
 static void check_lang(void) {
-    printf("languages: %d strings x %d\n", CM_STR_COUNT, CM_LANG_COUNT);
+    printf("languages: %d strings x %d\n", SM_STR_COUNT, SM_LANG_COUNT);
 
     // Every character of every string, through the engine's own tables.
     int tofu = 0;
-    for (int l = 0; l < CM_LANG_COUNT; l++) {
-        for (int s = 0; s < CM_STR_COUNT; s++) {
-            char const* p = CM_STRINGS[l][s];
+    for (int l = 0; l < SM_LANG_COUNT; l++) {
+        for (int s = 0; s < SM_STR_COUNT; s++) {
+            char const* p = SM_STRINGS[l][s];
             for (;;) {
                 uint32_t  cp;
                 int const used = hershey_utf8_next(p, &cp);
                 if (used == 0) break;
                 p += used;
                 if (cp == 0) {
-                    CHECK(0, "%s / %s: not valid UTF-8", CM_LANG_CODES[l], CM_STR_KEYS[s]);
+                    CHECK(0, "%s / %s: not valid UTF-8", SM_LANG_CODES[l], SM_STR_KEYS[s]);
                     break;
                 }
                 hershey_glyph_t g;
                 if (!hershey_glyph(cp, &g)) {
-                    CHECK(0, "%s / %s: the font cannot draw U+%04X", CM_LANG_CODES[l],
-                          CM_STR_KEYS[s], (unsigned)cp);
+                    CHECK(0, "%s / %s: the font cannot draw U+%04X", SM_LANG_CODES[l],
+                          SM_STR_KEYS[s], (unsigned)cp);
                     tofu++;
                 }
             }
@@ -3890,46 +4023,46 @@ static void check_lang(void) {
     CHECK(tofu == 0, "%d character(s) would come out as empty boxes", tofu);
 
     // Languages are told apart by their code, and every one has a name.
-    for (int l = 0; l < CM_LANG_COUNT; l++) {
-        cm_lang_t got = (cm_lang_t)-1;
-        CHECK(i18n_language_from_code(CM_LANG_CODES[l], &got), "code %s is not recognised",
-              CM_LANG_CODES[l]);
-        CHECK(got == (cm_lang_t)l, "code %s came back as %d", CM_LANG_CODES[l], (int)got);
-        CHECK(CM_LANG_NAMES[l][0] != '\0', "language %d has no name", l);
+    for (int l = 0; l < SM_LANG_COUNT; l++) {
+        sm_lang_t got = (sm_lang_t)-1;
+        CHECK(i18n_language_from_code(SM_LANG_CODES[l], &got), "code %s is not recognised",
+              SM_LANG_CODES[l]);
+        CHECK(got == (sm_lang_t)l, "code %s came back as %d", SM_LANG_CODES[l], (int)got);
+        CHECK(SM_LANG_NAMES[l][0] != '\0', "language %d has no name", l);
     }
-    cm_lang_t unused = CM_LANG_EN;
+    sm_lang_t unused = SM_LANG_EN;
     CHECK(!i18n_language_from_code("xx", &unused), "an unknown code was accepted");
 
     // The formatter. English first: the ordinary path.
     char buf[128];
-    i18n_set_language(CM_LANG_EN);
-    i18n_fmt(buf, sizeof buf, CM_STR_WORLD_SUB, 3, 12345u);
+    i18n_set_language(SM_LANG_EN);
+    i18n_fmt(buf, sizeof buf, SM_STR_WORLD_SUB, 3, 12345u);
     CHECK(strcmp(buf, "slot 3, seed 12345") == 0, "en world.sub: %s", buf);
-    i18n_fmt(buf, sizeof buf, CM_STR_INFO_CLOCK, 7, 5, (long long)42);
+    i18n_fmt(buf, sizeof buf, SM_STR_INFO_CLOCK, 7, 5, (long long)42);
     CHECK(strcmp(buf, "07:05   day 42") == 0, "en info.clock: %s", buf);
-    i18n_fmt(buf, sizeof buf, CM_STR_WORLDS_SLOT, 2, "Testworld");
+    i18n_fmt(buf, sizeof buf, SM_STR_WORLDS_SLOT, 2, "Testworld");
     CHECK(strcmp(buf, "2  Testworld") == 0, "en worlds.slot: %s", buf);
 
     // Every language, every format string: it must not crash, and the
     // values must come out somewhere.
-    for (int l = 0; l < CM_LANG_COUNT; l++) {
-        i18n_set_language((cm_lang_t)l);
-        i18n_fmt(buf, sizeof buf, CM_STR_WORLD_SUB, 7, 99u);
+    for (int l = 0; l < SM_LANG_COUNT; l++) {
+        i18n_set_language((sm_lang_t)l);
+        i18n_fmt(buf, sizeof buf, SM_STR_WORLD_SUB, 7, 99u);
         CHECK(strstr(buf, "7") != NULL && strstr(buf, "99") != NULL,
-              "%s world.sub lost a value: %s", CM_LANG_CODES[l], buf);
-        i18n_fmt(buf, sizeof buf, CM_STR_NEW_DEFAULT_NAME, 4);
+              "%s world.sub lost a value: %s", SM_LANG_CODES[l], buf);
+        i18n_fmt(buf, sizeof buf, SM_STR_NEW_DEFAULT_NAME, 4);
         CHECK(strstr(buf, "4") != NULL, "%s new.default_name lost the number: %s",
-              CM_LANG_CODES[l], buf);
+              SM_LANG_CODES[l], buf);
     }
-    i18n_set_language(CM_LANG_EN);
+    i18n_set_language(SM_LANG_EN);
 
     // A string with no values at all goes through untouched.
-    i18n_fmt(buf, sizeof buf, CM_STR_MENU_PLAY);
-    CHECK(strcmp(buf, T(CM_STR_MENU_PLAY)) == 0, "a plain string was changed: %s", buf);
+    i18n_fmt(buf, sizeof buf, SM_STR_MENU_PLAY);
+    CHECK(strcmp(buf, T(SM_STR_MENU_PLAY)) == 0, "a plain string was changed: %s", buf);
 
     // Too small a buffer truncates and still terminates, like snprintf.
     char small[8];
-    int const want = i18n_fmt(small, sizeof small, CM_STR_WORLD_SUB, 3, 12345u);
+    int const want = i18n_fmt(small, sizeof small, SM_STR_WORLD_SUB, 3, 12345u);
     CHECK(want == (int)strlen("slot 3, seed 12345"), "truncated call returned %d", want);
     CHECK(strlen(small) == sizeof small - 1, "truncated to %zu", strlen(small));
     CHECK(strncmp(small, "slot 3,", 7) == 0, "truncated wrongly: %s", small);
@@ -3945,10 +4078,10 @@ static void check_lang(void) {
         "%2$d %2$d",   // the same value twice
     };
     for (size_t i = 0; i < sizeof nasties / sizeof nasties[0]; i++) {
-        // CM_STR_NEW_DEFAULT_NAME takes one int; pretend the file says this.
+        // SM_STR_NEW_DEFAULT_NAME takes one int; pretend the file says this.
         char out[64];
-        cm_str_t const id = CM_STR_NEW_DEFAULT_NAME;
-        char const* const saved = CM_STRINGS[CM_LANG_EN][id];
+        sm_str_t const id = SM_STR_NEW_DEFAULT_NAME;
+        char const* const saved = SM_STRINGS[SM_LANG_EN][id];
         (void)saved;
         i18n_test_override(id, nasties[i]);
         int const n = i18n_fmt(out, sizeof out, id, 5);
@@ -3958,16 +4091,16 @@ static void check_lang(void) {
         i18n_test_override(id, NULL);
     }
     // "%s" where English says %d prints the NUMBER, not a wild pointer.
-    i18n_test_override(CM_STR_NEW_DEFAULT_NAME, "Welt %s");
-    i18n_fmt(buf, sizeof buf, CM_STR_NEW_DEFAULT_NAME, 5);
+    i18n_test_override(SM_STR_NEW_DEFAULT_NAME, "Welt %s");
+    i18n_fmt(buf, sizeof buf, SM_STR_NEW_DEFAULT_NAME, 5);
     CHECK(strcmp(buf, "Welt 5") == 0, "a wrong conversion was obeyed: %s", buf);
-    i18n_test_override(CM_STR_NEW_DEFAULT_NAME, NULL);
+    i18n_test_override(SM_STR_NEW_DEFAULT_NAME, NULL);
 
     // Reordering, which is the whole point of doing this ourselves.
-    i18n_test_override(CM_STR_WORLD_SUB, "seed %2$u in slot %1$d");
-    i18n_fmt(buf, sizeof buf, CM_STR_WORLD_SUB, 3, 12345u);
+    i18n_test_override(SM_STR_WORLD_SUB, "seed %2$u in slot %1$d");
+    i18n_fmt(buf, sizeof buf, SM_STR_WORLD_SUB, 3, 12345u);
     CHECK(strcmp(buf, "seed 12345 in slot 3") == 0, "reordered badly: %s", buf);
-    i18n_test_override(CM_STR_WORLD_SUB, NULL);
+    i18n_test_override(SM_STR_WORLD_SUB, NULL);
     printf("  every character drawable, %d nasty format strings survived\n",
            (int)(sizeof nasties / sizeof nasties[0]) + 2);
 }
@@ -4240,7 +4373,7 @@ static char const* longest_item_label(void) {
     float       wmax  = 0.0f;
     for (uint16_t id = 1; id < ITEM_COUNT; id++) {
         if (id == BLK_AIR || id == BLK_BARRIER) continue;
-        cm_str_t const lab = item_label(id);
+        sm_str_t const lab = item_label(id);
         if (lab == 0) continue;
         char const* const t = i18n_text(lab);
         float const       w = text_width_at(t, 28.0f);
@@ -4364,25 +4497,25 @@ static struct {
 static void check_text_fits(void) {
     printf("text: does every line fit where it is drawn\n");
 
-    cm_lang_t const was = i18n_language();
+    sm_lang_t const was = i18n_language();
     float       worst_slack = 1e9f;
     char const* worst_key   = "";
     char const* worst_lang  = "";
 
-    for (int li = 0; li < CM_LANG_COUNT; li++) {
-        i18n_set_language((cm_lang_t)li);
+    for (int li = 0; li < SM_LANG_COUNT; li++) {
+        i18n_set_language((sm_lang_t)li);
         for (size_t bi = 0; bi < sizeof(TEXT_BUDGETS) / sizeof(TEXT_BUDGETS[0]); bi++) {
             char const* const key = TEXT_BUDGETS[bi].key;
 
             int found = -1;
-            for (int k = 0; k < CM_STR_COUNT; k++) {
-                if (strcmp(CM_STR_KEYS[k], key) == 0) found = k;
+            for (int k = 0; k < SM_STR_COUNT; k++) {
+                if (strcmp(SM_STR_KEYS[k], key) == 0) found = k;
             }
             CHECK(found >= 0, "no string called %s -- the budget table has gone stale", key);
             if (found < 0) continue;
 
             char filled[256];
-            expand_worst(i18n_text((cm_str_t)found), filled, sizeof(filled));
+            expand_worst(i18n_text((sm_str_t)found), filled, sizeof(filled));
             float const w = text_width_at(filled, TEXT_BUDGETS[bi].h);
 
             // A budget of 0 means "share the panel with the others on
@@ -4398,17 +4531,17 @@ static void check_text_fits(void) {
             }
             float const slack = room - w;
             CHECK(slack >= 0.0f, "%s/%s: \"%s\" is %.0f px, room is %.0f",
-                  i18n_language_code((cm_lang_t)li), key, filled, (double)w, (double)room);
+                  i18n_language_code((sm_lang_t)li), key, filled, (double)w, (double)room);
             if (slack < worst_slack) {
                 worst_slack = slack;
                 worst_key   = key;
-                worst_lang  = i18n_language_code((cm_lang_t)li);
+                worst_lang  = i18n_language_code((sm_lang_t)li);
             }
         }
     }
     i18n_set_language(was);
     printf("  %d lines x %d languages; tightest %.0f px to spare (%s, %s)\n",
-           (int)(sizeof(TEXT_BUDGETS) / sizeof(TEXT_BUDGETS[0])), CM_LANG_COUNT, (double)worst_slack,
+           (int)(sizeof(TEXT_BUDGETS) / sizeof(TEXT_BUDGETS[0])), SM_LANG_COUNT, (double)worst_slack,
            worst_key, worst_lang);
 }
 
@@ -4419,23 +4552,23 @@ static void check_label_widths(void) {
     float worst = 0.0f;
     char const* worst_text = "";
 
-    for (int li = 0; li < CM_LANG_COUNT; li++) {
-        i18n_set_language((cm_lang_t)li);
+    for (int li = 0; li < SM_LANG_COUNT; li++) {
+        i18n_set_language((sm_lang_t)li);
         for (int si = 0; si < (int)(sizeof(LABEL_COLUMNS) / sizeof(LABEL_COLUMNS[0])); si++) {
             char const* const pre = LABEL_COLUMNS[si].prefix;
             size_t const      n   = strlen(pre);
-            for (int k = 0; k < CM_STR_COUNT; k++) {
-                char const* const key = CM_STR_KEYS[k];
+            for (int k = 0; k < SM_STR_COUNT; k++) {
+                char const* const key = SM_STR_KEYS[k];
                 if (strncmp(key, pre, n) != 0) continue;
                 // Titles, subtitles and hints are not rows and are not
                 // beside anything.
                 char const* const tail = key + n;
                 if (strcmp(tail, "title") == 0 || strcmp(tail, "sub") == 0 || strcmp(tail, "hint") == 0) continue;
 
-                char const* const text = i18n_text((cm_str_t)k);
+                char const* const text = i18n_text((sm_str_t)k);
                 float const       w    = label_width(text);
                 CHECK(w < LABEL_COLUMNS[si].value_dx, "%s/%s: \"%s\" is %.0f px, column is %.0f",
-                      i18n_language_code((cm_lang_t)li), key, text, (double)w,
+                      i18n_language_code((sm_lang_t)li), key, text, (double)w,
                       (double)LABEL_COLUMNS[si].value_dx);
                 float const slack = LABEL_COLUMNS[si].value_dx - w;
                 if (worst_n == 0 || slack < worst) {
@@ -4446,7 +4579,7 @@ static void check_label_widths(void) {
             }
         }
     }
-    i18n_set_language(CM_LANG_EN);
+    i18n_set_language(SM_LANG_EN);
     printf("  tightest fit: %.0f px to spare (\"%s\")\n", (double)worst, worst_text);
 }
 
@@ -4478,6 +4611,7 @@ int main(void) {
     check_palette();
     check_slots();
     check_datadir();
+    check_rename();
     check_streaming();
     if (!chunk_store_init()) {
         printf("  FAIL: chunk_store_init() for the player checks\n");

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  "how many?" (see amount_ui.h)
+//  SynthMiner  --  "how many?" (see amount_ui.h)
 // =====================================================================
 
 #include "ui/amount_ui.h"
@@ -143,7 +143,7 @@ void amount_draw(pax_buf_t* fb) {
     pax_draw_rect(fb, 0xFF606068u, (float)(x + w - 2), (float)y, 2.0f, (float)h);
 
     char head[96];
-    i18n_fmt(head, sizeof(head), CM_STR_AMOUNT_TITLE, T(item_label(s_item)));
+    i18n_fmt(head, sizeof(head), SM_STR_AMOUNT_TITLE, T(item_label(s_item)));
     rendertext_draw(fb, 0xFFFFFFFFu, NULL, 22.0f, (float)(x + 22), (float)(y + 18), head);
 
     // The number, big, because it is the thing being decided.
@@ -159,7 +159,7 @@ void amount_draw(pax_buf_t* fb) {
     pax_draw_rect(fb, 0xFF6090D0u, (float)bx, (float)by, (float)fill, (float)bh);
     pax_draw_rect(fb, 0xFF505058u, (float)bx, (float)by, (float)bw, 1.0f);
 
-    char const* const hint = T(CM_STR_AMOUNT_HINT);
+    char const* const hint = T(SM_STR_AMOUNT_HINT);
     pax_vec2f const   hsz  = rendertext_size(NULL, 14.0f, hint);
     rendertext_draw(fb, 0xFF9090A0u, NULL, 14.0f, (float)x + ((float)w - hsz.x) * 0.5f, (float)(y + h - 34), hint);
 }

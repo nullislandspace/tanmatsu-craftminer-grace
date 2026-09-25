@@ -1,10 +1,10 @@
 // =====================================================================
-//  CraftMiner  --  worlds on the SD card (see worldstore.h)
+//  SynthMiner  --  worlds on the SD card (see worldstore.h)
 // ---------------------------------------------------------------------
-//  level.cmw, as NBT:
+//  level.smw, as NBT:
 //
 //    compound "level"
-//      int32  format          CM_LEVEL_FORMAT
+//      int32  format          SM_LEVEL_FORMAT
 //      string name
 //      int32  seed
 //      int64  created, last_played
@@ -42,7 +42,7 @@
 #define NAME_BUF 64
 
 static char s_base[128];
-static char s_open_slug[CM_WORLD_SLUG_MAX];
+static char s_open_slug[SM_WORLD_SLUG_MAX];
 static char s_region_dir[192];
 static bool s_open;
 // A world with no directory: generated on demand, never written. The
@@ -67,12 +67,12 @@ static void worlds_dir(char* out, size_t cap) {
 // scans `worlds/`, so a world that is not in there cannot be shown,
 // opened or deleted from the world-select screen (worldstore.h).
 static char const* group_of(char const* slug) {
-    return strcmp(slug, CM_BENCH_SLUG) == 0 ? "" : "worlds/";
+    return strcmp(slug, SM_BENCH_SLUG) == 0 ? "" : "worlds/";
 }
 
 // The slug is spoken for, whether or not anything is there yet.
 static bool slug_reserved(char const* slug) {
-    return strcmp(slug, CM_BENCH_SLUG) == 0;
+    return strcmp(slug, SM_BENCH_SLUG) == 0;
 }
 
 static void world_dir(char* out, size_t cap, char const* slug) {
@@ -80,7 +80,7 @@ static void world_dir(char* out, size_t cap, char const* slug) {
 }
 
 static void level_path(char* out, size_t cap, char const* slug) {
-    snprintf(out, cap, "%s/%s%s/level.cmw", s_base, group_of(slug), slug);
+    snprintf(out, cap, "%s/%s%s/level.smw", s_base, group_of(slug), slug);
 }
 
 // --- Slugs ------------------------------------------------------------
@@ -119,7 +119,7 @@ static bool slug_exists(char const* slug) {
 
 static void slug_unique(char* slug, size_t cap) {
     if (!slug_exists(slug) && !slug_reserved(slug)) return;
-    char base[CM_WORLD_SLUG_MAX];
+    char base[SM_WORLD_SLUG_MAX];
     snprintf(base, sizeof(base), "%s", slug);
     for (int n = 2; n < 1000; n++) {
         snprintf(slug, cap, "%.*s%d", (int)(cap - 5), base, n);
@@ -377,7 +377,7 @@ static void read_player(NbtReader* r, player_state_t* p) {
     if (!saw_placed) p->placed = !(p->x == 0.5 && p->z == 0.5);
 }
 
-// --- level.cmw --------------------------------------------------------
+// --- level.smw --------------------------------------------------------
 
 // Dropped items. Stored by NAME, like the inventory; the pickup delay
 // as what is LEFT of it, so it means the same whatever the age.
@@ -464,7 +464,7 @@ static bool write_level(char const* slug, world_meta_t const* m, player_state_t 
     // Our own magic first, then the NBT stream. The major version is
     // in the magic so a mismatched file is refused before a single tag
     // is trusted.
-    char const magic[4] = {CM_LEVEL_MAGIC[0], CM_LEVEL_MAGIC[1], CM_LEVEL_MAGIC[2], CM_LEVEL_MAJOR};
+    char const magic[4] = {SM_LEVEL_MAGIC[0], SM_LEVEL_MAGIC[1], SM_LEVEL_MAGIC[2], SM_LEVEL_MAJOR};
     if (fwrite(magic, 1, sizeof(magic), f) != sizeof(magic)) {
         fclose(f);
         return false;
@@ -473,7 +473,7 @@ static bool write_level(char const* slug, world_meta_t const* m, player_state_t 
     NbtWriter w;
     nbt_write_open(&w, f);
     nbt_write_compound(&w, "level");
-    nbt_write_int32(&w, "format", CM_LEVEL_FORMAT);
+    nbt_write_int32(&w, "format", SM_LEVEL_FORMAT);
     nbt_write_string(&w, "name", m->name);
     nbt_write_int32(&w, "seed", (int32_t)m->seed);
     nbt_write_int64(&w, "created", m->created);
@@ -497,6 +497,12 @@ static bool write_level(char const* slug, world_meta_t const* m, player_state_t 
 // `p` may be NULL when only the metadata is wanted (the world list).
 // The palette is read into the store's remap ONLY for `palette`: the
 // list and the slot peek must not disturb the remap of a world that is
+// Is this one of ours? Either name counts (worldstore.h): the byte
+// after decides the version, and it means the same in both.
+static bool level_magic(char const magic[4]) {
+    return memcmp(magic, SM_LEVEL_MAGIC, 3) == 0 || memcmp(magic, SM_LEVEL_MAGIC_WAS, 3) == 0;
+}
+
 // open while they run. `items` NULL skips the dropped items.
 static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, bool palette, world_items_t* items) {
     char path[192];
@@ -505,11 +511,11 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
     if (f == NULL) return false;
 
     char magic[4];
-    if (fread(magic, 1, sizeof(magic), f) != sizeof(magic) || memcmp(magic, CM_LEVEL_MAGIC, 3) != 0) {
+    if (fread(magic, 1, sizeof(magic), f) != sizeof(magic) || !level_magic(magic)) {
         fclose(f);
         return false;
     }
-    if (magic[3] != CM_LEVEL_MAJOR) {
+    if (magic[3] != SM_LEVEL_MAJOR) {
         // A different major: the layout itself differs, so refuse it
         // rather than read it wrong. This is where an upgrader hooks in.
         fclose(f);
@@ -571,7 +577,7 @@ static bool read_level(char const* slug, world_meta_t* m, player_state_t* p, boo
                 saw_time       = true;
             }
         } else if (type == NBT_STRING) {
-            char buf[CM_WORLD_NAME_MAX];
+            char buf[SM_WORLD_NAME_MAX];
             nbt_read_string(&r, buf, sizeof(buf));
             if (strcmp(name, "name") == 0) snprintf(m->name, sizeof(m->name), "%s", buf);
         } else {
@@ -598,7 +604,7 @@ bool worldstore_init(char const* base) {
 
     char dir[160];
     worlds_dir(dir, sizeof(dir));
-    return cm_mkdir_p(dir);
+    return sm_mkdir_p(dir);
 }
 
 void worldstore_close(void) {
@@ -613,20 +619,20 @@ int worldstore_list(world_meta_t* out, int max) {
     char dir[160];
     worlds_dir(dir, sizeof(dir));
 
-    cm_dir_t* d = cm_dir_open(dir);
+    sm_dir_t* d = sm_dir_open(dir);
     if (d == NULL) return 0;
 
     int n = 0;
     char const* entry;
     bool        is_dir = false;
-    while (n < max && (entry = cm_dir_next(d, &is_dir)) != NULL) {
+    while (n < max && (entry = sm_dir_next(d, &is_dir)) != NULL) {
         if (!is_dir) continue;
-        if (strlen(entry) >= CM_WORLD_SLUG_MAX) continue;
-        // A directory with no readable level.cmw is not a world -- the
+        if (strlen(entry) >= SM_WORLD_SLUG_MAX) continue;
+        // A directory with no readable level.smw is not a world -- the
         // index is an optimisation, the directories are the truth.
         if (read_level(entry, &out[n], NULL, false, NULL)) n++;
     }
-    cm_dir_close(d);
+    sm_dir_close(d);
 
     // Newest played first, which is the order the select screen wants.
     for (int i = 1; i < n; i++) {
@@ -657,7 +663,7 @@ static bool create_at(char const* slug, char const* name, uint32_t seed, world_m
     meta->created     = (int64_t)time(NULL);
     meta->last_played = meta->created;
     meta->play_secs   = 0;
-    meta->format      = CM_LEVEL_FORMAT;
+    meta->format      = SM_LEVEL_FORMAT;
     meta->time_of_day = 1000;  // DAY_START (game/daytime.h): a morning
     // Spawn height is settled once the terrain around it exists; the
     // caller raises the player onto the ground after pre-generation.
@@ -668,10 +674,10 @@ static bool create_at(char const* slug, char const* name, uint32_t seed, world_m
 
     char dir[192];
     world_dir(dir, sizeof(dir), meta->slug);
-    if (!cm_mkdir_p(dir)) return false;
+    if (!sm_mkdir_p(dir)) return false;
     char region[192];
     snprintf(region, sizeof(region), "%.170s/region", dir);
-    if (!cm_mkdir_p(region)) return false;
+    if (!sm_mkdir_p(region)) return false;
 
     player_state_defaults(player, meta);
     // A world written by this build has current ids, so no remap.
@@ -683,7 +689,7 @@ static bool create_at(char const* slug, char const* name, uint32_t seed, world_m
 
 bool worldstore_create(char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player) {
     if (name == NULL || meta == NULL || player == NULL) return false;
-    char slug[CM_WORLD_SLUG_MAX];
+    char slug[SM_WORLD_SLUG_MAX];
     slugify(name, slug, sizeof(slug));
     slug_unique(slug, sizeof(slug));
     return create_at(slug, name, seed, meta, player);
@@ -696,16 +702,16 @@ void worldstore_slot_slug(int slot, char* out, int cap) {
 }
 
 bool worldstore_slot_peek(int slot, world_meta_t* meta) {
-    if (slot < 0 || slot >= CM_SLOTS || meta == NULL) return false;
-    char slug[CM_WORLD_SLUG_MAX];
+    if (slot < 0 || slot >= SM_SLOTS || meta == NULL) return false;
+    char slug[SM_WORLD_SLUG_MAX];
     worldstore_slot_slug(slot, slug, sizeof(slug));
     return read_level(slug, meta, NULL, false, NULL);
 }
 
 slot_state_t worldstore_slot_state(int slot, world_meta_t* meta) {
-    if (slot < 0 || slot >= CM_SLOTS || meta == NULL) return SLOT_EMPTY;
+    if (slot < 0 || slot >= SM_SLOTS || meta == NULL) return SLOT_EMPTY;
     memset(meta, 0, sizeof(*meta));
-    char slug[CM_WORLD_SLUG_MAX], path[192];
+    char slug[SM_WORLD_SLUG_MAX], path[192];
     worldstore_slot_slug(slot, slug, sizeof(slug));
     level_path(path, sizeof(path), slug);
     FILE* f = fopen(path, "rb");
@@ -715,15 +721,15 @@ slot_state_t worldstore_slot_state(int slot, world_meta_t* meta) {
     fclose(f);
     // The major version is in the magic, so it can be read without
     // trusting anything after it.
-    if (got && memcmp(magic, CM_LEVEL_MAGIC, 3) == 0 && magic[3] != CM_LEVEL_MAJOR) {
-        return magic[3] > CM_LEVEL_MAJOR ? SLOT_NEWER : SLOT_OLDER;
+    if (got && level_magic(magic) && magic[3] != SM_LEVEL_MAJOR) {
+        return magic[3] > SM_LEVEL_MAJOR ? SLOT_NEWER : SLOT_OLDER;
     }
     return read_level(slug, meta, NULL, false, NULL) ? SLOT_WORLD : SLOT_DAMAGED;
 }
 
 bool worldstore_create_in(int slot, char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player) {
-    if (slot < 0 || slot >= CM_SLOTS || name == NULL || meta == NULL || player == NULL) return false;
-    char slug[CM_WORLD_SLUG_MAX];
+    if (slot < 0 || slot >= SM_SLOTS || name == NULL || meta == NULL || player == NULL) return false;
+    char slug[SM_WORLD_SLUG_MAX];
     worldstore_slot_slug(slot, slug, sizeof(slug));
     // Refuse to create over a world: the menu only offers empty slots,
     // and this is the line that makes sure it stays that way.
@@ -758,18 +764,18 @@ int worldstore_adopt_legacy(char const* legacy_slug, char const* name) {
     if (legacy_slug == NULL || !slug_exists(legacy_slug)) return -1;
 
     int slot = -1;
-    char slug[CM_WORLD_SLUG_MAX];
-    for (int i = 0; i < CM_SLOTS && slot < 0; i++) {
+    char slug[SM_WORLD_SLUG_MAX];
+    for (int i = 0; i < SM_SLOTS && slot < 0; i++) {
         worldstore_slot_slug(i, slug, sizeof(slug));
-        // Free means no directory at all, not merely no level.cmw: a
+        // Free means no directory at all, not merely no level.smw: a
         // half-deleted slot must not have a world renamed on top of it.
         char dir[192];
         world_dir(dir, sizeof(dir), slug);
-        cm_dir_t* d = cm_dir_open(dir);
+        sm_dir_t* d = sm_dir_open(dir);
         if (d == NULL) {
             slot = i;
         } else {
-            cm_dir_close(d);
+            sm_dir_close(d);
         }
     }
     if (slot < 0) return -2;
@@ -779,7 +785,7 @@ int worldstore_adopt_legacy(char const* legacy_slug, char const* name) {
     char from[192], to[192];
     world_dir(from, sizeof(from), legacy_slug);
     world_dir(to, sizeof(to), slug);
-    if (!cm_rename(from, to)) return -2;
+    if (!sm_rename(from, to)) return -2;
 
     // The name is cosmetic; a world that moved but kept its old name is
     // still the player's world, so this failing does not undo the move.
@@ -801,7 +807,7 @@ bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* 
     snprintf(meta->slug, sizeof(meta->slug), "%s", "(scratch)");
     snprintf(meta->name, sizeof(meta->name), "%s", "(scratch)");
     meta->seed   = seed;
-    meta->format = CM_LEVEL_FORMAT;
+    meta->format = SM_LEVEL_FORMAT;
     meta->farlands_x = FARLANDS_X_DEFAULT;
     if (player != NULL) player_state_defaults(player, meta);
 
@@ -829,31 +835,31 @@ bool worldstore_delete(char const* slug) {
     // there is no recursive delete, so walk it.
     char      region[192];
     snprintf(region, sizeof(region), "%.170s/region", dir);
-    cm_dir_t* d = cm_dir_open(region);
+    sm_dir_t* d = sm_dir_open(region);
     if (d != NULL) {
         char const* e;
         // Collect then delete: deleting while iterating a FAT directory
         // is not something to rely on.
         static char names[256][32];
         int         n = 0;
-        while (n < 256 && (e = cm_dir_next(d, NULL)) != NULL) {
+        while (n < 256 && (e = sm_dir_next(d, NULL)) != NULL) {
             if (strlen(e) < sizeof(names[0])) snprintf(names[n++], sizeof(names[0]), "%s", e);
         }
-        cm_dir_close(d);
+        sm_dir_close(d);
         for (int i = 0; i < n; i++) {
             char path[256];
             snprintf(path, sizeof(path), "%.190s/%.32s", region, names[i]);
-            cm_remove(path);
+            sm_remove(path);
         }
     }
 
     char level[192];
     level_path(level, sizeof(level), slug);
-    cm_remove(level);
+    sm_remove(level);
     // The directories last, now they are empty. A slot counts as free
     // only once its directory is gone (worldstore_adopt_legacy).
-    cm_remove(region);
-    cm_remove(dir);
+    sm_remove(region);
+    sm_remove(dir);
 
     if (s_open && strcmp(s_open_slug, slug) == 0) worldstore_close();
     return !slug_exists(slug);
@@ -866,13 +872,13 @@ bool worldstore_open_bench(uint32_t seed, world_meta_t* meta, player_state_t* pl
     worldstore_close();
     if (fresh != NULL) *fresh = true;
 
-    if (slug_exists(CM_BENCH_SLUG)) {
+    if (slug_exists(SM_BENCH_SLUG)) {
         world_meta_t   m;
         player_state_t p;
-        if (read_level(CM_BENCH_SLUG, &m, &p, true, NULL) && m.seed == seed) {
+        if (read_level(SM_BENCH_SLUG, &m, &p, true, NULL) && m.seed == seed) {
             *meta = m;
             if (player != NULL) *player = p;
-            open_paths(CM_BENCH_SLUG);
+            open_paths(SM_BENCH_SLUG);
             if (fresh != NULL) *fresh = false;
             return true;
         }
@@ -880,13 +886,13 @@ bool worldstore_open_bench(uint32_t seed, world_meta_t* meta, player_state_t* pl
         // terrain this build would not generate, so every number taken
         // on it would describe a world nobody can reproduce. Throw it
         // away and generate again; that is what the fixed seed is for.
-        worldstore_delete(CM_BENCH_SLUG);
+        worldstore_delete(SM_BENCH_SLUG);
     }
 
     // A fixed clock as well as a fixed seed: the measurement must not
     // depend on what time of day it happens to be (shadows, fog, the
     // sky's colour all cost pixels).
-    if (!create_at(CM_BENCH_SLUG, "(bench)", seed, meta, player)) return false;
+    if (!create_at(SM_BENCH_SLUG, "(bench)", seed, meta, player)) return false;
     meta->time_of_day = 1000;  // a morning, as the flight has always been
     return true;
 }

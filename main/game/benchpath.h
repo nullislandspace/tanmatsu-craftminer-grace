@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the benchmark flight
+//  SynthMiner  --  the benchmark flight
 // ---------------------------------------------------------------------
 //  ONE FIXED PATH THROUGH ONE FIXED WORLD, for comparing renderers.
 //
@@ -15,7 +15,7 @@
 //  So the bench world is PERSISTED and pre-generated, and the flight
 //  streams it off the card the way play does (the user's call,
 //  2026-09-25). It lives outside `worlds/` so it cannot be seen or
-//  deleted from the world-select screen (worldstore.h, CM_BENCH_SLUG).
+//  deleted from the world-select screen (worldstore.h, SM_BENCH_SLUG).
 //
 //  THE PATH WAS CHOSEN BY SEARCH, not by eye: 4000 seeds x 8 headings,
 //  keeping only paths whose ground never steps more than two blocks,

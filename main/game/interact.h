@@ -1,9 +1,9 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  breaking and placing
+//  SynthMiner  --  breaking and placing
 // ---------------------------------------------------------------------
-//  THE LOGGING RULE (claudeplans/craftminer.md, Part F) lives here, and
-//  it is CraftMiner's one deliberate departure from Minecraft:
+//  THE LOGGING RULE (claudeplans/synthminer.md, Part F) lives here, and
+//  it is SynthMiner's one deliberate departure from Minecraft:
 //
 //    break a wood or leaf block the PLAYER placed  -> that block drops
 //    break one the world GREW                      -> the tree falls

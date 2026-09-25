@@ -12,7 +12,7 @@
 //  Uses only the engine's camera (render_camera / render_project), so
 //  the host-side check (make scenecheck) tests it against its stand-in.
 //  Lifted from tanmatsu-showreel-grace,
-//  main/horizon.h. Changes here are CraftMiner's;
+//  main/horizon.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

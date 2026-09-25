@@ -1,4 +1,4 @@
-# Implementation plan: CraftMiner
+# Implementation plan: SynthMiner
 
 Living document: design, step-by-step status, findings and decisions.
 Updated whenever a step starts or finishes, something is measured, or
@@ -9,7 +9,7 @@ something is decided. Plan approved by the user on 2026-09-20.
 The repository is the `tanmatsu-template-grace` template plus a skeleton
 (`main/main.c`: one block turning in front of the camera). The goal is a
 basic-but-extendable Minecraft-like game for the Tanmatsu, on SynthEngine3D,
-slug `at.cavac.craftminer`, SD card only (`external_only`).
+slug `at.cavac.synthminer`, SD card only (`external_only`).
 
 The decisive find: **the showreel already contains a complete, measured voxel
 engine** — `../tanmatsu-showreel-grace/main/craftminer/voxel/` (greedy mesher,
@@ -74,9 +74,9 @@ is worse than none, because it is the thing a newcomer trusts.
 ```
 main/
 * main.c                  app_main, se_app_config_t, the five callbacks
-  app.h                   cm_app_t -- the context threaded through se_run's `user`
+  app.h                   sm_app_t -- the context threaded through se_run's `user`
   common/
-*   psram.h               cm_alloc/cm_calloc/cm_free -- the ONLY host/badge seam
+*   psram.h               sm_alloc/sm_calloc/sm_free -- the ONLY host/badge seam
 *   rng.{c,h}             xorshift64*, hash2/hash3, value noise          (pure)
 *   tags.{c,h}            the NBT-like tagged-field codec (D-30)         (pure)
 *   texcache.{c,h}        LIFTED
@@ -97,14 +97,15 @@ main/
 *   blockent.{c,h}        BLOCK ENTITIES: furnace, chest and trash slots (pure)
 *   worldgen.{c,h}        pure (seed, cx, cz) -> id/state planes         (pure)
 *   farlands.{c,h}        Beta 1.7.3's density generator, overflowed     (pure)
-*   datadir.{c,h}         /sd/craftminer, and moving old data into it (D-80) (pure)
+*   datadir.{c,h}         /sd/synthminer: adopting old data into it (D-80),
+*                         renaming the saves and retiring CraftMiner (D-91, D-92) (pure)
 *   chunk.{c,h}           chunk_t, the ring store, world_block/set/state
 *   light.{c,h}           sky + block light: floods on arrival and on change (pure)
 *   chunk_codec.{c,h}     RLE over a chunk's two planes                  (pure)
 *   chunkmesh.{c,h}       one vertical section into a mesh               (pure)
 *   region.{c,h}          region file: header, dual directory, compaction
 *   vfs_compat.{c,h}      the FatFs calls graceloader does not export (D-27)
-*   worldstore.{c,h}      save slots, level.cmw (player + inventory), FatFs
+*   worldstore.{c,h}      save slots, level.smw (player + inventory), FatFs
                           enumeration, adopting the pre-slots Testworld (D-60)
 *   chunk_worker.{c,h}    the core-1 task, queues, the ownership contract
 *   chunk_render.{c,h}    per-section LOD cache, frustum cull, submission
@@ -143,7 +144,7 @@ main/
 *   i18n.{c,h}            T(id), the language, and a printf that reorders    (pure)
 *   strings_gen.{c,h}     GENERATED from lang/*.txt by tools/make_lang.py
   ui/
-*   title.{c,h}           "CraftMiner" in blocks, on a scratch world (D-58)
+*   title.{c,h}           "SynthMiner" in blocks, on a scratch world (D-58)
 *   menu.{c,h}            every menu: title strip, then se_ui panels for slots,
                           new world, typing, settings, controls, pause
 *   keybind_ui.{c,h}      PORTED from synthracer: a binding as a key cap or label
@@ -400,7 +401,7 @@ too.
 ### Block ids can move (D-31)
 
 The chunk planes store one byte per cell, so a saved id only means something
-next to the table current when it was written. `level.cmw` records that table:
+next to the table current when it was written. `level.smw` records that table:
 every block's **name** against the id it had. On open each name is looked up in
 today's registry and a remap is built, which `chunk_decode` applies as it
 unpacks. Blocks can then be added anywhere, reordered, or removed and old worlds
@@ -415,7 +416,7 @@ need no palette and cannot be misread after a renumbering.
 
 Tags and palettes handle everything additive. A change that alters a layout
 wholesale is what the **major version in each file's magic** is for:
-`"CMR" + digit` for regions, `"CMW" + digit` for `level.cmw`. A mismatched
+`"SMR" + digit` for regions, `"SMW" + digit` for `level.smw`. A mismatched
 major is **refused, not guessed at**, so a future upgrader has something
 definite to act on. It moves only for such a change, never for a new field.
 
@@ -441,13 +442,23 @@ still there.
 
 ## Part P: on-disk format
 
-Root is `graceloader_get_install_basepath()` = `/sd/apps/at.cavac.craftminer`.
+Root is **`/sd/synthminer`** (`SM_DATA_DIR`, `world/datadir.h`) -- NOT the
+install directory, which is where this started and where the launcher may
+empty it on an update (D-80). It was `/sd/craftminer` until the game was
+renamed, and a card that still has that is adopted from on start (D-91).
 
 ```
 <base>/worlds/worlds.idx              NBT index (an optimisation, not the truth)
-<base>/worlds/<slug>/level.cmw        NBT: seed, player, spawn, time, inventory
-<base>/worlds/<slug>/r.<rx>.<rz>.cmr  region: 8x8 chunks
+<base>/worlds/<slug>/level.smw        NBT: seed, player, spawn, time, inventory
+<base>/worlds/<slug>/r.<rx>.<rz>.smr  region: 8x8 chunks
+<base>/bench/                         the benchmark world, outside worlds/ (step 41)
 ```
+
+The extensions were `.cmw` and `.cmr`, and the magics `CMW1` / `CMR1`, when
+the game was CraftMiner. **The formats did not change with the name** -- only
+what they are called. Files are renamed on start, and both magics are read,
+so a save from before the rename loads whether or not the rename reached it
+(D-91).
 
 **`se_save.h` is not used for worlds** (F-05): it is a numbered-slot framework
 (`SE_SAVE_SLOT_COUNT` 3, one directory) and does not fit many named worlds.
@@ -461,9 +472,9 @@ because 1024 chunks a region is far more than this world touches at once, and a
 smaller region makes compaction cheap.
 
 ```c
-/* r.<rx>.<rz>.cmr, little-endian */
+/* r.<rx>.<rz>.smr, little-endian */
 struct cmr_header {              /* 0x000, 64 bytes */
-    char     magic[4];           /* "CMR1" */
+    char     magic[4];           /* "SMR1" */
     uint16_t version;
     uint16_t region_dim;         /* 8 */
     int32_t  rx, rz;
@@ -569,7 +580,7 @@ the hashes would never be stable.
 Everything under `main/world/` (bar `chunk_worker.c` and the FatFs half of
 `worldstore.c`), `main/game/{physics,raycast,interact}`, `main/items/*`,
 `main/voxel/voxel_mesh.c` and `main/math/*` compiles with a plain `cc`. The one
-seam is `main/common/psram.h` (`cm_alloc` -> `malloc` or `heap_caps_malloc`).
+seam is `main/common/psram.h` (`sm_alloc` -> `malloc` or `heap_caps_malloc`).
 No module in the pure set may include `esp_heap_caps.h`, `esp_log.h` or FreeRTOS
 headers — enforced by a grep rule in `make check`.
 
@@ -589,6 +600,9 @@ headers — enforced by a grep rule in `make check`.
 | Save round trip | Chunk -> RLE -> chunk byte-identical; a 64-chunk region written and fully read back; a corrupted directory copy A falls back to B and reports the chunk *absent*, never corrupt; compaction preserves every chunk. |
 | Tree felling | Part F. |
 | Registry invariants | `BLK_COUNT < 256`; every block has materials; every item has a name and `stack_max >= 1`; inventory index maths at every boundary. |
+| Save slots | Eight slots told apart without opening them: a world, an empty slot, one from a NEWER major (refused, never offered as free), one that is damaged, and a legacy world adopted into the first free slot. Deleting frees the slot, directory and all. |
+| The data directory | `datadir_adopt` moves a pre-D-80 install directory across, never over an existing entry, leaves a clash reported rather than merged, and is a no-op on the second start. The app's own shipped files are not touched. |
+| The rename from CraftMiner | A card exactly as CraftMiner left it: `/sd/craftminer` with two worlds, the bench world, a negative region coordinate and a replay. After one start every byte is readable under the new name, nothing is left under the old, and a second start is silent. Then `datadir_retire` **refuses** while a world is still in the old install directory, refuses a path that is or contains the live one, and only once the world is gone deletes the directory, shipped files and all (D-91, D-92). |
 
 `make scenecheck` (`tools/scenecheck.c` on `synthengine3D/host/se_host_stub.c`)
 is the **budget** test, so a cap overflow is never discovered on the badge. It
@@ -770,7 +784,7 @@ first.
 **The tests it needs, in order:**
 
 1. **Install graceloader 2.6.0** on the badge. Start an app built against the
-   OLD engine (another grace app, or last week's CraftMiner): it must run as
+   OLD engine (another grace app, or last week's SynthMiner): it must run as
    it did -- that is 2.6.0's compatibility promise (old apps on a new loader).
 2. **The flip, by eye and under load.** Play: no tearing when turning fast.
    Save settings and the world while playing (flash writes switch the cache
@@ -900,7 +914,7 @@ imitated by hand (a biased wall, y quantised every 12 blocks, an 8:1 smear)
   it (x < -2048, chunk x -129 and beyond) is Far Lands; chunk -128 is the
   last ordinary one.
 - **Changeable later, per world.** The edge is a field of the world,
-  `farlands_x` in level.cmw, written when a world is first created or
+  `farlands_x` in level.smw, written when a world is first created or
   opened by a build that knows it, from `FARLANDS_X_DEFAULT`. Changing the
   default changes NEW worlds only: an existing world keeps its edge, so its
   generated chunks and its ungenerated ones always agree and no seam is
@@ -1129,7 +1143,7 @@ material and two sticks, and only the shape separates them, so with a grid that
 rule is load-bearing. The user asked for Minecraft's resource counts, so the
 collision is real and arrives with the first tool.
 
-It does not matter, because **nothing in CraftMiner ever infers a recipe from a
+It does not matter, because **nothing in SynthMiner ever infers a recipe from a
 pile of ingredients.** Forward, the player names the recipe. Backward, the
 disassembly bench starts from the item, which is equally known. The requirement
 that replaces it is the one that is actually true: distinct output *and*
@@ -1157,7 +1171,7 @@ Three reasons, and the first is the one that decides it:
    they have had in a chest for a month.
 3. It is smaller, and it is a more meaningful thing to have in a save file.
 
-Saved in `level.cmw` as a list of item names, beside the inventory.
+Saved in `level.smw` as a list of item names, beside the inventory.
 
 ### Three stations, and the furnace has three slots
 
@@ -1298,16 +1312,16 @@ reason Minecraft chose the other rule.
 |---|---|---|---|
 | **0** | **Scaffolding (host only, no device)** | | |
 | 0.1 | This document, with the status table, F-01..F-09 and D-01..D-19 | done | 2026-09-20 |
-| 0.2 | Create the layout; lift `mesh`, `xform`, `mesh_render`, `camera`, `texcache`, `backdrop`, `horizon`, `voxel_mesh`, `voxel_sky`, `voxel_fx`, `textures/*.png`, `tools/{make_textures.py,meshcheck.c}`, with provenance in each header | done | 2026-09-20: 22 files carry a provenance line. Textures flattened to `textures/` (one app, not a reel with segments) and `make_textures.py` trimmed to CraftMiner's 20; regenerated **byte-identical** to the showreel's (F-14). `backdrop`/`horizon`/`voxel_sky`/`voxel_fx` are in the tree but not yet in `APP_SOURCES` — they wait for `world/chunk_render.h` in step 2. |
-| 0.3 | `common/psram.h` seam; `world/blocks.c` registry; `voxel_mesh.c`'s `kind()`/`voxel_face_mat()` become `BLOCKS[]` lookups (`vox_grid_t` unchanged) | done | 2026-09-20: 17 blocks incl. `BLK_BARRIER`. The leaves-see-leaves / glass-hides-glass rule became the `BF_SEE_SELF` flag instead of a hard-coded id. **All eleven of the showreel's mesher cases pass with its exact triangle counts** (F-15), so the conversion is behaviour-preserving. `voxel_mesh.c`'s greedy mask moved to `cm_calloc` (F-12 closed). |
+| 0.2 | Create the layout; lift `mesh`, `xform`, `mesh_render`, `camera`, `texcache`, `backdrop`, `horizon`, `voxel_mesh`, `voxel_sky`, `voxel_fx`, `textures/*.png`, `tools/{make_textures.py,meshcheck.c}`, with provenance in each header | done | 2026-09-20: 22 files carry a provenance line. Textures flattened to `textures/` (one app, not a reel with segments) and `make_textures.py` trimmed to SynthMiner's 20; regenerated **byte-identical** to the showreel's (F-14). `backdrop`/`horizon`/`voxel_sky`/`voxel_fx` are in the tree but not yet in `APP_SOURCES` — they wait for `world/chunk_render.h` in step 2. |
+| 0.3 | `common/psram.h` seam; `world/blocks.c` registry; `voxel_mesh.c`'s `kind()`/`voxel_face_mat()` become `BLOCKS[]` lookups (`vox_grid_t` unchanged) | done | 2026-09-20: 17 blocks incl. `BLK_BARRIER`. The leaves-see-leaves / glass-hides-glass rule became the `BF_SEE_SELF` flag instead of a hard-coded id. **All eleven of the showreel's mesher cases pass with its exact triangle counts** (F-15), so the conversion is behaviour-preserving. `voxel_mesh.c`'s greedy mask moved to `sm_calloc` (F-12 closed). |
 | 0.4 | `tools/worldcheck.c` skeleton, `make check`, the host-purity grep rule | done | 2026-09-20: `make check` = `hostpurity` + `meshcheck` + `worldcheck`, and `make build` **depends on it**. `worldcheck` has the registry section; the rest arrive with their milestones. `scenecheck` waits for `chunk_render.c` (step 2). |
-| 0.5 | CMake: `SE_SCENE_TEXTURED_TRI_CAP=2048`, `SE_BINDINGS_MAX=24`; testkit sources in; `SCREENSHOT_DIR`; `metadata.json` gains the PNGs | done | 2026-09-20: both definitions sit before `add_subdirectory(synthengine3D)` and `make check` greps them back out with sed, so app and checker can never disagree. Testkit compiled in; `SCREENSHOT_DIR="/sd/apps/at.cavac.craftminer/test"`. `make install` uploads the 20 textures to `<app>/textures/`. |
+| 0.5 | CMake: `SE_SCENE_TEXTURED_TRI_CAP=2048`, `SE_BINDINGS_MAX=24`; testkit sources in; `SCREENSHOT_DIR`; `metadata.json` gains the PNGs | done | 2026-09-20: both definitions sit before `add_subdirectory(synthengine3D)` and `make check` greps them back out with sed, so app and checker can never disagree. Testkit compiled in; `SCREENSHOT_DIR="/sd/apps/at.cavac.synthminer/test"`. `make install` uploads the 20 textures to `<app>/textures/`. |
 | | **Accept:** `make check` green, `make build` clean, `make verify` passes | **done** | 2026-09-20: all three. `app.so` 25605 text / 43252 data / 15649 bss. |
 | **1** | **World data, generation and persistence (host only)** | | |
 | 1.1 | `chunk.{c,h}` ring store, `world_block/set/state`, `BLK_BARRIER`; **measure free PSRAM on the badge** and record it | done | 2026-09-20: measured on the badge (F-22). 28.1 MiB PSRAM free after the engine boots; the 8 MiB slab leaves 20.1 MiB. The residency radius of 6 is comfortable and could grow. Chunk generation measured at 56 ms (F-23).
 | 1.2 | `worldgen.c`: heightmap, strata, water, ores, caves, trees, plants; cross-chunk decoration by neighbourhood iteration | done | 2026-09-20: two octave stacks (broad coast field + fine hills), soil depth, beaches, two-field cave worms, coal, trees on a jittered 5-block grid, flowers and tall grass. Measured over 327k columns: relief y17-38, **31.3% at or below sea level**, centred at y27 with sea level 24. Host-tested for determinism (including x=-100000 and z=1400) and load-order independence (F-17). |
 | 1.3 | `chunk_codec.c` RLE; `region.c` header, dual directory, append, compaction | done | 2026-09-20: a generated chunk packs to **3962 bytes** from 32768 raw (8.3x), with a raw fallback so no input can fail to store. Region files host-tested for round trip, damage, **torn-write recovery** and compaction (F-25), then measured on the card (F-26). `world/vfs_compat.{c,h}` added for the calls graceloader does not export (D-27).
-| 1.4 | `worldstore.c`: `level.cmw` schema, `worlds.idx`, the `se_mp3.c` FatFs enumeration | done | 2026-09-20: worlds create / list / open / save / delete, slugs made FAT-safe and unique, player state round-tripped including a position out at x=-100000. Palette written and remap proven (F-29). `common/tags.{c,h}` added for D-30, tested both ways (F-28). Enumeration is a live FatFs directory scan; `worlds.idx` is **not** written yet -- the scan is the truth and the index is only an optimisation, so it waits until a listing is measured as slow.
+| 1.4 | `worldstore.c`: `level.smw` schema, `worlds.idx`, the `se_mp3.c` FatFs enumeration | done | 2026-09-20: worlds create / list / open / save / delete, slugs made FAT-safe and unique, player state round-tripped including a position out at x=-100000. Palette written and remap proven (F-29). `common/tags.{c,h}` added for D-30, tested both ways (F-28). Enumeration is a live FatFs directory scan; `worlds.idx` is **not** written yet -- the scan is the truth and the index is only an optimisation, so it waits until a listing is measured as slow.
 | | **Accept:** `make worldcheck` passes determinism, cross-chunk equivalence, RLE and region round trips, torn-write recovery, compaction | | |
 | **2** | **Streaming render on the device** | | |
 | 2.1 | `chunk_worker.c`: task, queues, ownership contract, synchronous mode | done | 2026-09-20: core 1 at `configMAX_PRIORITIES-6`, 48-deep job and result queues, worker-owned 21 KiB mesher scratch (F-08 closed). Host-tested through the synchronous path (F-30). |
@@ -1336,25 +1350,25 @@ reason Minecraft chose the other rule.
 | 5.1 | `screens.c`: title -> world list -> new world (name + seed, or rolled) -> play | done | 2026-09-21: the **title** is the showreel's idea rebuilt on a streamed world (D-58). 2026-09-22: **Play / Settings / Quit** along the bottom of it, under the word; Play opens the **eight save slots** (D-60), a used slot offers Play / Rename / Delete, an empty one the new-world form — name, and a seed that is a number, any text (hashed), or blank for random. All in `ui/menu.c`, drawn with the engine's list menu, which has no scrolling of its own, so long lists window round the cursor. |
 | 5.2 | Save policy: chunk unload, pause-menu Save, quit. Never per tick | done | 2026-09-21: `save_world()` writes the player and every edited resident chunk; eviction already saved. 2026-09-22: saves on **opening the pause menu** (D-61), on its Save row, and on Save and quit. Nothing saves on a tick or a timer. |
 | 5.10 | **Player position and inventory in the save** | done | 2026-09-22, asked for by the user. The inventory is stored **by item name** (D-62) — each slot's item, count and wear, plus the selected slot. The position is restored **exactly** (`player_place`), falling back to standing on the ground only if the body would not fit there; before this a returning player was always put on the surface, whatever cave they had left from. A `placed` flag tells a real position from a new world's spawn guess, with a rule for saves from before the flag (F-51). Host-tested: a worn pickaxe, a partial stack and the last slot round-trip; a position 11 blocks down comes back as 11. |
-| 5.11 | **Adopt the pre-slots Testworld** | done | 2026-09-22, asked for by the user: people are already playing. The one world earlier builds kept, `worlds/flyover`, is moved by **one directory rename** into the first free slot and renamed *Testworld*. Nothing is copied, so nothing can be half-copied; a card that never had it is left alone, and a second start finds nothing to do. Host-tested against a hand-written level.cmw in the old format, with a chunk in it: terrain, the placed block, the player's exact position and the seed all survive. **Not yet run on the badge** — it was unreachable when this was written. |
-| 5.7 | **Entities in the save** | done | 2026-09-22: every dropped item goes into level.cmw with the world (D-68) -- by item name, with count, wear, age and what is left of its pickup delay -- and comes back on opening. An item whose chunk is not loaded holds still (no falling, ageing or pickup), which keeps D-33's promise without per-chunk entity sections. Host-tested: a round trip, and an item in an unloaded chunk neither falling nor ageing. |
-| 5.8 | **Replay record/play**, and synchronous chunks for the `shots` test | done | 2026-09-22: `game/replay.{c,h}`. R (a debug key, unless bound) records from where the player stands to `replays/last.cmr`: the start (seed, clock, position, inventory) and each tick's action mask and gyro turn. The `replay` and `replay_third` test scenes play `replays/test.cmr` (else `last.cmr`) on a SCRATCH world of that seed, so no save is touched; under a test the replay runs exactly the ticks that belong to the set clock. Two ordering bugs found making it deterministic (F-59, F-60). Host-tested round trip; on the badge a scripted replay placed a torch at night and mined, photographed in both views. Earlier notes: | 2026-09-21: the synchronous half is done (D-59) — a `shots` run switches the worker inline and settles the world, so a shot photographs the world instead of the sky, and three captures of one instant now hash identically. **Replay record/play is still not written.** Carried in from 3.3, was blocked on F-45. A `shots` run SETS the clock rather than running it, so the chunks never stream and every screenshot is empty sky — the fix is the synchronous mode D-15 put there for exactly this. Until both exist, block 3's device accept line cannot be met and shot hashes cover the overlay but not the world. |
+| 5.11 | **Adopt the pre-slots Testworld** | done | 2026-09-22, asked for by the user: people are already playing. The one world earlier builds kept, `worlds/flyover`, is moved by **one directory rename** into the first free slot and renamed *Testworld*. Nothing is copied, so nothing can be half-copied; a card that never had it is left alone, and a second start finds nothing to do. Host-tested against a hand-written level.smw in the old format, with a chunk in it: terrain, the placed block, the player's exact position and the seed all survive. **Not yet run on the badge** — it was unreachable when this was written. |
+| 5.7 | **Entities in the save** | done | 2026-09-22: every dropped item goes into level.smw with the world (D-68) -- by item name, with count, wear, age and what is left of its pickup delay -- and comes back on opening. An item whose chunk is not loaded holds still (no falling, ageing or pickup), which keeps D-33's promise without per-chunk entity sections. Host-tested: a round trip, and an item in an unloaded chunk neither falling nor ageing. |
+| 5.8 | **Replay record/play**, and synchronous chunks for the `shots` test | done | 2026-09-22: `game/replay.{c,h}`. R (a debug key, unless bound) records from where the player stands to `replays/last.smr`: the start (seed, clock, position, inventory) and each tick's action mask and gyro turn. The `replay` and `replay_third` test scenes play `replays/test.smr` (else `last.smr`) on a SCRATCH world of that seed, so no save is touched; under a test the replay runs exactly the ticks that belong to the set clock. Two ordering bugs found making it deterministic (F-59, F-60). Host-tested round trip; on the badge a scripted replay placed a torch at night and mined, photographed in both views. Earlier notes: | 2026-09-21: the synchronous half is done (D-59) — a `shots` run switches the worker inline and settles the world, so a shot photographs the world instead of the sky, and three captures of one instant now hash identically. **Replay record/play is still not written.** Carried in from 3.3, was blocked on F-45. A `shots` run SETS the clock rather than running it, so the chunks never stream and every screenshot is empty sky — the fix is the synchronous mode D-15 put there for exactly this. Until both exist, block 3's device accept line cannot be met and shot hashes cover the overlay but not the world. |
 | 5.9 | Move `time_of_day` from the player record to the world (D-52) | done | 2026-09-22: `world_meta_t.time_of_day`, advanced one per simulation tick and never by the wall clock. A save from before reads the player's copy instead (host-tested with a hand-written old save). New worlds start at a morning. |
 | 5.5 | **Pre-generate and save the spawn area on world creation**, behind a "Creating world" progress bar (D-25) | done | 2026-09-22: an `APP_LOADING` state generates a 60 ms slice a frame and draws "Creating world" / "Loading world" with the world's name and a bar, for the title at boot too. Under a deterministic test it loads in one step, and the frame that finishes carries straight on (F-60). |
 | 5.6 | **The entering sequence** (D-26): physics frozen, 3x3 synchronous, play, then stream the rest | done | 2026-09-21: the tick is frozen until the chunk under the player is resident, and the spawn area is pre-generated before play starts. The "carry on streaming the rest while walking" half already worked. **2026-09-23: the gate itself.** Everything else had been built and `loading_step()` was still asking the wrong question -- it waited for `missing == 0`, the whole view distance, which is the one thing D-26 was written to avoid. Now `chunk_render_nine()` counts the nine chunks around the player and play starts at nine, with the rest streaming in behind them. Creation still waits for all of it (it pre-generates and SAVES the spawn area, 5.5), as do the title, the debug flight and a replay, and `devtest_deterministic()` forces the old behaviour so `shots` is untouched. The progress bar measures the nine it is waiting for rather than crawling across the view and jumping. |
 | 5.3 | Pause menu; `f1_exits = false`; quitting saves first | done | 2026-09-22: Resume / Save / Settings / Save and quit to title. Opened by the Pause binding **or Esc, always** (D-63); Esc closes the inventory first if it is open. |
-| 5.4 | `worldlist_ui.c` with index + FatFs rebuild; delete a world | done | 2026-09-22: the slot list reads each slot's level.cmw when it opens (eight file opens, not per frame). Delete asks first with **No** under the cursor, and removes the directories as well as the files, so the slot is really free. `worlds.idx` is still unneeded (1.4). |
+| 5.4 | `worldlist_ui.c` with index + FatFs rebuild; delete a world | done | 2026-09-22: the slot list reads each slot's level.smw when it opens (eight file opens, not per frame). Delete asks first with **No** under the cursor, and removes the directories as well as the files, so the slot is really free. `worlds.idx` is still unneeded (1.4). |
 | | **Accept:** a scripted device test creates a world, edits 200 blocks across 3 chunks, saves, reloads, and reports whether every edit survived. **-> hand to the user** | **done** | 2026-09-22: the `savecheck` scene (`make cycle TEST="perf scene=savecheck secs=3"`), in a hidden world deleted afterwards. **200 of 200 edits survived** on the badge. The test kit gained `devtest_content_failed()` so a miss ends the test "bad". |
 | **6** | **Settings** | | |
 | 6.1 | Controls menu, the synthracer pattern, all actions rebindable | done | 2026-09-22: all 21 actions, plus Reset to defaults. Binding a key another action has **swaps** them, so no two actions share a key and none is left with none. The capture is the engine's `se_ui_capture_key`, fixed to take the cursor keys (F-50), and the key column is synthracer's `keybind_ui.c` with its key-cap icons (`ui/icons.c`), both ported with provenance headers. The main menu is a strip under the title (the user kept it); every other screen is an `se_ui` panel. The polled fallback for keyboards that send arrows as navigation events now follows the binding rather than the action, and the debug keys stand aside for any key a player has bound (D-64). |
 | 6.4 | **Gyroscope look** | done | 2026-09-22, asked for by the user: a Controls checkbox, off by default. The **rate** gyroscope is added up frame by frame and handed to the look beside the cursor keys, one real degree per view degree, so both work at once (D-65). A resting gyroscope's offset is tracked rather than turned into a slow spin. Yaw sign as the diagram in `graceloader_imu.h` predicts; the **pitch sign had to be flipped**, reported by the user on the badge. |
-| 6.2 | Graphics menu: textures, render scale, view distance; settings.txt | done | 2026-09-22: view distance (default near -- medium for a few hours, D-66 then D-76), textures, half / full resolution, in `settings.txt` on the SD card (D-67; NVS under `craftminer` at first, moved the same day). Replaces the T and V debug keys. Full resolution clears its own sky now, which it never had to while it was only the no-PPA fallback. |
+| 6.2 | Graphics menu: textures, render scale, view distance; settings.txt | done | 2026-09-22: view distance (default near -- medium for a few hours, D-66 then D-76), textures, half / full resolution, in `settings.txt` on the SD card (D-67; NVS under `synthminer` at first, moved the same day). Replaces the T and V debug keys. Full resolution clears its own sky now, which it never had to while it was only the no-PPA fallback. |
 | 6.3 | Audio and display via `se_hw.h` | done | 2026-09-22: device volume and the three brightnesses through `se_hw` (shared with the launcher); music and effects switches stored and wired to the mixer's gates, and labelled as waiting for block 14, since the game makes no sound yet. |
-| 6.5 | **The UI in six languages** (D-81) | done | 2026-09-23, asked for by the user. `lang/*.txt` (English the reference, plus German, Dutch, Flemish, French, Bulgarian), baked by `tools/make_lang.py` into `main/i18n/strings_gen.c`: 126 strings x 6, a lookup is an array index. Language is the first row of Settings, each named in its own language, stored in settings.txt; a player with no toolchain can correct any line from `/sd/craftminer/lang/<code>.txt` on the card. The font was the work, not the text (F-69): the engine drew ASCII only, and now draws Cyrillic, accented Latin, both dashes and the European quotation marks, generated from Hershey's own database with a check that every letter of every declared alphabet exists. `i18n_fmt` does its own `%2$s` substitution and takes the argument types from English, so an edited lang file cannot mislead it (F-70). `make` regenerates the tables whenever a lang file changes -- an ordinary make rule with known inputs, so nobody has to remember a second command -- and the generator validates while it generates (keys, placeholders, no word mixing two alphabets). `make langcheck` is the CI form, asking whether what is committed is up to date. worldcheck's "languages" section covers the rest: every character drawable, the formatter against six nasty strings. On the badge: the language list, Settings in Bulgarian, Controls in German. The language list first drew tick boxes, which the user rejected -- one choice out of many is a radio button -- so the engine gained `SE_MENU_VAL_RADIO` (their call to add it there rather than work round it). **Then 26 more languages, the user's call after asking what was missing** (F-71): 32 in all, English first and the rest alphabetical by the name each calls itself. The font grew seven accents (caron, breve, double acute, macron, dot above, ogonek, comma below), Greek out of Hershey's own SIMPLEX face -- the same weight as the Latin, which the Cyrillic never was -- and a dozen letterforms nobody can compose. 126 strings x 32 = 4032, every character of every one of them drawable -- 128 once step 14 added the volume sliders, and a label-width check came with them (F-76). |
+| 6.5 | **The UI in six languages** (D-81) | done | 2026-09-23, asked for by the user. `lang/*.txt` (English the reference, plus German, Dutch, Flemish, French, Bulgarian), baked by `tools/make_lang.py` into `main/i18n/strings_gen.c`: 126 strings x 6, a lookup is an array index. Language is the first row of Settings, each named in its own language, stored in settings.txt; a player with no toolchain can correct any line from `/sd/synthminer/lang/<code>.txt` on the card. The font was the work, not the text (F-69): the engine drew ASCII only, and now draws Cyrillic, accented Latin, both dashes and the European quotation marks, generated from Hershey's own database with a check that every letter of every declared alphabet exists. `i18n_fmt` does its own `%2$s` substitution and takes the argument types from English, so an edited lang file cannot mislead it (F-70). `make` regenerates the tables whenever a lang file changes -- an ordinary make rule with known inputs, so nobody has to remember a second command -- and the generator validates while it generates (keys, placeholders, no word mixing two alphabets). `make langcheck` is the CI form, asking whether what is committed is up to date. worldcheck's "languages" section covers the rest: every character drawable, the formatter against six nasty strings. On the badge: the language list, Settings in Bulgarian, Controls in German. The language list first drew tick boxes, which the user rejected -- one choice out of many is a radio button -- so the engine gained `SE_MENU_VAL_RADIO` (their call to add it there rather than work round it). **Then 26 more languages, the user's call after asking what was missing** (F-71): 32 in all, English first and the rest alphabetical by the name each calls itself. The font grew seven accents (caron, breve, double acute, macron, dot above, ogonek, comma below), Greek out of Hershey's own SIMPLEX face -- the same weight as the Latin, which the Cyrillic never was -- and a dozen letterforms nobody can compose. 126 strings x 32 = 4032, every character of every one of them drawable -- 128 once step 14 added the volume sliders, and a label-width check came with them (F-76). |
 | | **Accept:** every menu reached on the badge, a key rebound and used, a world created, played, saved, reopened with its inventory; the Testworld adopted | **in progress** | 2026-09-22: the Testworld adoption **ran on the user's card** — `worlds/flyover` became `slot1`, named *Testworld*, all five region files with it (a copy of the original is kept off the badge). The title strip renders (screenshot). The user is testing the rest by hand: the gyroscope works after one sign flip (F-55), and the inventory cursor bug (F-54) was found that way. `make check` covers slots, the inventory round trip and the adoption. |
 | **7** | **Far Lands** | | |
 | 7.0 | **Bedrock, gravel, and generated signs** (D-79) | done | 2026-09-22, asked for by the user for the Far Lands: bedrock (unbreakable) and gravel (shovel, drops itself) as blocks 17 and 18; a sign, block 19, a post with a board facing east (`K_SIGN`), not solid, breakable with nothing dropped. Its text -- "Kurt / was here", "Wolfie / was here", "Far Lands / or Bust!" -- is one of three 64x32 textures drawn by `make_textures.py` with its own 5x7 pixel font (so the PNGs do not depend on PIL's fonts), chosen by a hash of where the sign stands (`voxel_sign_text`). Existing textures regenerate byte-identical. |
-| 7.1 | `farlands.c`: Beta 1.7.3's density generator, ported, fed coordinates past its overflow; the edge at x = -2048, sudden, stored per world (Part X, D-78) | done | 2026-09-22: redesigned by the user -- near spawn and a sudden cliff, as close to Beta's Edge Far Lands as possible, instead of a ramp at -100000. Built the same day (F-68): java.util.Random and Java's saturating cast ported, NoiseGeneratorPerlin / Octaves and ChunkProviderGenerate's density, terrain and surface passes in doubles; Beta chunk -784428 onwards is our chunk -129 onwards. `farlands_x` in level.cmw; `chunk_worker_set_world(seed, farlands_x)` replaces set_seed. Composition 42% rock / 30% air / 19% water / 9% dirt and grass against the wiki's 36 / 25 / 23 / 10; tunnels run west (98.7% of neighbours alike along x, 87% along z); ground 27 high at the edge, the wall 61 one block on. A `farlands` test scene walks up to the wall. 134 ms a chunk on the badge. |
+| 7.1 | `farlands.c`: Beta 1.7.3's density generator, ported, fed coordinates past its overflow; the edge at x = -2048, sudden, stored per world (Part X, D-78) | done | 2026-09-22: redesigned by the user -- near spawn and a sudden cliff, as close to Beta's Edge Far Lands as possible, instead of a ramp at -100000. Built the same day (F-68): java.util.Random and Java's saturating cast ported, NoiseGeneratorPerlin / Octaves and ChunkProviderGenerate's density, terrain and surface passes in doubles; Beta chunk -784428 onwards is our chunk -129 onwards. `farlands_x` in level.smw; `chunk_worker_set_world(seed, farlands_x)` replaces set_seed. Composition 42% rock / 30% air / 19% water / 9% dirt and grass against the wiki's 36 / 25 / 23 / 10; tunnels run west (98.7% of neighbours alike along x, 87% along z); ground 27 high at the edge, the wall 61 one block on. A `farlands` test scene walks up to the wall. 134 ms a chunk on the badge. |
 | 7.2 | Signs along the edge: "Kurt was here", "Wolfie was here" | done | 2026-09-22, asked for by the user; signs themselves are 7.0. One chunk in four of the last ordinary chunk column gets a sign, 0-2 blocks from the edge, on dry ground, facing east: 26 along 2048 blocks of edge in worldcheck's seed. |
 | | **Accept:** the far-lands host section; `shots scene=farlands` for a look; generation and frame cost measured at the wall | **done** | 2026-09-22: worldcheck's "far lands" section passes; shots of the wall from 30 and 12 blocks on the badge; 134 ms a chunk, 11 fps at Medium walking up to it. Left for the user: a look at it in play. |
 | **8+** | **The game** | | |
@@ -1386,18 +1400,19 @@ reason Minecraft chose the other rule.
 | 23 | **Permanent block ids; slots that say why they cannot be opened** | done | 2026-09-22, the user's call after F-52 was explained (D-74, D-75). Every block numbered explicitly; `tools/ids.txt` lists every block id and name and every item name ever shipped, and `make check` fails on a renumbered, renamed, removed or unlisted one -- each of the three cases tried and caught. Replays now store their inventory by item name (format 2). The slot list tells a world from a newer build ("from a newer version"), an older format ("needs upgrading") and a damaged one apart from an empty slot; nothing can be created over any of them. The upgrader itself is left until there is a format change for it to do. |
 | 24 | **Lighting's triangle cost, and the frame rate** | done | 2026-09-22, the user asked why the frame rate had fallen so far. Measured, not guessed: on the same scripted flight as 2026-09-21, today's build is as fast as yesterday's (14.5 vs 14.6 fps with lighting and clouds off, 14.1 with everything on) -- **no regression** (F-66). What had changed is the scene and the setting: walking at eye height puts close-up textured ground over the whole screen (rasterize 46 -> 72 ms), and the user plays at Far. Light in the merge key rounded in the near meshes, sky to every 4th level and torch to every 2nd (F-65): 25% fewer near triangles with torches about, +4% fps on the walk. Default view back to near (D-76). The `flight` and `replay_*` test scenes make these comparisons repeatable. |
 | 22 | **N: step the clock** | done | 2026-09-22, asked for by the user: a debug key moving the world's clock a quarter of a day, for looking at night without waiting. |
-| 27 | **The player's data out of the app's directory** | done | 2026-09-22, the user's catch (D-80): worlds, settings.txt, replays and screenshots move from `/sd/apps/at.cavac.craftminer` to `/sd/craftminer`, which the launcher does not manage. `world/datadir.c` moves what an earlier build left there on the first start -- a rename per entry, never over an existing one, nothing on a second start -- host-tested. Test-kit shots go to `/sd/craftminer/test`. |
-| 26 | **Screenshots** | done | 2026-09-22, asked for by the user: a new action, `Screenshot`, **0** by default and rebindable, saves the frame as the player sees it (HUD included) to `/sd/craftminer/screenshots/shotNNN.png` with the test kit's PNG writer; a "Saved ..." line shows for 2.5 s on the frames after, so it is never in the picture. |
+| 27 | **The player's data out of the app's directory** | done | 2026-09-22, the user's catch (D-80): worlds, settings.txt, replays and screenshots move from `/sd/apps/at.cavac.synthminer` to `/sd/synthminer`, which the launcher does not manage. `world/datadir.c` moves what an earlier build left there on the first start -- a rename per entry, never over an existing one, nothing on a second start -- host-tested. Test-kit shots go to `/sd/synthminer/test`. |
+| 26 | **Screenshots** | done | 2026-09-22, asked for by the user: a new action, `Screenshot`, **0** by default and rebindable, saves the frame as the player sees it (HUD included) to `/sd/synthminer/screenshots/shotNNN.png` with the test kit's PNG writer; a "Saved ..." line shows for 2.5 s on the frames after, so it is never in the picture. |
 | 25 | **The depth plane in internal SRAM, and a key sort** | done | 2026-09-22, the user's call (D-77). Engine option `SE_SCENE_DEPTH16_INTERNAL`: at quarter resolution a plain 16-bit depth plane (188 KB) in internal SRAM, cleared each frame (0.29 ms), instead of the stamped PSRAM plane; the flat list it displaced went to PSRAM. Depth order is now a radix sort of 32-bit keys in internal SRAM plus one gather, not a qsort of the records. Same scenes as F-66: flight 13.97 -> 16.30 fps, near walk 10.22 -> 12.36, Far walk 7.08 -> 7.99 (F-67). |
 | 29 | **Torches on walls** | done | 2026-09-23, asked for by the user. The mesher can now see each cell's block-data field -- a third plane beside cells and lights, carrying `st_data()` already extracted, because `voxel_mesh.c` may not include `chunk.h` -- and the torch reads it: upright in the middle of its cell, or shifted 0.30 to whichever wall was pointed at and lifted 0.20 off the floor. No tilt: a greedy voxel mesher emits axis-aligned boxes, and a rotated stick would be a second kind of geometry for one block. Placing picks the wall from the face that was struck, refuses the underside of a block (nothing here hangs) and refuses a wall that is not solid -- the first placement in this game to say no for a reason other than the cell being full. meshcheck pins where the stick ends up, not merely that something was drawn. **Known gap:** breaking the block a torch leans on leaves it floating; that wants block-update propagation, which leaves-decay and falling sand will want too, so it is worth building once rather than special-casing here. |
 | 30 | **Item icons, a bigger inventory, and the arm** | done | 2026-09-23, asked for by the user: the slots were flat average colours (D-03's placeholder) and three stone tools were three grey squares. A block is now drawn with **its own side texture** -- one table of files, no second copy, and a new block brings its icon with it -- and the eight things that are not blocks got drawn 16x16s with cut-out backgrounds. Tab slots 44 -> 60 px. The first-person arm got a mesh of its own, the sleeve running back past the camera: its flat cut end had been sitting just inside the bottom of the frustum, which is what made it read as a severed arm hanging in the air. |
 | 28 | **Water you can see into, and swim in** (D-86) | done | 2026-09-23, the user: water was an opaque cube, so putting your eyes under it broke the picture, and there was no swimming. Their rule, and it is the whole of it: **do not draw the sides or the bottom of a water block, and draw its top only when the block above is air.** That became `K_LIQUID`. Two things follow that the rule does not say out loud and the picture needs: a liquid must stop HIDING its neighbours, or the lake bed is never meshed and the surface is a lid over nothing; and the surface needs a second, downward-facing copy, emitted by the air cell above it, because an axis-aligned face is visible only from the side its normal points at -- which is exactly why it vanished as the eye went under. `water.png` became a cut-out checkerboard (the engine's one-bit alpha, the leaves' mechanism) so you see through the surface both ways. Swimming is buoyancy in `player.c`: jump rises, sneak dives, and the numbers come from `phys_gravity`'s recurrence rather than from feel. meshcheck pins the rule per material and per direction, and caught a real bug on the way -- the extra slice let a border cell act as an owner and doubled every face at a section seam. **And the blue.** The user's read of it was right and mine was wrong: the renderer already touches the brightness of every pixel, so the tint belongs there. `se_scene_set_tint()` scales the red and green of every triangle by one factor and the blue by another; the sky and the fog go to a dark blue and the sun, moon, clouds and stars are not drawn from under the surface. |
-| 36 | **Page flipping on the display's own buffers** (D-87) | done, device test todo | 2026-09-24, the user's call after looking at another engine's numbers. Engine 2.2: three driver framebuffers, present = select for the next refresh, no copy; the flip also writes back and drops the frame from the cache (F-89). Needs **graceloader 2.6.0** (`graceloader_display_register_callbacks`, IRAM trampolines chaining the BSP's callback, `esp_lcd_dpi_panel_get_frame_buffer` exported). Engine `4ac29d8`, graceloader `89fb785`, template `0c62ac4`, CraftMiner `cee4e24`. G6 tests 1-3 outstanding. |
+| 36 | **Page flipping on the display's own buffers** (D-87) | done, device test todo | 2026-09-24, the user's call after looking at another engine's numbers. Engine 2.2: three driver framebuffers, present = select for the next refresh, no copy; the flip also writes back and drops the frame from the cache (F-89). Needs **graceloader 2.6.0** (`graceloader_display_register_callbacks`, IRAM trampolines chaining the BSP's callback, `esp_lcd_dpi_panel_get_frame_buffer` exported). Engine `4ac29d8`, graceloader `89fb785`, template `0c62ac4`, SynthMiner `cee4e24`. G6 tests 1-3 outstanding. |
 | 37 | **The raycast renderer removed from the engine** (D-88) | done | 2026-09-24, the user's call. Engine `929f12d`; synthracer's debug key R went with it (`7e7e139`). Recorded under 2.2 as a deliberate exception to MAJOR. |
 | 38 | **`SE_RENDER_BANDED`: the z-buffer, band by band in internal SRAM** (D-89) | done, then removed (D-90) | 2026-09-24 built (engine `39ec8b4`), 2026-09-25 measured and taken out again. Host check: identical to the z-buffer in 1000 random scenes, and it catches a deliberately broken copy (F-90). On the badge, over the bench flight: 1.61x faster at full resolution, **8% slower at quarter**, and `SE_SCENE_BAND_W=64` does not fit in internal SRAM at all (largest free block 37-38 KB against the two 60 KB it needs), so the gap is not tunable. Removed from the engine with `SE_SCENE_BAND_W`, and `_banded` with it here; `SE_RENDER_BUILTIN_COUNT` back to 1. The raster target stays. Numbers and reasoning in G6. |
 | 39 | **Measure, and keep one renderer** | done | 2026-09-25. The z-buffer is kept; see G6 for the five measurements and D-90 for the decision. Two things the round taught that outlast it: the scene a renderer is measured on has to be able to measure one (F-91, step 41), and `PROF_BLIT` / `PROF_VSYNC` had never been fed, so the present was hiding in the residual (F-88) -- both fixed. **Still owed:** a `renderercheck` beside `meshcheck` was not written, because with one renderer left there is nothing to compare; if a second is ever added it comes back with it. |
 | 40 | **Bands on both cores** | dropped | 38 lost, and this was conditional on it. G6 (d) keeps the design notes: the raster target that would have carried it survives, so a later attempt does not start from nothing. |
 | 41 | **A world worth measuring on** | done | 2026-09-25, out of F-91 and the user's call: *"a persisted, pre-generated test world seems the best option... Clear a flight path so you don't get blocked... The world should be separate from the worlds i can manage through savegames and also be based on a fixed seed."* `game/benchpath.h` holds the seed, the path and `bench_path_at()`, and `tools/worldcheck.c`'s `check_bench_path` asserts the path against the generator that is compiled in, so a worldgen change that moves this terrain fails the build. **The path was chosen by search, not by eye**: 4000 seeds x 8 headings, keeping only those whose ground never steps more than two blocks, then the busiest -- seed 1030 due +z crosses ALL FIVE biomes in 240 blocks with 23 blocks of relief and a worst step of ONE, so nothing had to be carved and the ground-following camera can never be buried. The world lives at `<base>/bench/`, OUTSIDE `worlds/`, which is the whole of how it stays invisible: `worldstore_list()` scans `worlds/`, so the world-select screen cannot show it, open it or delete it, and the slug is reserved so a player-named world cannot collide. A bench world whose seed does not match is deleted and generated again rather than measured. `bench_gen` walks the path in 8-block stops waiting for `missing == 0` at each (generated chunks are already `CF_EDITED`, so eviction writes them; 49 chunks, ~45 s, once); `bench` and `bench_fullres` fly it off the card in 735 ms of loading and 40 s of flight, view distance forced to near so two runs compare. The perf clock and accumulators restart when the world is resident (`devtest_perf_restart`), so the card is not averaged into the rasteriser. |
+| 42 | **CraftMiner becomes SynthMiner** | done | 2026-09-25, the user's call after a Discord discussion (D-91), and done with no badge to hand. 445 references over 84 files, in one scripted pass so the ordering is auditable rather than a chain of hand edits: the showreel's own paths are sentinelled out first (`main/craftminer/...` and `cm_title.c` name files in ANOTHER repository and are not this game's to rename), then identifiers, then extensions and magics, then the name itself, including the declined forms five translations carry -- `CraftMinerom`, `CraftMinerem`, `CraftMinerjem`, `CraftMinerilla`, `CraftMineriga` -- which stay correct because the ending attaches to a stem that was swapped, not to the word. Two things the sweep could not have caught on its own: `-DCM_HOST` in the Makefile, where the `D` is a word character so the boundary guard did not fire, and a `www.cmr.no` in a vendored zlib header that the `.cmr` rule matched and that was reverted. **The title screen keeps its framing by arithmetic, not by luck**: the block font never had S, y or h, and the three were drawn in its style so that "SynthMiner" comes out at exactly 48 blocks, the width "CraftMiner" was and the width the camera path is framed on. Migration and its host check are D-91; the cleanup that follows it, and the appfs finding, are D-92. |
 
 ---
 
@@ -1681,7 +1696,7 @@ reason Minecraft chose the other rule.
   fix -- it cannot alias or overflow at any `int32` coordinate -- but the
   reason is the density field, not the heightmap.
 - **F-11** 2026-09-20, `synthengine3D/include/se_config.h:127`: `SE_BINDINGS_MAX`
-  is **16**, and CraftMiner declares about 20 actions. It **clamps silently**, so
+  is **16**, and SynthMiner declares about 20 actions. It **clamps silently**, so
   the last actions would simply not work. Raise it in CMake *and* add a
   `_Static_assert(ACT_COUNT <= SE_BINDINGS_MAX)` in `controls.c`.
 - **F-12** 2026-09-20, `voxel_mesh.c:230`: the mesher still `calloc`s its greedy
@@ -1694,7 +1709,7 @@ reason Minecraft chose the other rule.
   vertices at any LOD.
 
 - **F-14** 2026-09-20, step 0.2: `tools/make_textures.py`, trimmed to
-  CraftMiner's twenty generators and re-keyed to flat names, regenerates all
+  SynthMiner's twenty generators and re-keyed to flat names, regenerates all
   twenty PNGs **byte-identical** to the showreel's committed ones. The
   generators are seeded per texture, not off a shared stream, so dropping the
   sixteen space textures moved none of the others.
@@ -1734,7 +1749,7 @@ reason Minecraft chose the other rule.
 - **F-20** 2026-09-20, first device session: `ConnectionResetError` from
   badgelink also means "an app is running and holding the USB link", which is
   indistinguishable from F-19 at the tool level. `tools/recover.py` reported
-  "no app answered after the reset (probably in the launcher)" while CraftMiner
+  "no app answered after the reset (probably in the launcher)" while SynthMiner
   was in fact still running, so its guess is not evidence. Check by exiting the
   app before concluding anything about the bridge.
 - **F-21** 2026-09-20: `pyserial`'s `rfc2217://` client intermittently fails
@@ -1769,7 +1784,7 @@ reason Minecraft chose the other rule.
     generation and less than that of loading, so entering a world is not the
     problem; the problem was only ever the first fill.
   - the lever, if it is ever needed, is F-09's 4 x 4 x 4 density lattice with
-    trilinear interpolation. The cave field is two `cm_noise3` calls per stone
+    trilinear interpolation. The cave field is two `sm_noise3` calls per stone
     cell below the surface and dominates the cost. **Not done yet** -- 56 ms is
     survivable and meshing has not been measured, so the two get optimised
     together or not at all.
@@ -1815,7 +1830,7 @@ reason Minecraft chose the other rule.
   written by the older one is read by the newer with every absent field at its
   default, not at rubbish. Skipping a nested compound lands exactly on the next
   field, which is the case a furnace's inventory needs.
-- **F-29** 2026-09-20, step 1.4: `level.cmw` names all 17 blocks in its palette,
+- **F-29** 2026-09-20, step 1.4: `level.smw` names all 17 blocks in its palette,
   and a remap applied at decode moved 6361 stone cells in a test chunk. A block
   the remap drops becomes air rather than whatever now sits at that number.
 
@@ -2131,7 +2146,7 @@ reason Minecraft chose the other rule.
   was "done", host-tested, and committed.
 
 - **F-48** 2026-09-21, step 5.1: **half the title screen was invisible, and
-  four wrong explanations were tested before the right one.** "CraftMiner" is
+  four wrong explanations were tested before the right one.** "SynthMiner" is
   written in real blocks in the world; "Miner" drew and "Craft" did not.
 
   Ruled out, each by measurement rather than argument: the blocks were not
@@ -2163,7 +2178,7 @@ reason Minecraft chose the other rule.
 - **F-50** 2026-09-22, step 6.1: **the engine's key capture could not bind the
   arrow keys.** `se_ui_capture_key` refused every escaped scancode (>= 0xE000)
   and mapped only F1-F12 from navigation events -- and the cursor keys are
-  CraftMiner's default look keys, so once rebound they could never be bound
+  SynthMiner's default look keys, so once rebound they could never be bound
   back. First worked round with a capture of the game's own; **the user asked
   for the engine to be fixed instead** and synthracer's menu code to be used
   as it is. Fixed in the engine (2.1, `src/se_run.c`, `se_bindable_scancode`):
@@ -2177,7 +2192,7 @@ reason Minecraft chose the other rule.
   is a real position. The one wrong answer this can give is a player who left
   standing on exactly (0.5, 0.5) — who then lands on the ground at the same
   column, which is where they were anyway, give or take a cave.
-- **F-52** 2026-09-22, found while writing 5.11: **re-saving level.cmw rewrites
+- **F-52** 2026-09-22, found while writing 5.11: **re-saving level.smw rewrites
   the palette as today's, but untouched chunks keep yesterday's ids.** The
   palette is written from the current registry on every save, while a chunk on
   the card is only re-encoded when it is edited. The day a block id moves, the
@@ -2462,7 +2477,7 @@ reason Minecraft chose the other rule.
   happened is the mixer's idle power policy: it mutes the amplifier and
   disables I2S about 46 ms after the last sound, and powers back up when the
   next voice is registered. The audio is mixed and written correctly either
-  way -- but **an amplifier's turn-on is not instantaneous**, and CraftMiner's
+  way -- but **an amplifier's turn-on is not instantaneous**, and SynthMiner's
   effects are short. `SFX_HIT`, the tool striking a block, is 35 ms. Against a
   cold amp it is over before the speaker is listening.
 
@@ -2479,7 +2494,7 @@ reason Minecraft chose the other rule.
 
   Fixed in the engine with `audio_mixer_keep_awake()` rather than in the
   game, because the sharp edge is the engine's and the next game to meet it
-  would lose the same afternoon. CraftMiner holds it on for as long as it
+  would lose the same afternoon. SynthMiner holds it on for as long as it
   runs. The cost is the amplifier's idle draw -- which, note, **this game was
   already paying** whenever the music was switched on.
 
@@ -2616,12 +2631,12 @@ reason Minecraft chose the other rule.
   in the code, and the cheapest thing at run time was asked for as well.
   Both: the files are baked into arrays by `tools/make_lang.py`, so a lookup
   is an array index and nothing is parsed while the game runs, and a player
-  with no toolchain can still drop `/sd/craftminer/lang/<code>.txt` on the
+  with no toolchain can still drop `/sd/synthminer/lang/<code>.txt` on the
   card to correct what ships. `lang/en.txt` defines the keys; a language
   missing one shows English, and a key English does not have is an error.
   Language names are never translated -- the player who needs that row is
   the one who cannot read the language the game is in. Not translated:
-  the name CraftMiner, world names, the key names printed on the badge's
+  the name SynthMiner, world names, the key names printed on the badge's
   own keys, and every log line (the user: "the debug output stays
   untouched").
   **Amended the same day, the user:** support the *languages*, not the
@@ -2665,7 +2680,7 @@ reason Minecraft chose the other rule.
     Mutopia Project, which publishes an explicit licence per piece -- and
     only from its **Public Domain** set, never its Creative Commons one.
     That cost us the Gnossiennes, which are BY-SA, and share-alike would
-    have put conditions on anyone redistributing CraftMiner. The
+    have put conditions on anyone redistributing SynthMiner. The
     Gymnopedies are Public Domain, so the mood survived.
     `tools/get_music.py` **refuses to download anything that is not Public
     Domain**, so extending the set cannot go wrong by accident, and
@@ -2699,7 +2714,7 @@ reason Minecraft chose the other rule.
   longer; nothing on the audio path ever waits.
 
 - **D-80** 2026-09-22, **the user**: **the player's data lives in
-  /sd/craftminer, not in the app's install directory.** The launcher owns
+  /sd/synthminer, not in the app's install directory.** The launcher owns
   /sd/apps/<slug> and may empty it on an update or a reinstall; worlds,
   settings, replays and screenshots must survive both. The install
   directory keeps only what ships with the app. Data an earlier build left
@@ -2727,7 +2742,7 @@ reason Minecraft chose the other rule.
 - **D-77** 2026-09-22, **the user**: **the quarter-resolution depth plane
   lives in internal SRAM**, and the flat triangle list gives up its internal
   SRAM for it (the list's cap stays at 6144, which F-63 needed). An engine
-  option, off by default, so other games keep their layout; CraftMiner turns
+  option, off by default, so other games keep their layout; SynthMiner turns
   it on in CMakeLists.txt. Full resolution keeps the PSRAM plane (F-67).
 - **D-76** 2026-09-22, **the user**: **near is the default view distance
   again**, replacing D-66, once the walk measured medium at 7.9 fps against
@@ -2763,7 +2778,7 @@ reason Minecraft chose the other rule.
 - **D-68** 2026-09-22, Claude: **dropped items are saved with the world
   record, not per chunk.** D-33 wanted them in each chunk's own section; that
   means handing entity data to and from the worker with every chunk save and
-  load, for a pool of 96. A list in level.cmw is far simpler and keeps what
+  load, for a pool of 96. A list in level.smw is far simpler and keeps what
   D-33 actually promised, because an item in an unloaded chunk holds still (no
   fall, no ageing, no pickup) until its chunk returns. Revisit when there are
   creatures, whose numbers will not fit one list.
@@ -2783,7 +2798,7 @@ reason Minecraft chose the other rule.
   rises at +x. The position overlay's compass says so.
 - **D-60** 2026-09-22, **the user**: **named worlds in save slots, and the
   Testworld moves into slot 1.** Eight slots, directories `slot1`..`slot8`, the
-  name in level.cmw — so a name can be anything the keyboard types and renaming
+  name in level.smw — so a name can be anything the keyboard types and renaming
   never moves a file. The pre-slots world goes into the first free slot as
   *Testworld*, by a single directory rename, the first time the new build
   starts.
@@ -2851,7 +2866,7 @@ reason Minecraft chose the other rule.
 - **D-56** 2026-09-21, **the user**: **the engine's splash goes first, and the
   game's name waits for its title screen.** `se_splash()` -- the SynthEngine
   wordmark over `se_version_string()`, so the version tracks the engine instead
-  of going stale in a string here. The "CraftMiner / a block world" card that
+  of going stale in a string here. The "SynthMiner / a block world" card that
   was there was a placeholder; the game's own title belongs on the title screen
   (step 5.1), not on a second text splash the player sits through every boot.
 
@@ -2902,7 +2917,7 @@ reason Minecraft chose the other rule.
   tick reads.
 
 - **D-52** 2026-09-21, Claude (raised by D-51): **the world's tick count is
-  world state and belongs in `level.cmw`.** `player_state_t.time_of_day` is on
+  world state and belongs in `level.smw`.** `player_state_t.time_of_day` is on
   the wrong record — a world has one time of day however many players it has
   had, and a day/night cycle (step 29) reads it. Moving it is a block 5 job,
   and cheap because both records are tagged and skippable (D-30): the old
@@ -3070,11 +3085,11 @@ reason Minecraft chose the other rule.
   as its chunks are unloaded. Implemented as `common/tags.h` (NBT's model over a
   byte buffer, because a chunk payload is built in memory on the worker) and, a
   level up, as skippable sections on the chunk payload.
-- **D-31** 2026-09-20, Claude: **a block palette in `level.cmw`** maps saved ids
+- **D-31** 2026-09-20, Claude: **a block palette in `level.smw`** maps saved ids
   to names, so block ids can be added, reordered or removed. Entities and block
   entities name their type as a string instead and need no palette.
 - **D-32** 2026-09-20, the user: **a major version in each file's magic**
-  (`CMR1`, `CMW1`), bumped only for a change tags cannot absorb, and a mismatch
+  (`CMR1`, `SMW1`), bumped only for a change tags cannot absorb, and a mismatch
   is refused rather than guessed at so an upgrader has a definite hook.
 - **D-33** 2026-09-20, the user: **creatures and dropped items persist with
   their chunk.** Creatures indefinitely, like blocks; dropped items for 10
@@ -3085,7 +3100,7 @@ reason Minecraft chose the other rule.
   operations graceloader does not export -- `remove`, `rename`, `unlink`,
   `opendir`/`readdir` (F-06). They go through FatFs, with the same
   try-the-plausible-spellings path mapping the engine uses
-  (`se_mp3.c:198`), and through plain stdio under `CM_HOST` so the region
+  (`se_mp3.c:198`), and through plain stdio under `SM_HOST` so the region
   checks still run on a PC. A missing export here is a **load-time** failure,
   which is why the device self-test exercises compaction rather than trusting
   `make verify` (F-27).
@@ -3131,7 +3146,7 @@ reason Minecraft chose the other rule.
   refuses every result as coming from an unidentifiable build -- correctly,
   but it looks like a link failure.
 - **D-20** 2026-09-20, Claude: **textures live flat in `textures/`**, not in a
-  per-segment subdirectory. CraftMiner is one app, not a reel with segments, so
+  per-segment subdirectory. SynthMiner is one app, not a reel with segments, so
   the showreel's `segcheck` separation buys nothing here. They install to
   `<app>/textures/`.
 - **D-21** 2026-09-20, Claude: **the leaves-see-leaves rule became a flag**
@@ -3300,6 +3315,118 @@ reason Minecraft chose the other rule.
   too: *"No need to bump the engine version, this is still an unreleased
   engine."* The raster target stays, being what a second core would need.
 
+- **D-91** 2026-09-25, **the user**, after a discussion on Discord: **the game
+  is called SynthMiner.** *"After a long discussion on Discord, i decided to
+  rename CraftMiner to SynthMiner. So all code references (and the start
+  screen) need to change."* Done with no device to hand, so the reach was
+  agreed first rather than guessed at. The user chose the full rename on all
+  three questions -- the on-SD identity, the ~300 `CM_`/`cm_` identifiers, and
+  the save format's own extensions -- which is the thorough answer and the one
+  with something to lose, so the losing cases are what the work is mostly made
+  of.
+
+  **What the name was on, and what happened to each:**
+
+  | where | was | is | how a card that has the old one copes |
+  |---|---|---|---|
+  | displayed name, launcher | CraftMiner | SynthMiner | `metadata.json`; nothing to migrate |
+  | title screen, in blocks | `"CraftMiner"` | `"SynthMiner"` | three new glyphs, below |
+  | install slug | `at.cavac.craftminer` | `at.cavac.synthminer` | the launcher installs beside the old one; **the player deletes the old entry** |
+  | the player's data | `/sd/craftminer` | `/sd/synthminer` | adopted on start, exactly as the install directory already was (D-80) |
+  | C identifiers | `CM_`/`cm_` | `SM_`/`sm_` | internal; the compiler proves it |
+  | the log tag | `craftminer` | `synthminer` | — |
+  | world metadata | `level.cmw`, magic `CMW1` | `level.smw`, `SMW1` | renamed on start; **the old magic is still read** |
+  | terrain | `r.<rx>.<rz>.cmr`, `CMR1` | `.smr`, `SMR1` | renamed on start; the old magic is still read |
+  | replays | `.cmr`, `CMRP` | `.smr`, `SMRP` | renamed on start; the old magic is still read |
+
+  **Nothing asks the player to move anything, and nothing is deleted.** The
+  data directory is one more old base for `datadir_adopt()`, so `main()` now
+  adopts twice -- from `/sd/craftminer` first, then from the install
+  directory, so that a card holding both keeps the NEWER layout, since
+  neither adoption ever overwrites and whatever arrives first holds the
+  place. The extensions are `datadir_rename_saves()`, which runs on **every**
+  start rather than once: the alternative is a flag that can disagree with
+  the card, and a rename that did not finish -- badge switched off, a file
+  that would not move -- then finishes next time. A start with nothing to do
+  costs one scan per world and no writes.
+
+  **Belt AND braces, because this was done blind.** The readers accept both
+  magics (`SM_LEVEL_MAGIC_WAS`, `REGION_MAGIC_WAS`, `REPLAY_MAGIC_WAS`), so a
+  file the rename never reached still loads and is converted the next time it
+  is written. The two halves fail independently: a world whose directory
+  moved but whose files did not is readable, and one whose files were renamed
+  inside a directory that did not move is found as soon as it does. Neither
+  half can destroy anything -- every operation is a rename, never a copy or a
+  delete, and `worldstore_create_in()` refuses any slot whose **directory**
+  exists, so even a world that has become unreadable cannot be built over.
+
+  **The extensions were kept honest rather than kept.** `.cmw` and `.cmr`
+  could have been left as historical names, the way `.mp3` outlived MPEG. The
+  user chose to move them, which costs the migration above and buys a card
+  with one generation of names on it. The file FORMATS did not change at all:
+  the major version digit means the same thing in both magics, which is
+  precisely what makes accepting the old one safe rather than hopeful.
+
+- **D-92** 2026-09-25, **the user**, on being told what a leftover `/sd/craftminer`
+  would do: **the migration cleans up after itself.** *"At the end of the
+  migration, delete at.cavac.craftminer in appfs the the old
+  /sd/apps/at.cavac.craftminer directory, as well as the /sd/craftminer
+  directories."* And then, on the adoption order: *"You don't need to adopt the
+  install directory, this will be a newly installed app. Just make sure ye
+  olde graceloader stuff is gone after the migration."*
+
+  **The appfs half cannot be done and does not need to be.** `appfsDeleteFile`
+  is not among the symbols graceloader exports -- only `appfsInit`,
+  `appfsFormat`, `appfsBootSelect`, `appfsBootselGet` and `appfsFdValid` are --
+  so calling it would link and then fail to LOAD, which is F-06's failure and
+  the worst kind. It is also unnecessary: `metadata.json` says `external_only`,
+  so the launcher never put this game in appfs. **The launcher lists
+  `/sd/apps/<slug>`, so deleting that directory IS taking CraftMiner off the
+  menu.**
+
+  **What the user's second message actually fixed.** The adoption had been
+  reading `graceloader_get_install_basepath()` -- *this* app's install
+  directory -- which is new on every card and has never held a player's
+  anything. The directory that matters is the OLD one, `/sd/apps/at.cavac.craftminer`,
+  where a build from before D-80 kept its worlds. That one has to be emptied
+  *because* it is about to be deleted. So the adoption was not dropped, it was
+  aimed at the right directory.
+
+  **The order, and why each step is where it is** (`main.c`, `on_init`):
+
+  1. adopt `/sd/craftminer` (`DD_DATA`)
+  2. adopt `/sd/apps/at.cavac.craftminer` (`DD_INSTALL`)
+  3. `datadir_rename_saves()` -- the extensions
+  4. `datadir_retire()` on both
+
+  1 before 2 so a card with both keeps the newer layout, since no adoption
+  overwrites and whatever arrives first holds the place. 4 last, and it
+  **refuses** if 1 or 2 left anything.
+
+  **The entry list had to become two, and finding that out was the good part
+  of this round.** One list served both adoptions, and it had grown `music`
+  for the data directory. An install directory also has a `music/` -- the
+  eleven shipped MIDI files -- and `audio/music.c` reads the shipped pool AND
+  the player's own. Adopting the old install directory would therefore have
+  moved CraftMiner's shipped music into `/sd/synthminer/music`, where every
+  piece would have played a second time as the player's own. `DD_INSTALL` is
+  now only what a pre-D-80 build WROTE there (worlds, settings, replays,
+  screenshots); `DD_DATA` is everything a data directory holds. The textures
+  and the music beside them are the app's, and are deleted with it rather
+  than adopted from it.
+
+  **`datadir_retire()` refuses rather than judges.** It is the only thing in
+  this game that deletes a tree, so every doubt is a refusal with a reason in
+  the log: an empty path, a `..`, a `dir` that IS or CONTAINS the directory
+  being kept (which is what stops a wrong constant from taking `/sd/apps`),
+  and -- the one that matters -- **anything from the set still inside it**.
+  Adoption leaves an entry whose destination already exists, deliberately,
+  and that entry is somebody's world; if adoption left something, retirement
+  must not run. `check_rename` asserts exactly that: a stranded world in the
+  old install directory makes it refuse, the world is still readable
+  afterwards, and only once that world is gone does the directory go, shipped
+  files and all.
+
 ## Verification
 
 - **Host:** `make check` = `worldcheck` + `scenecheck` + `meshcheck` +
@@ -3312,7 +3439,9 @@ reason Minecraft chose the other rule.
   pre-generated world, made once with `perf scene=bench_gen` (step 41,
   F-91). Note that `shots` cannot yet compare two renderings of it (F-92).
 - **Build hygiene:** `make build` clean with no new warnings, `make verify`
-  (every undefined symbol exists in fakelib), `make format`.
+  (every undefined symbol exists in fakelib), `make format`. `symcheck` runs
+  inside `make build` and is what would catch a call to something graceloader
+  does not export -- which is how the appfs question was settled (D-92).
 - **By hand:** the user plays step 5 and gives feedback before step 8 starts.
 
 ### Where it stands after block 4 (2026-09-21)
@@ -3407,11 +3536,64 @@ moment (F-92) -- the world has not settled when the clock jumps, and
 something in the sky state carries across a launch. With one renderer left
 there is nothing to compare, so it waits for a reason to exist.
 
+### Where it stands after the rename (2026-09-25)
+
+The game is **SynthMiner** (D-91). The user decided it on Discord and asked
+for it with no Tanmatsu to hand, so the whole round was done and verified
+without the device: `make check` (meshcheck + worldcheck, including a new
+`check_rename` that builds a card exactly as CraftMiner left it and asserts
+every byte survives under the new name), and `make build`, whose `symcheck`
+proves every symbol still resolves against graceloader.
+
+Because the reach of a rename is a judgement and not a fact, it was agreed
+before anything was touched: how far onto the SD card, whether the ~300
+`CM_`/`cm_` identifiers move, and whether the save format's own extensions
+do. The answer was yes to all three, which is the version with something to
+lose, so most of the work is the losing cases -- adopting the old data
+directory, renaming the saved files on every start until it sticks, and
+reading both magics for ever.
+
+**What has NOT been tested, and cannot be until the badge is back:**
+
+- that the launcher shows *SynthMiner* and runs it from the new slug
+- that `/sd/craftminer` is actually adopted on a real card, over FatFs
+  rather than the host's stdio -- `sm_rename` goes through `f_rename`, and
+  the host check exercises the logic, not that path
+- that the two old directories are actually DELETED on a real card:
+  `sm_remove` goes through `f_unlink`, which removes an empty directory,
+  but that is FatFs's behaviour and not something the host check proves
+- that the launcher stops listing CraftMiner once its directory is gone
+- that a real world, saved by CraftMiner, opens and plays
+- that the title screen's three new letters look right in blocks rather
+  than merely correct on paper
+
+**The player has to do nothing by hand** (D-92). The first start adopts both
+old directories, renames the saved files, and then deletes
+`/sd/craftminer` and `/sd/apps/at.cavac.craftminer` -- which is also what
+takes CraftMiner off the launcher's menu, since the launcher lists
+`/sd/apps/<slug>` and this game was never in appfs to be removed from.
+The deletion refuses, loudly and in the log, if either adoption left
+anything behind.
+
+That refusal is the interesting half. Left alone, a leftover
+`/sd/craftminer` is harmless -- an empty directory costing nine `stat`
+calls a start. The hazard was never the directory but the old APP: play it
+once after the rename and it writes a world into `/sd/craftminer/worlds`,
+which adoption then cannot take, because `worlds` moves as one entry and
+the destination already exists. The world would sit on the card, intact and
+invisible, with one line in the debug console as the only sign. Deleting
+the old app is what removes that possibility; refusing to delete anything
+that still holds a world is what makes it safe to do automatically.
+
+The icons in `metadata/` are still the template's placeholder -- a red
+question mark -- so the rename had nothing to do there. They are the one
+visible thing left that does not say what this is.
+
 ## Critical files
 
 - **Lifted from `../tanmatsu-showreel-grace`:** `main/craftminer/voxel/*`,
   `main/{mesh,mesh_render,xform,camera,backdrop,horizon}.{c,h}`,
-  `main/common/texcache.*`, `textures/craftminer/*.png`,
+  `main/common/texcache.*`, `textures/synthminer/*.png`,
   `tools/{make_textures.py,meshcheck.c,scenecheck.c}`.
 - **Adapted from `../tanmatsu-synthracer-grace`:** `main/controls_settings.{c,h}`
   and `main/keybind_ui.{c,h}` (the `se_bindings` + `se_ui` + `se_ui_capture_key`

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate CraftMiner's block textures into textures/ (one
+"""Generate SynthMiner's block textures into textures/ (one
 subdirectory per reel segment, as the code in main/<segment>/).
 
 Procedural and seeded, so the PNGs are reproducible from this script
@@ -17,7 +17,7 @@ SRAM. The flame is 64x8 (1 KB); the two planet maps are 128x64
     python3 tools/make_textures.py --preview  # also write a 4x contact sheet
 """
 
-# Lifted from tanmatsu-showreel-grace (tools/make_textures.py); trimmed to CraftMiner's
+# Lifted from tanmatsu-showreel-grace (tools/make_textures.py); trimmed to SynthMiner's
 # own blocks. The showreel remains the origin to diff against.
 import sys
 from pathlib import Path
@@ -373,7 +373,7 @@ def planet_gas():
     return np.clip(img, 0, 255).astype(np.uint8)
 
 
-# --- CraftMiner block textures (claudeplans/craftminer.md, step 1.1) ---
+# --- SynthMiner block textures (claudeplans/synthminer.md, step 1.1) ---
 #
 # 16x16, drawn texel by texel (the engine samples nearest-texel, so each
 # texel shows as a crisp square). Every texture has its own generator,
@@ -382,22 +382,22 @@ def planet_gas():
 B = 16
 
 
-def cm_gen(tag):
+def sm_gen(tag):
     return np.random.default_rng([0xC4AF7, tag])
 
 
-def cm_speckle(gen, tint, spread, h=B, w=B):
+def sm_speckle(gen, tint, spread, h=B, w=B):
     """A base colour with independent per-texel brightness steps -- the
     pixel-art grain of every block."""
     lum = gen.integers(-spread, spread + 1, (h, w)).astype(float)
     return lum, tint
 
 
-def cm_rgb(lum, tint):
+def sm_rgb(lum, tint):
     return to_rgb(lum, tint)
 
 
-def cm_dirt_lum(gen):
+def sm_dirt_lum(gen):
     lum = gen.integers(-14, 15, (B, B)).astype(float)
     for _ in range(10):                               # darker clods, lighter grit
         x, y = gen.integers(0, B, 2)
@@ -412,25 +412,25 @@ DIRT = (122, 86, 58)
 GRASS = (92, 150, 52)
 
 
-def cm_dirt():
-    return cm_rgb(cm_dirt_lum(cm_gen(1)), DIRT)
+def sm_dirt():
+    return sm_rgb(sm_dirt_lum(sm_gen(1)), DIRT)
 
 
-def cm_grass_top():
-    gen = cm_gen(2)
+def sm_grass_top():
+    gen = sm_gen(2)
     lum = gen.integers(-16, 17, (B, B)).astype(float)
     for _ in range(14):                               # darker blades
         x, y = gen.integers(0, B, 2)
         lum[y, x] -= 20
-    return cm_rgb(lum, GRASS)
+    return sm_rgb(lum, GRASS)
 
 
-def cm_grass_side():
+def sm_grass_side():
     """Dirt with the grass hanging over the top edge, 2-5 texels deep per
     column. v = 0 is the top of the block."""
-    gen = cm_gen(3)
-    img = cm_rgb(cm_dirt_lum(gen), DIRT).astype(int)
-    grass = cm_rgb(gen.integers(-16, 17, (B, B)).astype(float), GRASS).astype(int)
+    gen = sm_gen(3)
+    img = sm_rgb(sm_dirt_lum(gen), DIRT).astype(int)
+    grass = sm_rgb(gen.integers(-16, 17, (B, B)).astype(float), GRASS).astype(int)
     depth = 3 + gen.integers(-1, 2, B)
     depth[gen.integers(0, B, 3)] += 2                 # a few longer drips
     for x in range(B):
@@ -438,8 +438,8 @@ def cm_grass_side():
     return img.astype(np.uint8)
 
 
-def cm_stone():
-    gen = cm_gen(4)
+def sm_stone():
+    gen = sm_gen(4)
     lum = 10 * pnoise(B, B, 1.2, 1.2, gen) + gen.integers(-8, 9, (B, B))
     for _ in range(3):                                # short dark streaks
         x, y = gen.integers(0, B, 2)
@@ -447,14 +447,14 @@ def cm_stone():
         for k in range(n):
             lum[y % B, (x + k) % B] -= 20
             y += int(gen.integers(0, 2))
-    return cm_rgb(lum, (122, 122, 124))
+    return sm_rgb(lum, (122, 122, 124))
 
 
-def cm_cobble():
+def sm_cobble():
     """Rounded stones in mortar: each texel belongs to its nearest seed
     (distance wraps, so the pattern tiles); texels near a cell edge are
     mortar."""
-    gen = cm_gen(5)
+    gen = sm_gen(5)
     # One stone per cell of a jittered 3x3 grid, so they spread evenly.
     grid = (np.mgrid[0:3, 0:3].reshape(2, -1).T + 0.5) * (B / 3)
     seeds = grid + gen.uniform(-1.3, 1.3, grid.shape)
@@ -473,16 +473,16 @@ def cm_cobble():
     # Rounded: brightest at the stone's middle, darker towards its edge.
     lum = shade[cell] + 22 - 2.2 * order[0] + gen.integers(-5, 6, (B, B))
     lum[(order[1] - order[0]) < 0.7] = -40             # mortar
-    return cm_rgb(lum, (118, 118, 118))
+    return sm_rgb(lum, (118, 118, 118))
 
 
-def cm_sand():
-    gen = cm_gen(6)
+def sm_sand():
+    gen = sm_gen(6)
     lum = gen.integers(-10, 11, (B, B)).astype(float)
-    return cm_rgb(lum, (214, 200, 150))
+    return sm_rgb(lum, (214, 200, 150))
 
 
-def cm_water():
+def sm_water():
     """The surface of water, and the only face a liquid ever draws
     (blocks.h, K_LIQUID): deep blue with lighter wave crests running
     across u, so a scrolled u reads as flowing.
@@ -497,7 +497,7 @@ def cm_water():
 
     The crests stay solid: they are the part the eye reads as a surface,
     and holes through them would make the water look torn."""
-    gen = cm_gen(7)
+    gen = sm_gen(7)
     lum = gen.integers(-6, 7, (B, B)).astype(float)
     crest = np.zeros((B, B), dtype=bool)
     for y in range(0, B, 4):
@@ -507,38 +507,38 @@ def cm_water():
             crest[(y + (k % 2)) % B, (off + k) % B] = True
     yy, xx = np.mgrid[0:B, 0:B]
     holes = ((xx + yy) % 2 == 0) & ~crest
-    return cm_alpha(cm_rgb(lum, (48, 84, 196)), holes)
+    return sm_alpha(sm_rgb(lum, (48, 84, 196)), holes)
 
 
-def cm_log_side():
+def sm_log_side():
     """Bark: vertical furrows, v along the trunk."""
-    gen = cm_gen(8)
+    gen = sm_gen(8)
     col = gen.integers(-12, 13, B).astype(float)
     lum = np.tile(col[None, :], (B, 1)) + gen.integers(-6, 7, (B, B))
     for x in gen.choice(B, 4, replace=False):         # deep furrows, broken
         for y in range(B):
             if gen.random() < 0.8:
                 lum[y, x] -= 26
-    return cm_rgb(lum, (100, 76, 46))
+    return sm_rgb(lum, (100, 76, 46))
 
 
-def cm_log_top():
+def sm_log_top():
     """The cut end: rings round the centre, bark round the rim."""
-    gen = cm_gen(9)
+    gen = sm_gen(9)
     ys, xs = np.mgrid[0:B, 0:B] + 0.5
     r = np.maximum(np.abs(xs - B / 2), np.abs(ys - B / 2))   # squarish rings
     ring = np.floor(r).astype(int)
     lum = np.where(ring % 2 == 0, 10.0, -8.0) + gen.integers(-5, 6, (B, B))
-    img = cm_rgb(lum, (168, 132, 82)).astype(int)
-    bark = cm_rgb(gen.integers(-10, 11, (B, B)).astype(float), (100, 76, 46)).astype(int)
+    img = sm_rgb(lum, (168, 132, 82)).astype(int)
+    bark = sm_rgb(gen.integers(-10, 11, (B, B)).astype(float), (100, 76, 46)).astype(int)
     rim = r >= B / 2 - 1
     img[rim] = bark[rim]
     return img.astype(np.uint8)
 
 
-def cm_planks():
+def sm_planks():
     """Four boards per block, 4 texels each, joints staggered."""
-    gen = cm_gen(10)
+    gen = sm_gen(10)
     lum = gen.integers(-7, 8, (B, B)).astype(float)
     for board in range(4):
         y0 = board * 4
@@ -548,13 +548,13 @@ def cm_planks():
         lum[y0 : y0 + 3, j] -= 24
         for x in gen.integers(0, B, 3):               # grain
             lum[y0 + int(gen.integers(0, 3)), x] -= 12
-    return cm_rgb(lum, (164, 128, 78))
+    return sm_rgb(lum, (164, 128, 78))
 
 
-def cm_planks_lum(tag):
+def sm_planks_lum(tag):
     """The plank pattern on its own, so a block that is MADE of planks
     can put something on top of it rather than inventing its own wood."""
-    gen = cm_gen(tag)
+    gen = sm_gen(tag)
     lum = gen.integers(-7, 8, (B, B)).astype(float)
     for board in range(4):
         y0 = board * 4
@@ -567,11 +567,11 @@ def cm_planks_lum(tag):
     return lum, gen
 
 
-def cm_table_top():
+def sm_table_top():
     """The crafting table seen from above: planks with a 3x3 grid burnt
     into them, which is the one picture of crafting everybody knows --
     even though this game has no grid to fill in (Part C)."""
-    lum, _ = cm_planks_lum(30)
+    lum, _ = sm_planks_lum(30)
     # Two lines each way at thirds of the block, and a border, so the
     # nine cells read at the size a block actually gets drawn.
     for at in (5, 10):
@@ -581,24 +581,24 @@ def cm_table_top():
     lum[15, :] -= 26
     lum[:, 0] -= 26
     lum[:, 15] -= 26
-    return cm_rgb(lum, (164, 128, 78))
+    return sm_rgb(lum, (164, 128, 78))
 
 
-def cm_table_side():
+def sm_table_side():
     """... and from the side: the same planks with a tool rack on them,
     dark pegs under a rail."""
-    lum, gen = cm_planks_lum(31)
+    lum, gen = sm_planks_lum(31)
     lum[4, 1:15] -= 34                     # the rail
     for x in (3, 7, 11):                   # what hangs off it
         lum[5:9, x] -= 40
         lum[8, x - 1 : x + 2] -= 28
     lum += gen.integers(-4, 5, (B, B))
-    return cm_rgb(lum, (152, 118, 72))
+    return sm_rgb(lum, (152, 118, 72))
 
 
-def cm_stone_lum(tag):
+def sm_stone_lum(tag):
     """The stone pattern on its own, for blocks BUILT of stone."""
-    gen = cm_gen(tag)
+    gen = sm_gen(tag)
     lum = 10 * pnoise(B, B, 1.2, 1.2, gen) + gen.integers(-8, 9, (B, B))
     for _ in range(3):
         x, y = gen.integers(0, B, 2)
@@ -609,22 +609,22 @@ def cm_stone_lum(tag):
     return lum, gen
 
 
-def cm_furnace_top():
+def sm_furnace_top():
     """... and its lid, with a rim so the block reads as a box from
     above rather than as a patch of floor."""
-    lum, _ = cm_stone_lum(33)
+    lum, _ = sm_stone_lum(33)
     lum[0:2, :] += 12
     lum[14:16, :] -= 16
     lum[:, 0:2] += 8
     lum[:, 14:16] -= 12
     lum[4:12, 4:12] -= 10
-    return cm_rgb(lum, (112, 112, 114))
+    return sm_rgb(lum, (112, 112, 114))
 
 
-def cm_furnace_front():
+def sm_furnace_front():
     """The face with the fire in it: an arched opening, three bars
     across, and the dark of the firebox behind them."""
-    lum, gen = cm_stone_lum(34)
+    lum, gen = sm_stone_lum(34)
     # The opening: rows 5..13, inset, with the top two corners cut so it
     # arches rather than sitting there as a rectangle.
     for y in range(5, 14):
@@ -637,14 +637,14 @@ def cm_furnace_front():
         for y in (8, 11):
             lum[y, x] += 26
     lum[13, 3:13] += 14                    # the lip it all sits on
-    return cm_rgb(lum, (114, 114, 116))
+    return sm_rgb(lum, (114, 114, 116))
 
 
-def cm_iron_ore():
+def sm_iron_ore():
     """Stone with pale tan blobs in it, so it reads as ore but not as
     coal -- the two sit next to each other underground."""
-    lum, gen = cm_stone_lum(35)
-    rgb = cm_rgb(lum, (122, 122, 124))
+    lum, gen = sm_stone_lum(35)
+    rgb = sm_rgb(lum, (122, 122, 124))
     for cx, cy, r in ((4, 4, 2), (11, 6, 2), (6, 11, 2), (12, 12, 1)):
         for y in range(cy - r, cy + r + 1):
             for x in range(cx - r, cx + r + 1):
@@ -657,10 +657,10 @@ def cm_iron_ore():
 CHEST_IRON = (86, 86, 92)
 
 
-def cm_chest_side():
+def sm_chest_side():
     """Planks with two iron bands and a latch: a box, from any side."""
-    lum, gen = cm_planks_lum(36)
-    rgb = cm_rgb(lum, (150, 110, 62))
+    lum, gen = sm_planks_lum(36)
+    rgb = sm_rgb(lum, (150, 110, 62))
     for y in (2, 13):
         rgb[y, :] = CHEST_IRON
         rgb[y + 1, :] = tuple(c - 18 for c in CHEST_IRON)
@@ -671,21 +671,21 @@ def cm_chest_side():
     return rgb
 
 
-def cm_chest_top():
+def sm_chest_top():
     """... and its lid, banded the other way."""
-    lum, _ = cm_planks_lum(37)
-    rgb = cm_rgb(lum, (146, 106, 58))
+    lum, _ = sm_planks_lum(37)
+    rgb = sm_rgb(lum, (146, 106, 58))
     for x in (2, 13):
         rgb[:, x] = CHEST_IRON
         rgb[:, x + 1] = tuple(c - 18 for c in CHEST_IRON)
     return rgb
 
 
-def cm_trash_side():
+def sm_trash_side():
     """The same box, in grey with a dark mouth: it is a chest that eats
     what you put in it, and it has to look like it."""
-    lum, _ = cm_planks_lum(38)
-    rgb = cm_rgb(lum - 18, (104, 100, 98))
+    lum, _ = sm_planks_lum(38)
+    rgb = sm_rgb(lum - 18, (104, 100, 98))
     for y in (2, 13):
         rgb[y, :] = (62, 60, 58)
         rgb[y + 1, :] = (48, 46, 44)
@@ -695,19 +695,19 @@ def cm_trash_side():
     return rgb
 
 
-def cm_trash_top():
-    lum, _ = cm_planks_lum(39)
-    rgb = cm_rgb(lum - 18, (100, 96, 94))
+def sm_trash_top():
+    lum, _ = sm_planks_lum(39)
+    rgb = sm_rgb(lum - 18, (100, 96, 94))
     for y in range(3, 13):
         for x in range(3, 13):
             rgb[y, x] = (30, 28, 26)
     return rgb
 
 
-def cm_bench_top():
+def sm_bench_top():
     """The crafting table's opposite number: the same planks, with the
     grid replaced by a cut across it."""
-    lum, gen = cm_planks_lum(41)
+    lum, gen = sm_planks_lum(41)
     for at in (7, 8):
         lum[at, 1:15] -= 52
     for x in range(2, 14, 2):                # the teeth of the saw
@@ -716,7 +716,7 @@ def cm_bench_top():
     lum += gen.integers(-3, 4, (B, B))
     lum[0, :] -= 26
     lum[15, :] -= 26
-    return cm_rgb(lum, (150, 116, 70))
+    return sm_rgb(lum, (150, 116, 70))
 
 
 # --- Item icons -------------------------------------------------------
@@ -758,7 +758,7 @@ def _tool_handle(img):
         _dot(img, 4 + i, 13 - i, _shade(HANDLE, -26))
 
 
-def cm_item_pickaxe(rgb):
+def sm_item_pickaxe(rgb):
     img = _icon()
     _tool_handle(img)
     # A wide head with both points turned down.
@@ -771,7 +771,7 @@ def cm_item_pickaxe(rgb):
     return img
 
 
-def cm_item_axe(rgb):
+def sm_item_axe(rgb):
     img = _icon()
     _tool_handle(img)
     # A wedge on one side of the top of the handle.
@@ -781,7 +781,7 @@ def cm_item_axe(rgb):
     return img
 
 
-def cm_item_shovel(rgb):
+def sm_item_shovel(rgb):
     img = _icon()
     _tool_handle(img)
     _rect(img, 8, 3, 12, 8, rgb)
@@ -790,7 +790,7 @@ def cm_item_shovel(rgb):
     return img
 
 
-def cm_item_ingot():
+def sm_item_ingot():
     """A bar: a flat-topped trapezium with a highlight along the top."""
     img = _icon()
     rgb = (214, 214, 220)
@@ -802,10 +802,10 @@ def cm_item_ingot():
     return img
 
 
-def cm_item_coal():
+def sm_item_coal():
     """Three lumps, because one reads as a hole in the slot."""
     img = _icon()
-    gen = cm_gen(40)
+    gen = sm_gen(40)
     for cx, cy, r in ((6, 7, 3), (10, 5, 2), (10, 10, 2)):
         for y in range(cy - r, cy + r + 1):
             for x in range(cx - r, cx + r + 1):
@@ -817,7 +817,7 @@ def cm_item_coal():
     return img
 
 
-def cm_item_stick():
+def sm_item_stick():
     img = _icon()
     for i in range(11):
         _dot(img, 3 + i, 13 - i, HANDLE)
@@ -826,60 +826,60 @@ def cm_item_stick():
     return img
 
 
-def cm_alpha(rgb, holes):
+def sm_alpha(rgb, holes):
     """RGB plus a hole mask -> RGBA: the engine draws alpha < 128 as a
     hole (cut-out transparency), everything else opaque."""
     a = np.where(holes, 0, 255).astype(np.uint8)[:, :, None]
     return np.concatenate([rgb, a], axis=2)
 
 
-def cm_leaves_lum():
-    gen = cm_gen(11)
+def sm_leaves_lum():
+    gen = sm_gen(11)
     lum = gen.integers(-18, 19, (B, B)).astype(float)
     holes = gen.random((B, B)) < 0.22
     return lum, holes
 
 
-def cm_leaves():
+def sm_leaves():
     """Leaves with gaps (cut-out): the sky and the branches behind show
     through, as in Minecraft's "fancy" leaves. For canopies close by."""
-    lum, holes = cm_leaves_lum()
-    return cm_alpha(cm_rgb(lum, (58, 112, 38)), holes)
+    lum, holes = sm_leaves_lum()
+    return sm_alpha(sm_rgb(lum, (58, 112, 38)), holes)
 
 
-def cm_leaves_fast():
+def sm_leaves_fast():
     """The same leaves, opaque: the gaps dark ("fast" leaves), for the
     textured canopies further off, which are drawn without their
     insides."""
-    lum, holes = cm_leaves_lum()
+    lum, holes = sm_leaves_lum()
     lum[holes] = -52
-    return cm_rgb(lum, (58, 112, 38))
+    return sm_rgb(lum, (58, 112, 38))
 
 
-def cm_birch_leaves_lum():
-    gen = cm_gen(42)
+def sm_birch_leaves_lum():
+    gen = sm_gen(42)
     lum = gen.integers(-16, 17, (B, B)).astype(float)
     holes = gen.random((B, B)) < 0.24
     return lum, holes
 
 
-def cm_birch_leaves():
+def sm_birch_leaves():
     """Lighter and yellower than oak: what makes a birch wood read as a
     different wood from across a valley."""
-    lum, holes = cm_birch_leaves_lum()
-    return cm_alpha(cm_rgb(lum, (108, 152, 62)), holes)
+    lum, holes = sm_birch_leaves_lum()
+    return sm_alpha(sm_rgb(lum, (108, 152, 62)), holes)
 
 
-def cm_birch_leaves_fast():
-    lum, holes = cm_birch_leaves_lum()
+def sm_birch_leaves_fast():
+    lum, holes = sm_birch_leaves_lum()
     lum[holes] = -48
-    return cm_rgb(lum, (108, 152, 62))
+    return sm_rgb(lum, (108, 152, 62))
 
 
-def cm_birch_side():
+def sm_birch_side():
     """White bark with the dark scars birches have, which is the whole
     signature of the tree."""
-    gen = cm_gen(43)
+    gen = sm_gen(43)
     lum = gen.integers(-7, 8, (B, B)).astype(float)
     for _ in range(5):                       # the scars, short and level
         y = int(gen.integers(0, B))
@@ -891,23 +891,23 @@ def cm_birch_side():
                 lum[(y + 1) % B, (x + k) % B] -= 34
     for x in range(B):                       # a faint vertical grain
         lum[:, x] += int(gen.integers(-5, 6))
-    return cm_rgb(lum, (216, 214, 202))
+    return sm_rgb(lum, (216, 214, 202))
 
 
-def cm_birch_top():
+def sm_birch_top():
     """The cut end: rings, like the oak's but paler."""
-    gen = cm_gen(44)
+    gen = sm_gen(44)
     ys, xs = np.mgrid[0:B, 0:B] + 0.5
     d = np.sqrt((xs - B / 2) ** 2 + (ys - B / 2) ** 2)
     lum = (np.sin(d * 1.9) * 9.0) + gen.integers(-6, 7, (B, B))
     lum[d > 7.1] -= 26                       # the bark round the edge
-    return cm_rgb(lum, (196, 184, 156))
+    return sm_rgb(lum, (196, 184, 156))
 
 
-def cm_cactus():
+def sm_cactus():
     """Green with vertical ribs and a paler edge, so a stack of them
     still reads as separate blocks."""
-    gen = cm_gen(45)
+    gen = sm_gen(45)
     lum = gen.integers(-6, 7, (B, B)).astype(float)
     for x in range(1, B, 4):                 # the ribs
         lum[:, x] -= 26
@@ -916,33 +916,33 @@ def cm_cactus():
     lum[15, :] -= 22
     for _ in range(14):                      # spines
         lum[int(gen.integers(0, B)), int(gen.integers(0, B))] += 40
-    return cm_rgb(lum, (74, 128, 60))
+    return sm_rgb(lum, (74, 128, 60))
 
 
-def cm_snow():
+def sm_snow():
     """Nearly white, and nearly flat: snow has no features, and any it
     is given read as dirt on it."""
-    gen = cm_gen(46)
+    gen = sm_gen(46)
     lum = gen.integers(-5, 6, (B, B)).astype(float)
     lum += 6.0 * pnoise(B, B, 2.6, 2.6, gen)
-    return cm_rgb(lum, (236, 240, 248))
+    return sm_rgb(lum, (236, 240, 248))
 
 
-def cm_sandstone():
+def sm_sandstone():
     """Sand, pressed: the same colour with level bedding lines through
     it, which is what tells the two apart underground."""
-    gen = cm_gen(47)
+    gen = sm_gen(47)
     lum = gen.integers(-5, 6, (B, B)).astype(float)
     lum += 4.0 * pnoise(B, B, 3.0, 3.0, gen)
     for y in (3, 7, 12):                     # bedding
         lum[y, :] -= 20
         lum[(y + 1) % B, :] += 7
-    return cm_rgb(lum, (214, 198, 148))
+    return sm_rgb(lum, (214, 198, 148))
 
 
-def cm_coal_ore():
-    img = cm_stone().astype(int)
-    gen = cm_gen(12)
+def sm_coal_ore():
+    img = sm_stone().astype(int)
+    gen = sm_gen(12)
     lump = [(0, 0), (1, 0), (0, 1), (1, 1), (2, 1), (1, 2), (-1, 1), (2, 0)]
     for _ in range(5):                                # black lumps of 5-8 texels
         x, y = (int(v) for v in gen.integers(0, B, 2))
@@ -951,13 +951,13 @@ def cm_coal_ore():
     return img.astype(np.uint8)
 
 
-def cm_face():
+def sm_face():
     """The miner's face, the head's front: skin, dark eyes with a white
     glint, bushy brows, a big brown moustache. v = 0 is the top."""
-    gen = cm_gen(13)
+    gen = sm_gen(13)
     skin = (222, 170, 128)
     lum = gen.integers(-5, 6, (B, B)).astype(float)
-    img = cm_rgb(lum, skin).astype(int)
+    img = sm_rgb(lum, skin).astype(int)
     brow, hair, eye_w, eye_d, mouth = (70, 46, 28), (96, 62, 36), (240, 240, 236), (40, 44, 70), (150, 80, 70)
     img[0:3, :] = hair                                # hair under the hat's brim
     img[5, 2:7] = brow
@@ -976,10 +976,10 @@ def cm_face():
     return np.clip(img, 0, 255).astype(np.uint8)
 
 
-def cm_sprite(tag, stem, bloom):
+def sm_sprite(tag, stem, bloom):
     """A plant on a cross of two quads (cut-out): a green stem with two
     leaves, and a bloom of `bloom` colours on top; the rest is holes."""
-    gen = cm_gen(tag)
+    gen = sm_gen(tag)
     rgb = np.zeros((B, B, 3), np.uint8)
     holes = np.ones((B, B), bool)
 
@@ -996,25 +996,25 @@ def cm_sprite(tag, stem, bloom):
         for dx, c in enumerate(row):
             if c is not None:
                 px(5 + dx, 2 + dy, c)
-    return cm_alpha(rgb, holes)
+    return sm_alpha(rgb, holes)
 
 
 R, Y, W, K = (214, 40, 36), (250, 212, 40), (250, 244, 214), (96, 40, 20)
 
 
-def cm_flower_red():
-    return cm_sprite(14, (60, 130, 40), [[None, R, R, R, None], [R, R, K, R, R], [R, K, Y, K, R], [R, R, K, R, R],
+def sm_flower_red():
+    return sm_sprite(14, (60, 130, 40), [[None, R, R, R, None], [R, R, K, R, R], [R, K, Y, K, R], [R, R, K, R, R],
                                           [None, R, R, R, None]])
 
 
-def cm_flower_yellow():
-    return cm_sprite(15, (70, 140, 44), [[None, None, Y, None, None], [None, Y, Y, Y, None], [Y, Y, W, Y, Y],
+def sm_flower_yellow():
+    return sm_sprite(15, (70, 140, 44), [[None, None, Y, None, None], [None, Y, Y, Y, None], [Y, Y, W, Y, Y],
                                           [None, Y, Y, Y, None], [None, None, Y, None, None]])
 
 
-def cm_tall_grass():
+def sm_tall_grass():
     """Tufts of grass blades (cut-out), for crossed quads."""
-    gen = cm_gen(16)
+    gen = sm_gen(16)
     rgb = np.zeros((B, B, 3), np.uint8)
     holes = np.ones((B, B), bool)
     for x in range(1, B - 1):
@@ -1026,13 +1026,13 @@ def cm_tall_grass():
             xx = x + (lean if y < top + 3 else 0)
             rgb[y, xx] = np.clip(np.array(GRASS) + gen.integers(-22, 12, 3) - 6 * (B - y) // 4, 0, 255)
             holes[y, xx] = False
-    return cm_alpha(rgb, holes)
+    return sm_alpha(rgb, holes)
 
 
-def cm_glass():
+def sm_glass():
     """A window pane (cut-out): a frame round the edge and a few white
     glints; the rest is holes -- no blending, so clear glass is empty."""
-    gen = cm_gen(17)
+    gen = sm_gen(17)
     rgb = np.zeros((B, B, 3), np.uint8)
     holes = np.ones((B, B), bool)
     frame = (200, 216, 222)
@@ -1043,37 +1043,37 @@ def cm_glass():
     for x, y in ((4, 3), (3, 4), (5, 3), (3, 5), (11, 9), (10, 10), (9, 11)):
         rgb[y, x] = (236, 244, 248)
         holes[y, x] = False
-    return cm_alpha(rgb, holes)
+    return sm_alpha(rgb, holes)
 
 
-def cm_torch():
+def sm_torch():
     """The torch's stick: dark wood, with a glowing coal band at the top
     (the flame itself is the shared flame asset)."""
-    gen = cm_gen(18)
+    gen = sm_gen(18)
     lum = gen.integers(-10, 11, (B, B)).astype(float)
-    img = cm_rgb(lum, (110, 80, 44)).astype(int)
+    img = sm_rgb(lum, (110, 80, 44)).astype(int)
     img[0:3, :] = (255, 214, 96)
     img[3, :] = (200, 110, 40)
     return img.astype(np.uint8)
 
 
-def cm_bedrock():
+def sm_bedrock():
     """Beta's bedrock: dark grey, blotched near-black and pale grey at
     random, with no pattern to it."""
-    gen = cm_gen(19)
+    gen = sm_gen(19)
     lum = gen.integers(-10, 11, (B, B)).astype(float)
     pick = gen.random((B, B))
     lum[pick < 0.30] -= 34                            # near-black patches
     lum[pick > 0.82] += 40                            # pale chips
     lum = lum + 8 * pnoise(B, B, 1.0, 1.0, gen)
-    return cm_rgb(lum, (84, 84, 84))
+    return sm_rgb(lum, (84, 84, 84))
 
 
-def cm_gravel():
+def sm_gravel():
     """Pebbles in grey, brown-grey and near-white, packed tight: each
     texel belongs to its nearest pebble (wrapping, so it tiles), darker at
     the pebble's rim."""
-    gen = cm_gen(20)
+    gen = sm_gen(20)
     n = 22
     seeds = gen.uniform(0, B, (n, 2))
     tints = np.array([(128, 122, 118), (104, 98, 94), (150, 142, 136), (92, 84, 80), (170, 164, 160)])
@@ -1128,12 +1128,12 @@ FONT5x7 = {
 SIGN_TEXTS = [("Kurt", "was here"), ("Wolfie", "was here"), ("Far Lands", "or Bust!")]
 
 
-def cm_sign(lines):
+def sm_sign(lines):
     """A sign's front, 64x32 across a board 1 block wide and 1/2 high:
     the planks at four texels to one of theirs -- the same boards as the
     planks block, so it matches the rest of the sign -- with the text
     in dark ink, centred, two lines."""
-    planks = cm_planks()
+    planks = sm_planks()
     img = np.repeat(np.repeat(planks, 4, axis=0), 4, axis=1)[:32, :64].astype(int)
     img[0, :] = img[-1, :] = (70, 50, 28)             # the board's edge
     img[:, 0] = img[:, -1] = (70, 50, 28)
@@ -1151,7 +1151,7 @@ def cm_sign(lines):
     return img.astype(np.uint8)
 
 
-def cm_torch_flame():
+def sm_torch_flame():
     """Torch flame, 64x8 like flame(): white-yellow core -> orange ->
     red tip."""
     w = 64
@@ -1171,60 +1171,60 @@ def cm_torch_flame():
 # random streams in this order, so keep it: a reordered entry changes
 # every texture after it.
 TEXTURES = {
-    "grass_top.png": cm_grass_top,
-    "grass_side.png": cm_grass_side,
-    "dirt.png": cm_dirt,
-    "stone.png": cm_stone,
-    "cobble.png": cm_cobble,
-    "sand.png": cm_sand,
-    "water.png": cm_water,
-    "log_side.png": cm_log_side,
-    "log_top.png": cm_log_top,
-    "planks.png": cm_planks,
-    "leaves.png": cm_leaves,
-    "coal_ore.png": cm_coal_ore,
-    "miner_face.png": cm_face,
-    "torch_flame.png": cm_torch_flame,
-    "flower_red.png": cm_flower_red,
-    "flower_yellow.png": cm_flower_yellow,
-    "tall_grass.png": cm_tall_grass,
-    "glass.png": cm_glass,
-    "torch.png": cm_torch,
-    "leaves_fast.png": cm_leaves_fast,
-    "bedrock.png": cm_bedrock,
-    "gravel.png": cm_gravel,
-    "iron_ore.png": cm_iron_ore,
-    "birch_side.png": cm_birch_side,
-    "birch_top.png": cm_birch_top,
-    "birch_leaves.png": cm_birch_leaves,
-    "birch_leaves_fast.png": cm_birch_leaves_fast,
-    "cactus.png": cm_cactus,
-    "snow.png": cm_snow,
-    "sandstone.png": cm_sandstone,
-    "chest_top.png": cm_chest_top,
-    "chest_side.png": cm_chest_side,
-    "trash_top.png": cm_trash_top,
-    "trash_side.png": cm_trash_side,
-    "bench_top.png": cm_bench_top,
-    "item_coal.png": cm_item_coal,
-    "item_iron_ingot.png": cm_item_ingot,
-    "item_pickaxe_iron.png": lambda: cm_item_pickaxe((222, 222, 228)),
-    "item_axe_iron.png": lambda: cm_item_axe((222, 222, 228)),
-    "item_shovel_iron.png": lambda: cm_item_shovel((222, 222, 228)),
-    "item_stick.png": cm_item_stick,
-    "item_pickaxe_wood.png": lambda: cm_item_pickaxe((176, 128, 64)),
-    "item_pickaxe_stone.png": lambda: cm_item_pickaxe((144, 152, 160)),
-    "item_axe_wood.png": lambda: cm_item_axe((192, 136, 72)),
-    "item_axe_stone.png": lambda: cm_item_axe((160, 168, 176)),
-    "item_shovel_wood.png": lambda: cm_item_shovel((160, 120, 56)),
-    "item_shovel_stone.png": lambda: cm_item_shovel((136, 143, 152)),
-    "furnace_front.png": cm_furnace_front,
-    "furnace_top.png": cm_furnace_top,
-    "table_top.png": cm_table_top,
-    "table_side.png": cm_table_side,
-    "sign_kurt.png": lambda: cm_sign(SIGN_TEXTS[0]),
-    "sign_wolfie.png": lambda: cm_sign(SIGN_TEXTS[1]),
-    "sign_flob.png": lambda: cm_sign(SIGN_TEXTS[2]),
+    "grass_top.png": sm_grass_top,
+    "grass_side.png": sm_grass_side,
+    "dirt.png": sm_dirt,
+    "stone.png": sm_stone,
+    "cobble.png": sm_cobble,
+    "sand.png": sm_sand,
+    "water.png": sm_water,
+    "log_side.png": sm_log_side,
+    "log_top.png": sm_log_top,
+    "planks.png": sm_planks,
+    "leaves.png": sm_leaves,
+    "coal_ore.png": sm_coal_ore,
+    "miner_face.png": sm_face,
+    "torch_flame.png": sm_torch_flame,
+    "flower_red.png": sm_flower_red,
+    "flower_yellow.png": sm_flower_yellow,
+    "tall_grass.png": sm_tall_grass,
+    "glass.png": sm_glass,
+    "torch.png": sm_torch,
+    "leaves_fast.png": sm_leaves_fast,
+    "bedrock.png": sm_bedrock,
+    "gravel.png": sm_gravel,
+    "iron_ore.png": sm_iron_ore,
+    "birch_side.png": sm_birch_side,
+    "birch_top.png": sm_birch_top,
+    "birch_leaves.png": sm_birch_leaves,
+    "birch_leaves_fast.png": sm_birch_leaves_fast,
+    "cactus.png": sm_cactus,
+    "snow.png": sm_snow,
+    "sandstone.png": sm_sandstone,
+    "chest_top.png": sm_chest_top,
+    "chest_side.png": sm_chest_side,
+    "trash_top.png": sm_trash_top,
+    "trash_side.png": sm_trash_side,
+    "bench_top.png": sm_bench_top,
+    "item_coal.png": sm_item_coal,
+    "item_iron_ingot.png": sm_item_ingot,
+    "item_pickaxe_iron.png": lambda: sm_item_pickaxe((222, 222, 228)),
+    "item_axe_iron.png": lambda: sm_item_axe((222, 222, 228)),
+    "item_shovel_iron.png": lambda: sm_item_shovel((222, 222, 228)),
+    "item_stick.png": sm_item_stick,
+    "item_pickaxe_wood.png": lambda: sm_item_pickaxe((176, 128, 64)),
+    "item_pickaxe_stone.png": lambda: sm_item_pickaxe((144, 152, 160)),
+    "item_axe_wood.png": lambda: sm_item_axe((192, 136, 72)),
+    "item_axe_stone.png": lambda: sm_item_axe((160, 168, 176)),
+    "item_shovel_wood.png": lambda: sm_item_shovel((160, 120, 56)),
+    "item_shovel_stone.png": lambda: sm_item_shovel((136, 143, 152)),
+    "furnace_front.png": sm_furnace_front,
+    "furnace_top.png": sm_furnace_top,
+    "table_top.png": sm_table_top,
+    "table_side.png": sm_table_side,
+    "sign_kurt.png": lambda: sm_sign(SIGN_TEXTS[0]),
+    "sign_wolfie.png": lambda: sm_sign(SIGN_TEXTS[1]),
+    "sign_flob.png": lambda: sm_sign(SIGN_TEXTS[2]),
 }
 
 

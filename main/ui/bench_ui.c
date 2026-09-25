@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the disassembly bench (see bench_ui.h)
+//  SynthMiner  --  the disassembly bench (see bench_ui.h)
 // =====================================================================
 
 #include "ui/bench_ui.h"
@@ -117,11 +117,11 @@ void bench_ui_update(inventory_t* inv) {
                 if (inv_add(inv, r->in[i].item, r->in[i].count, 0) != 0) ok = false;
             }
             if (ok) {
-                i18n_fmt(s_msg, sizeof(s_msg), CM_STR_BENCH_DONE, (int)r->out_n, T(item_label(it)));
+                i18n_fmt(s_msg, sizeof(s_msg), SM_STR_BENCH_DONE, (int)r->out_n, T(item_label(it)));
                 sfx_play(SFX_CRAFT);
             } else {
                 *inv = before;
-                snprintf(s_msg, sizeof(s_msg), "%s", T(CM_STR_CRAFT_FULL));
+                snprintf(s_msg, sizeof(s_msg), "%s", T(SM_STR_CRAFT_FULL));
                 sfx_play(SFX_DENY);
             }
             s_msg_until = showtime_now() + MSG_SECONDS;
@@ -153,7 +153,7 @@ void bench_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
     }
     if (n == 0) {
         memset(&rows[0], 0, sizeof(rows[0]));
-        rows[0].label = T(CM_STR_BENCH_EMPTY);
+        rows[0].label = T(SM_STR_BENCH_EMPTY);
         n             = 1;
     }
 
@@ -173,17 +173,17 @@ void bench_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
             if (parts[0] != '\0') strncat(parts, "   ", sizeof(parts) - strlen(parts) - 1);
             strncat(parts, one, sizeof(parts) - strlen(parts) - 1);
         }
-        i18n_fmt(foot, sizeof(foot), CM_STR_BENCH_GIVES, parts);
+        i18n_fmt(foot, sizeof(foot), SM_STR_BENCH_GIVES, parts);
     } else {
-        snprintf(foot, sizeof(foot), "%s", T(CM_STR_BENCH_HINT));
+        snprintf(foot, sizeof(foot), "%s", T(SM_STR_BENCH_HINT));
     }
 
     se_menu_def_t const def = {
-        .title        = T(CM_STR_BENCH_TITLE),
+        .title        = T(SM_STR_BENCH_TITLE),
         .subtitle     = foot,
         .rows         = rows,
         .row_count    = n,
-        .hint         = T(CM_STR_BENCH_HINT),
+        .hint         = T(SM_STR_BENCH_HINT),
         .title_h      = 32.0f,
         .row_h        = 34.0f,
         .value_dx     = 380.0f,

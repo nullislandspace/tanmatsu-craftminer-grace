@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the cheat console (see cheat_ui.h)
+//  SynthMiner  --  the cheat console (see cheat_ui.h)
 // =====================================================================
 
 #include "ui/cheat_ui.h"

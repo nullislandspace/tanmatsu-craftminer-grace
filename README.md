@@ -1,15 +1,15 @@
-# CraftMiner
+# SynthMiner
 
 A block world for the [Tanmatsu](https://nicolaielectronics.nl/), built on
 [SynthEngine3D](https://github.com/nullislandspace/synthengine3D) and loaded by
 [Graceloader](https://github.com/nullislandspace/tanmatsu-graceloader).
 
-Slug `at.cavac.craftminer`. It installs to the **SD card only** — `metadata.json`
+Slug `at.cavac.synthminer`. It installs to the **SD card only** — `metadata.json`
 says `external_only`, so the launcher will not put it in internal flash, and
-`make install` uploads to `/sd/apps/at.cavac.craftminer`.
+`make install` uploads to `/sd/apps/at.cavac.synthminer`.
 
 **The player's data is NOT there.** Worlds, `settings.txt`, replays and
-screenshots live in **`/sd/craftminer`**, which the launcher does not manage,
+screenshots live in **`/sd/synthminer`**, which the launcher does not manage,
 so an update or a reinstall cannot delete them. The install directory holds
 only what the app ships with (`app.so`, the textures). Builds before this kept
 the data in the install directory; the first start of a newer one moves it
@@ -21,7 +21,7 @@ which stays as the `upstream` remote: `git fetch upstream && git merge upstream/
 brings in graceloader's symbol-export updates. Its facilities are documented below.
 
 ```sh
-git clone --recursive git@github.com:nullislandspace/tanmatsu-craftminer-grace.git
+git clone --recursive git@github.com:nullislandspace/tanmatsu-synthminer-grace.git
 make badgelink     # once: the flashing/file-transfer tools
 make build         # app.so
 make install run   # onto the SD card, then start it
@@ -60,7 +60,7 @@ Engine settings (list caps and the like) are compile definitions that must reach
 
 ## Playing it
 
-It opens on the engine's splash, then the title: **CraftMiner** written in real
+It opens on the engine's splash, then the title: **SynthMiner** written in real
 blocks in a real world, over a meadow the generator made, with **Play /
 Settings / Quit** underneath.
 
@@ -102,14 +102,14 @@ opens**, since pausing is what people do before switching a handheld off.
 Volume and brightness are the device's own settings, shared with the launcher
 and every other app (`se_hw`, the launcher's `system` NVS namespace). Everything
 else — graphics, audio switches, gyroscope, every key binding — is one text
-file on the SD card, `/sd/craftminer/settings.txt`, next to `worlds/`,
+file on the SD card, `/sd/synthminer/settings.txt`, next to `worlds/`,
 `replays/` and `screenshots/`. Copy that directory and you have backed up
 everything. The file is
 plain `key=value` lines; delete one to get its default back.
 
 ### Languages
 
-CraftMiner speaks **32 languages**. English is the reference; the other 31 are
+SynthMiner speaks **32 languages**. English is the reference; the other 31 are
 a **machine's work**, and every one of them says so at the top of its file.
 They have not been read by anyone who speaks them. **That is where you come in
 — see "Fixing a translation" below.**
@@ -126,14 +126,14 @@ The menu lists them with English first and the rest alphabetically by the name
 each language calls itself — the name you are looking for is the one you can
 read. Settings → Language, two rows in, and it takes effect at once.
 
-Not translated, deliberately: the name CraftMiner, world names (you type
+Not translated, deliberately: the name SynthMiner, world names (you type
 those), the key names in the Controls list — `Esc`, `Space`, `Left Shift` are
 what is printed on the badge's own keys — and every log line.
 
 ### Fixing a translation
 
 **You do not need a toolchain, a compiler, or a GitHub account.** Put a file at
-`/sd/craftminer/lang/<code>.txt` on the SD card — `de.txt`, `nl-BE.txt`,
+`/sd/synthminer/lang/<code>.txt` on the SD card — `de.txt`, `nl-BE.txt`,
 `bg.txt` — holding just the lines you want changed:
 
 ```
@@ -230,7 +230,7 @@ The camera is the player unless you press **F**. The defaults:
 | `F1`–`F6` | hotbar slot |
 | `Esc` | pause menu |
 | `Backspace` | show position, heading and time of day |
-| `0` | screenshot, saved to `/sd/craftminer/screenshots/shotNNN.png` |
+| `0` | screenshot, saved to `/sd/synthminer/screenshots/shotNNN.png` |
 | `F` | switch to the debug camera and back (not if you have bound F to something) |
 
 The crosshair marks where the pick ray goes — which is **not** the centre of the
@@ -300,7 +300,7 @@ something else.
 
 ### Your own music
 
-Drop any `.mid` file into `/sd/craftminer/music/` and it joins the pool. A file
+Drop any `.mid` file into `/sd/synthminer/music/` and it joins the pool. A file
 there with the same name as one of ours replaces it, so you can swap an
 arrangement you do not like without deleting anything. Nothing needs rebuilding,
 and no toolchain is involved — the same arrangement the translations use.
@@ -352,7 +352,7 @@ frame cannot depend on which keys are held.
 | cursor keys | look |
 | `L-Ctrl` | three times the speed |
 | `P` | pause the scripted flight |
-| `R` | in a world: start / stop recording a replay (`replays/last.cmr`) |
+| `R` | in a world: start / stop recording a replay (`replays/last.smr`) |
 | `N` | in a world: the clock a quarter of a day on (morning, noon, evening, midnight) |
 
 Textures and view distance, which used to be the `T` and `V` keys, are in
@@ -366,7 +366,7 @@ rasterize pass (`scene_fill_stats`). Between them, `make cycle
 TEST="perf scene=block secs=20"` says whether a fill loop is bound on its
 arithmetic, on memory, or on its own setup — the three are indistinguishable
 from a frame rate alone, and two of the three were guessed wrong here before
-they were measured. See `claudeplans/craftminer.md`, F-40.
+they were measured. See `claudeplans/synthminer.md`, F-40.
 
 Short version, on this hardware: spans average **six pixels**, so per-span
 setup dominates, and vectorising the inner loops (the ESP32-P4's PIE SIMD,
@@ -380,7 +380,7 @@ removed; item names likewise. `tools/ids.txt` lists every one, and `make
 check` fails the build if the code disagrees with it -- adding a block means
 appending a line there.
 
-`claudeplans/craftminer.md` is the living plan: the design, a step-by-step
+`claudeplans/synthminer.md` is the living plan: the design, a step-by-step
 status table, and the findings and decisions logs. Read it first — every number
 quoted below comes from a measurement recorded there.
 

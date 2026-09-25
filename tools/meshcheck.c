@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  host-side check of the math and the greedy mesher
+//  SynthMiner  --  host-side check of the math and the greedy mesher
 // ---------------------------------------------------------------------
 //  Built and run by `make meshcheck` with the host compiler (no badge
 //  needed). Exit status 0 = all checks passed.
@@ -16,7 +16,7 @@
 //  points away from the centre" test would be wrong. A face that points
 //  inward is culled when it should be drawn, i.e. a hole in the model.
 //  Lifted from tanmatsu-showreel-grace,
-//  tools/meshcheck.c. Changes here are CraftMiner's;
+//  tools/meshcheck.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

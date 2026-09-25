@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  chests, and the trashcan
+//  SynthMiner  --  chests, and the trashcan
 // ---------------------------------------------------------------------
 //  TWO GRIDS SIDE BY SIDE: the container and what you are carrying.
 //  Tab swaps which one the arrow keys belong to, enter moves the stack

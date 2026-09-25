@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the player (see player.h)
+//  SynthMiner  --  the player (see player.h)
 // =====================================================================
 
 #include "audio/sfx.h"
@@ -80,7 +80,7 @@ float player_mine_progress(player_t const* p) {
     return f < 0.0f ? 0.0f : f > 1.0f ? 1.0f : f;
 }
 
-void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
+void player_tick(player_t* p, sm_actions_t mask, sm_actions_t pressed) {
     // ONE TICK'S WORTH, CLEARED FIRST. It used to be cleared further
     // down, in the branch that does the actual using -- which the
     // frozen branch below returns before ever reaching. So the moment a
@@ -105,7 +105,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // NOT while a full-screen UI is up: Tab opened the inventory behind
     // the crafting book, which then had two screens taking the same
     // keys (the user found it immediately).
-    if (!p->ui_open && act_held(pressed, CM_INVENTORY)) {
+    if (!p->ui_open && act_held(pressed, SM_INVENTORY)) {
         p->inv.open = !p->inv.open;
         p->mining   = false;
     }
@@ -120,17 +120,17 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
         p->prev_yaw   = p->yaw;
         p->prev_pitch = p->pitch;
 
-        int const dx = (act_held(pressed, CM_RIGHT) || act_held(pressed, CM_LOOK_RIGHT) ? 1 : 0) -
-                       (act_held(pressed, CM_LEFT) || act_held(pressed, CM_LOOK_LEFT) ? 1 : 0);
-        int const dy = (act_held(pressed, CM_BACK) || act_held(pressed, CM_LOOK_DOWN) ? 1 : 0) -
-                       (act_held(pressed, CM_FORWARD) || act_held(pressed, CM_LOOK_UP) ? 1 : 0);
+        int const dx = (act_held(pressed, SM_RIGHT) || act_held(pressed, SM_LOOK_RIGHT) ? 1 : 0) -
+                       (act_held(pressed, SM_LEFT) || act_held(pressed, SM_LOOK_LEFT) ? 1 : 0);
+        int const dy = (act_held(pressed, SM_BACK) || act_held(pressed, SM_LOOK_DOWN) ? 1 : 0) -
+                       (act_held(pressed, SM_FORWARD) || act_held(pressed, SM_LOOK_UP) ? 1 : 0);
         if (!p->ui_open && (dx || dy)) inv_move_cursor(&p->inv, dx, dy);
 
         // A hotbar key SWAPS the cursor's stack into that slot -- the
         // one operation the screen has to support, since without it
         // everything past the sixth slot is unreachable.
         for (int i = 0; i < INV_HOTBAR && !p->ui_open; i++) {
-            if (act_held(pressed, (cm_action_t)(CM_SLOT1 + i))) inv_swap(&p->inv, p->inv.cursor, i);
+            if (act_held(pressed, (sm_action_t)(SM_SLOT1 + i))) inv_swap(&p->inv, p->inv.cursor, i);
         }
 
         // Still fall while reading: standing over a hole and opening
@@ -170,10 +170,10 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     //
     // Flattened: forward is where the player is facing, not where they
     // are looking. Looking at your feet must not slow you down.
-    float const fwd = (act_held(mask, CM_FORWARD) ? 1.0f : 0.0f) - (act_held(mask, CM_BACK) ? 1.0f : 0.0f);
-    float const str = (act_held(mask, CM_RIGHT) ? 1.0f : 0.0f) - (act_held(mask, CM_LEFT) ? 1.0f : 0.0f);
+    float const fwd = (act_held(mask, SM_FORWARD) ? 1.0f : 0.0f) - (act_held(mask, SM_BACK) ? 1.0f : 0.0f);
+    float const str = (act_held(mask, SM_RIGHT) ? 1.0f : 0.0f) - (act_held(mask, SM_LEFT) ? 1.0f : 0.0f);
     // In water there is one speed: sneak means dive, not creep.
-    float const speed = in_water ? PL_SWIM : act_held(mask, CM_SNEAK) ? PL_SNEAK : PL_WALK;
+    float const speed = in_water ? PL_SWIM : act_held(mask, SM_SNEAK) ? PL_SNEAK : PL_WALK;
 
     float wish_x = 0.0f, wish_z = 0.0f;
     if (fwd != 0.0f || str != 0.0f) {
@@ -210,9 +210,9 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
         // Swimming: an impulse added every tick the key is held, which
         // the water's drag turns into a steady rise (player.h). Jump
         // goes up, sneak goes down; let go and you sink slowly.
-        if (act_held(mask, CM_JUMP)) p->body.vy += PL_SWIM_UP;
-        else if (act_held(mask, CM_SNEAK)) p->body.vy -= PL_SWIM_UP;
-    } else if (act_held(mask, CM_JUMP) && p->body.on_ground) {
+        if (act_held(mask, SM_JUMP)) p->body.vy += PL_SWIM_UP;
+        else if (act_held(mask, SM_SNEAK)) p->body.vy -= PL_SWIM_UP;
+    } else if (act_held(mask, SM_JUMP) && p->body.on_ground) {
         p->body.vy = PL_JUMP;
     }
 
@@ -235,7 +235,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
 
     // --- The hotbar ---------------------------------------------------
     for (int i = 0; i < INV_HOTBAR; i++) {
-        if (act_held(pressed, (cm_action_t)(CM_SLOT1 + i))) {
+        if (act_held(pressed, (sm_action_t)(SM_SLOT1 + i))) {
             p->inv.selected = i;
             p->mining       = false;  // switching tools abandons the dig
         }
@@ -258,7 +258,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // crack overlay animates once it is retargeted. Progress belongs to
     // a CELL: look away and it is abandoned, which is the behaviour
     // everyone expects and nobody states.
-    if (p->aim_valid && act_held(mask, CM_ATTACK)) {
+    if (p->aim_valid && act_held(mask, SM_ATTACK)) {
         bool const same = p->mining && p->mine_x == p->aim.x && p->mine_y == p->aim.y && p->mine_z == p->aim.z;
         if (!same) {
             p->mining      = true;
@@ -312,7 +312,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // A block that OPENS something wins over placing against it, or a
     // table with planks in hand could never be opened at all -- which
     // is Minecraft's rule too, and the reason sneaking exists there.
-    if (p->aim_valid && act_held(pressed, CM_USE)) {
+    if (p->aim_valid && act_held(pressed, SM_USE)) {
         if (block_usable(p->aim.block)) {
             p->used_block = p->aim.block;
         } else {
@@ -331,7 +331,7 @@ void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed) {
     // further than your own arm in one tick -- so it is the pickup
     // DELAY that makes G work at all, not the distance. Two seconds is
     // long enough to walk away from.
-    if (act_held(pressed, CM_DROP)) {
+    if (act_held(pressed, SM_DROP)) {
         inv_slot_t* s = inv_held(&p->inv);
         if (s->item != 0) {
             double const ox = p->body.x + (double)(dx * 0.4f);

@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  recording and replaying play
+//  SynthMiner  --  recording and replaying play
 // ---------------------------------------------------------------------
 //  The simulation is a pure function of its starting state and its
 //  per-tick input (D-02), so a replay is exactly those two things:
@@ -21,7 +21,7 @@
 //  record in a world you have edited and the replay, on fresh terrain,
 //  will walk into the difference. Record tests in a new world.
 //
-//  File, little-endian: "CMRP", u32 version (2), u32 ticks, the start --
+//  File, little-endian: "SMRP", u32 version (2), u32 ticks, the start --
 //  its inventory by item NAME, since item numbers move when blocks are
 //  added (D-74) -- then per tick u32 mask, f32 yaw, f32 pitch. Pure
 //  (stdio only): the host checks round-trip it.

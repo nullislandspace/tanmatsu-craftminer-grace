@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the UI in the player's language
+//  SynthMiner  --  the UI in the player's language
 // ---------------------------------------------------------------------
 //  Every word the game shows comes from here. `lang/*.txt` holds them,
 //  one file per language, plain `key = text` lines in UTF-8;
@@ -19,7 +19,7 @@
 //  language names in the menu each stand in their own language, and the
 //  setting is two rows into Settings.
 //
-//  WHAT IS NOT TRANSLATED: the name CraftMiner; world names, which the
+//  WHAT IS NOT TRANSLATED: the name SynthMiner; world names, which the
 //  player types; the key names (Esc, Left Shift) printed on the badge's
 //  own keys; and every log line, which is for us, not for a player.
 // =====================================================================
@@ -28,28 +28,28 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "i18n/strings_gen.h"  // cm_str_t, CM_STR_COUNT, cm_lang_t, CM_LANG_COUNT
+#include "i18n/strings_gen.h"  // sm_str_t, SM_STR_COUNT, sm_lang_t, SM_LANG_COUNT
 
 // The text for a string, in the current language. Never NULL, and the
 // pointer stays good until the language changes -- menus that hold
 // labels for one frame are fine; anything kept longer should copy.
-char const* i18n_text(cm_str_t s);
+char const* i18n_text(sm_str_t s);
 
 // What the call sites read. Short on purpose: it appears a few hundred
 // times, and a longer name would push rows of menu code off the line.
 #define T(s) i18n_text(s)
 
-cm_lang_t   i18n_language(void);
-void        i18n_set_language(cm_lang_t lang);
+sm_lang_t   i18n_language(void);
+void        i18n_set_language(sm_lang_t lang);
 
 // The language's own name for itself ("Deutsch"), and the code that
 // goes in settings.txt ("de", "nl-BE").
-char const* i18n_language_name(cm_lang_t lang);
-char const* i18n_language_code(cm_lang_t lang);
+char const* i18n_language_name(sm_lang_t lang);
+char const* i18n_language_code(sm_lang_t lang);
 
 // The language a code names. False (and *out untouched) for a code from
 // a newer build or a typo, which leaves the caller on its default.
-bool i18n_language_from_code(char const* code, cm_lang_t* out);
+bool i18n_language_from_code(char const* code, sm_lang_t* out);
 
 // --- Filling in the blanks --------------------------------------------------
 
@@ -63,7 +63,7 @@ bool i18n_language_from_code(char const* code, cm_lang_t* out);
 // here instead, with the C library only ever asked to format ONE value
 // at a time, which every libc can do.
 //
-//   i18n_fmt(buf, sizeof buf, CM_STR_WORLD_SUB, slot + 1, seed);
+//   i18n_fmt(buf, sizeof buf, SM_STR_WORLD_SUB, slot + 1, seed);
 //
 // The TYPES come from the English string, never from the translation:
 // `%d` in en.txt is read as an int whatever the translation writes
@@ -73,8 +73,8 @@ bool i18n_language_from_code(char const* code, cm_lang_t* out);
 // dropped. `make check` catches all of that long before a player does.
 //
 // Returns the length it wanted to write, like snprintf.
-int i18n_fmt(char* buf, size_t cap, cm_str_t s, ...);
-int i18n_vfmt(char* buf, size_t cap, cm_str_t s, va_list ap);
+int i18n_fmt(char* buf, size_t cap, sm_str_t s, ...);
+int i18n_vfmt(char* buf, size_t cap, sm_str_t s, va_list ap);
 
 // The most values one string may take. Raising it costs nothing but a
 // little stack; `make check` fails on a string that needs more.
@@ -82,7 +82,7 @@ int i18n_vfmt(char* buf, size_t cap, cm_str_t s, va_list ap);
 
 // --- Translations a player can fix themselves -------------------------------
 
-// Read `<dir>/lang/<code>.txt` (CM_DATA_DIR, datadir.h) over the baked
+// Read `<dir>/lang/<code>.txt` (SM_DATA_DIR, datadir.h) over the baked
 // text, for the current language, and keep it until the language
 // changes. Same format as lang/*.txt; an unknown key is ignored and a
 // missing one keeps what was baked in, so a file with one line in it
@@ -96,9 +96,9 @@ void i18n_load_overrides(char const* dir);
 
 // --- For the host checks only -----------------------------------------------
 
-#ifdef CM_HOST
+#ifdef SM_HOST
 // Put `text` in place of a string, or NULL to take it back: what an
 // override file would do, without a file. worldcheck uses it to feed
 // i18n_fmt the sort of format string a stranger's lang file might hold.
-void i18n_test_override(cm_str_t s, char const* text);
+void i18n_test_override(sm_str_t s, char const* text);
 #endif

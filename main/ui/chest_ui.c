@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  chests, and the trashcan (see chest_ui.h)
+//  SynthMiner  --  chests, and the trashcan (see chest_ui.h)
 // =====================================================================
 
 #include "ui/chest_ui.h"
@@ -183,7 +183,7 @@ void chest_ui_update(inventory_t* inv, uint32_t now) {
                 blockent_touch(be);
                 sfx_play(SFX_PICKUP);
             } else {
-                snprintf(s_msg, sizeof(s_msg), "%s", T(CM_STR_CHEST_NO_ROOM));
+                snprintf(s_msg, sizeof(s_msg), "%s", T(SM_STR_CHEST_NO_ROOM));
                 s_msg_until = showtime_now() + MSG_SECONDS;
                 sfx_play(SFX_DENY);
             }
@@ -193,7 +193,7 @@ void chest_ui_update(inventory_t* inv, uint32_t now) {
 
     int const gone = blockent_rot_trash(be, now);
     if (gone > 0) {
-        i18n_fmt(s_msg, sizeof(s_msg), CM_STR_CHEST_TRASH_GONE, gone);
+        i18n_fmt(s_msg, sizeof(s_msg), SM_STR_CHEST_TRASH_GONE, gone);
         s_msg_until = showtime_now() + MSG_SECONDS;
         blockent_touch(be);
     }
@@ -237,7 +237,7 @@ void chest_ui_update(inventory_t* inv, uint32_t now) {
             blockent_touch(be);
             sfx_play(SFX_PICKUP);
         } else {
-            snprintf(s_msg, sizeof(s_msg), "%s", T(CM_STR_CHEST_NO_ROOM));
+            snprintf(s_msg, sizeof(s_msg), "%s", T(SM_STR_CHEST_NO_ROOM));
             s_msg_until = showtime_now() + MSG_SECONDS;
             sfx_play(SFX_DENY);
         }
@@ -261,12 +261,12 @@ void chest_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
                         (int)DISPLAY_LOG_H);
 
     bool const trash = be->kind == BE_TRASH;
-    char const* const title = T(trash ? CM_STR_CHEST_TITLE_TRASH : CM_STR_CHEST_TITLE);
+    char const* const title = T(trash ? SM_STR_CHEST_TITLE_TRASH : SM_STR_CHEST_TITLE);
     pax_vec2f const   tsz   = rendertext_size(NULL, 30.0f, title);
     rendertext_draw(fb, 0xFFFFFFFFu, NULL, 30.0f, ((float)DISPLAY_LOG_W - tsz.x) * 0.5f, 42.0f, title);
 
     rendertext_draw(fb, 0xFFB0B0B8u, NULL, 18.0f, (float)x0, (float)(y0 - 24), title);
-    rendertext_draw(fb, 0xFFB0B0B8u, NULL, 18.0f, (float)x1, (float)(y0 - 24), T(CM_STR_CHEST_YOURS));
+    rendertext_draw(fb, 0xFFB0B0B8u, NULL, 18.0f, (float)x1, (float)(y0 - 24), T(SM_STR_CHEST_YOURS));
 
     hud_slot_grid(fb, x0, y0, be->slot, CHEST_SLOTS, CHEST_COLS, sw, s_on_chest ? s_cur_chest : -1, s_on_chest);
     hud_slot_grid(fb, x1, y0, inv->slot, INV_SLOTS, INV_HOTBAR, sw, s_on_chest ? -1 : s_cur_inv, !s_on_chest);
@@ -277,7 +277,7 @@ void chest_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
     if (showtime_now() < s_msg_until) {
         snprintf(foot, sizeof(foot), "%s", s_msg);
     } else if (trash) {
-        i18n_fmt(foot, sizeof(foot), CM_STR_CHEST_TRASH_WARN, (int)BE_TRASH_MINUTES);
+        i18n_fmt(foot, sizeof(foot), SM_STR_CHEST_TRASH_WARN, (int)BE_TRASH_MINUTES);
     } else {
         foot[0] = '\0';
     }
@@ -289,7 +289,7 @@ void chest_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
 
     if (s_asking) amount_draw(fb);
 
-    char const* const hint = T(CM_STR_CHEST_HINT);
+    char const* const hint = T(SM_STR_CHEST_HINT);
     pax_vec2f const   hsz  = rendertext_size(NULL, 15.0f, hint);
     rendertext_draw(fb, 0xFF9090A0u, NULL, 15.0f, ((float)DISPLAY_LOG_W - hsz.x) * 0.5f,
                     (float)DISPLAY_LOG_H - 34.0f, hint);

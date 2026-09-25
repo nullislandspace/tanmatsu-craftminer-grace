@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the synthesiser the MIDI files play through
+//  SynthMiner  --  the synthesiser the MIDI files play through
 // ---------------------------------------------------------------------
 //  se_voice.h says a voice is one note and that "a future MIDI player
 //  will keep a pool of voices and route note-on / note-off events to

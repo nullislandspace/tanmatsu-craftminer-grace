@@ -19,7 +19,7 @@
 //  (b - a) x (c - a). Every mesh here is built with that normal pointing
 //  out of the solid ("outward"); tri_faces_point() is the back-face test.
 //  Lifted from tanmatsu-showreel-grace,
-//  main/xform.h. Changes here are CraftMiner's;
+//  main/xform.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

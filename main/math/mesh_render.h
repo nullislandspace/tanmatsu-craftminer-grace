@@ -6,7 +6,7 @@
 //  so one mesh can be drawn in several liveries (e.g. two marauders of
 //  the same type in different paint).
 //  Lifted from tanmatsu-showreel-grace,
-//  main/mesh_render.h. Changes here are CraftMiner's;
+//  main/mesh_render.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 
@@ -41,7 +41,7 @@ typedef struct {
 //    however far from 0,0 the player has walked. Out at the Far Lands a
 //    world-space float has lost about 0.008 of a block -- visible
 //    jitter, exactly where the terrain is meant to be strange for other
-//    reasons (claudeplans/craftminer.md, D-01).
+//    reasons (claudeplans/synthminer.md, D-01).
 //
 // Back-face culling uses mesh_tri_t.dir where it is set: for an
 // axis-aligned face that is one subtract and one compare, against the

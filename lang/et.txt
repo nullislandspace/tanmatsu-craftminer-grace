@@ -1,9 +1,9 @@
-# CraftMiner -- Eesti
+# SynthMiner -- Eesti
 #
 # Selle tõlke tegi tehisintellekt ja see ootab kedagi, kes keelt tegelikult
 # räägib. Kui tead paremini: paranda rida ja käivita
 # `python3 tools/make_lang.py`. Saab ka ilma tööriistadeta -- kaardil olev
-# fail /sd/craftminer/lang/et.txt samade ridadega käib sissekompileeritust
+# fail /sd/synthminer/lang/et.txt samade ridadega käib sissekompileeritust
 # üle (i18n.h).
 #
 # Võtmed on failis lang/en.txt. Sealsed %-kohahoidjad peavad ka siin olema;
@@ -104,7 +104,7 @@ common.back = Tagasi
 hint.list = üles / alla valib, Enter kinnitab, Esc läheb tagasi
 hint.adjust = üles / alla valib, vasak / parem muudab, Esc läheb tagasi
 
-status.newer = Tehtud uuema CraftMineriga: mängimiseks uuenda
+status.newer = Tehtud uuema SynthMineriga: mängimiseks uuenda
 status.older = Vanem salvestusvorming: see versioon ei oska seda veel uuendada
 status.needs_name = Maailm vajab nime
 status.renamed = Ümber nimetatud

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the UI in the player's language (see i18n.h)
+//  SynthMiner  --  the UI in the player's language (see i18n.h)
 // =====================================================================
 
 #include "i18n/i18n.h"
@@ -10,50 +10,50 @@
 
 #include "common/psram.h"
 
-static cm_lang_t           s_lang  = CM_LANG_EN;
-static char const* const*  s_baked = CM_STRINGS[CM_LANG_EN];
+static sm_lang_t           s_lang  = SM_LANG_EN;
+static char const* const*  s_baked = SM_STRINGS[SM_LANG_EN];
 
 // An override file read off the SD card: the file itself, chopped into
 // NUL-terminated lines, and a pointer per string into it (NULL where
 // the file said nothing). Freed and rebuilt when the language changes.
 static char*       s_over_file;
-static char const* s_over[CM_STR_COUNT];
+static char const* s_over[SM_STR_COUNT];
 
-char const* i18n_text(cm_str_t s) {
-    if ((unsigned)s >= CM_STR_COUNT) return "";
+char const* i18n_text(sm_str_t s) {
+    if ((unsigned)s >= SM_STR_COUNT) return "";
     if (s_over[s] != NULL) return s_over[s];
     return s_baked[s];
 }
 
-cm_lang_t i18n_language(void) {
+sm_lang_t i18n_language(void) {
     return s_lang;
 }
 
-char const* i18n_language_name(cm_lang_t lang) {
-    return (unsigned)lang < CM_LANG_COUNT ? CM_LANG_NAMES[lang] : "";
+char const* i18n_language_name(sm_lang_t lang) {
+    return (unsigned)lang < SM_LANG_COUNT ? SM_LANG_NAMES[lang] : "";
 }
 
-char const* i18n_language_code(cm_lang_t lang) {
-    return (unsigned)lang < CM_LANG_COUNT ? CM_LANG_CODES[lang] : "";
+char const* i18n_language_code(sm_lang_t lang) {
+    return (unsigned)lang < SM_LANG_COUNT ? SM_LANG_CODES[lang] : "";
 }
 
-bool i18n_language_from_code(char const* code, cm_lang_t* out) {
+bool i18n_language_from_code(char const* code, sm_lang_t* out) {
     if (code == NULL) return false;
-    for (int i = 0; i < CM_LANG_COUNT; i++) {
-        if (strcmp(code, CM_LANG_CODES[i]) == 0) {
-            *out = (cm_lang_t)i;
+    for (int i = 0; i < SM_LANG_COUNT; i++) {
+        if (strcmp(code, SM_LANG_CODES[i]) == 0) {
+            *out = (sm_lang_t)i;
             return true;
         }
     }
     return false;
 }
 
-void i18n_set_language(cm_lang_t lang) {
-    if ((unsigned)lang >= CM_LANG_COUNT) lang = CM_LANG_EN;
+void i18n_set_language(sm_lang_t lang) {
+    if ((unsigned)lang >= SM_LANG_COUNT) lang = SM_LANG_EN;
     s_lang  = lang;
-    s_baked = CM_STRINGS[lang];
+    s_baked = SM_STRINGS[lang];
     // The overrides belonged to the language we have just left.
-    cm_free(s_over_file);
+    sm_free(s_over_file);
     s_over_file = NULL;
     memset(s_over, 0, sizeof s_over);
 }
@@ -137,8 +137,8 @@ static char const* parse_spec(char const* p, spec_t* sp) {
 
 // The English string says what the values are and in what order they
 // arrive. Returns how many there are.
-static int reference_specs(cm_str_t s, spec_t out[I18N_FMT_MAX_ARGS]) {
-    char const* p = CM_STRINGS[CM_LANG_EN][s];
+static int reference_specs(sm_str_t s, spec_t out[I18N_FMT_MAX_ARGS]) {
+    char const* p = SM_STRINGS[SM_LANG_EN][s];
     int         n = 0;
     while (*p != '\0') {
         if (*p != '%') {
@@ -195,9 +195,9 @@ static void append_value(char* buf, size_t cap, size_t* pos, char const* flags, 
     if (n > 0) *pos += (size_t)n;
 }
 
-int i18n_vfmt(char* buf, size_t cap, cm_str_t s, va_list ap) {
+int i18n_vfmt(char* buf, size_t cap, sm_str_t s, va_list ap) {
     if (cap > 0) buf[0] = '\0';
-    if ((unsigned)s >= CM_STR_COUNT) return 0;
+    if ((unsigned)s >= SM_STR_COUNT) return 0;
 
     spec_t    specs[I18N_FMT_MAX_ARGS];
     int const n_args = reference_specs(s, specs);
@@ -273,7 +273,7 @@ int i18n_vfmt(char* buf, size_t cap, cm_str_t s, va_list ap) {
     return (int)pos;
 }
 
-int i18n_fmt(char* buf, size_t cap, cm_str_t s, ...) {
+int i18n_fmt(char* buf, size_t cap, sm_str_t s, ...) {
     va_list ap;
     va_start(ap, s);
     int const n = i18n_vfmt(buf, cap, s, ap);
@@ -288,8 +288,8 @@ int i18n_fmt(char* buf, size_t cap, cm_str_t s, ...) {
 // The key half of a `key = value` line, matched against the generated
 // key table. -1 for a key this build does not have.
 static int key_index(char const* key, size_t n) {
-    for (int i = 0; i < CM_STR_COUNT; i++) {
-        if (strncmp(CM_STR_KEYS[i], key, n) == 0 && CM_STR_KEYS[i][n] == '\0') return i;
+    for (int i = 0; i < SM_STR_COUNT; i++) {
+        if (strncmp(SM_STR_KEYS[i], key, n) == 0 && SM_STR_KEYS[i][n] == '\0') return i;
     }
     return -1;
 }
@@ -317,7 +317,7 @@ static void unescape(char* s) {
 }
 
 void i18n_load_overrides(char const* dir) {
-    cm_free(s_over_file);
+    sm_free(s_over_file);
     s_over_file = NULL;
     memset(s_over, 0, sizeof s_over);
     if (dir == NULL) return;
@@ -334,7 +334,7 @@ void i18n_load_overrides(char const* dir) {
         fclose(f);
         return;
     }
-    char* buf = (char*)cm_alloc((size_t)size + 1);
+    char* buf = (char*)sm_alloc((size_t)size + 1);
     if (buf == NULL) {
         fclose(f);
         return;
@@ -373,8 +373,8 @@ void i18n_load_overrides(char const* dir) {
     }
 }
 
-#ifdef CM_HOST
-void i18n_test_override(cm_str_t s, char const* text) {
-    if ((unsigned)s < CM_STR_COUNT) s_over[s] = text;
+#ifdef SM_HOST
+void i18n_test_override(sm_str_t s, char const* text) {
+    if ((unsigned)s < SM_STR_COUNT) s_over[s] = text;
 }
 #endif

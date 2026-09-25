@@ -1,9 +1,9 @@
-# CraftMiner -- Hrvatski
+# SynthMiner -- Hrvatski
 #
 # Ovaj prijevod napravila je umjetna inteligencija i čeka nekoga tko jezik
 # stvarno govori. Znate li bolje: ispravite redak i pokrenite
 # `python3 tools/make_lang.py`. Može i bez alata -- datoteka
-# /sd/craftminer/lang/hr.txt na kartici s istim recima ima prednost pred
+# /sd/synthminer/lang/hr.txt na kartici s istim recima ima prednost pred
 # ugrađenim tekstom (i18n.h).
 #
 # Ključevi su u lang/en.txt. Tamošnji %-rezervirani znakovi moraju se
@@ -104,7 +104,7 @@ common.back = Natrag
 hint.list = gore / dolje bira, Enter potvrđuje, Esc se vraća
 hint.adjust = gore / dolje bira, lijevo / desno mijenja, Esc se vraća
 
-status.newer = Napravljen novijim CraftMinerom: nadogradite da biste igrali
+status.newer = Napravljen novijim SynthMinerom: nadogradite da biste igrali
 status.older = Stariji format spremanja: ova ga verzija još ne zna pretvoriti
 status.needs_name = Svijet treba ime
 status.renamed = Preimenovano

@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  chunks and the resident world
+//  SynthMiner  --  chunks and the resident world
 // ---------------------------------------------------------------------
 //  The world is unbounded in x and z and 64 blocks tall. It exists on
 //  disk as generated-and-edited chunks and in memory as the few hundred
@@ -28,7 +28,7 @@
 //
 //  THREADING. Only the main task writes `id` / `st` of a CS_READY
 //  chunk; the core-1 worker writes them only while CS_LOADING, when
-//  nothing else may look. See claudeplans/craftminer.md, Part K, for
+//  nothing else may look. See claudeplans/synthminer.md, Part K, for
 //  the full ownership contract -- there are no locks on this path and
 //  the rules are what keep it correct.
 //
@@ -122,7 +122,7 @@ static inline int chunk_off(int32_t w) {
 //
 // Set on every block a player places, never by generation. The logging
 // rule reads it: breaking a placed log drops that log, breaking a grown
-// one fells the tree (claudeplans/craftminer.md, Part F). It also gives
+// one fells the tree (claudeplans/synthminer.md, Part F). It also gives
 // "placed leaves never decay" for free when decay arrives.
 #define ST_PLACED 0x01u
 

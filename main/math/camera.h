@@ -7,7 +7,7 @@
 //  camera space as they are submitted, so the camera must be in place
 //  before any geometry goes in.
 //  Lifted from tanmatsu-showreel-grace,
-//  main/camera.h. Changes here are CraftMiner's;
+//  main/camera.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

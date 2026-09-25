@@ -49,38 +49,38 @@ LANGUAGES = [
     # for; accents are ignored when sorting, so Čeština sits under C and
     # Íslenska under I. Greek and Cyrillic follow the Latin names, each in
     # its own alphabet's order.
-    ("en", "CM_LANG_EN", "English"),
-    ("ca", "CM_LANG_CA", "Català"),
-    ("cs", "CM_LANG_CS", "Čeština"),
-    ("da", "CM_LANG_DA", "Dansk"),
-    ("de", "CM_LANG_DE", "Deutsch"),
-    ("et", "CM_LANG_ET", "Eesti"),
-    ("es", "CM_LANG_ES", "Español"),
-    ("fr", "CM_LANG_FR", "Français"),
-    ("ga", "CM_LANG_GA", "Gaeilge"),
-    ("hr", "CM_LANG_HR", "Hrvatski"),
-    ("is", "CM_LANG_IS", "Íslenska"),
-    ("it", "CM_LANG_IT", "Italiano"),
-    ("lv", "CM_LANG_LV", "Latviešu"),
-    ("lt", "CM_LANG_LT", "Lietuvių"),
-    ("hu", "CM_LANG_HU", "Magyar"),
-    ("nl", "CM_LANG_NL", "Nederlands"),
-    ("no", "CM_LANG_NO", "Norsk"),
-    ("pl", "CM_LANG_PL", "Polski"),
-    ("pt", "CM_LANG_PT", "Português"),
-    ("ro", "CM_LANG_RO", "Română"),
-    ("sq", "CM_LANG_SQ", "Shqip"),
-    ("sk", "CM_LANG_SK", "Slovenčina"),
-    ("sl", "CM_LANG_SL", "Slovenščina"),
-    ("fi", "CM_LANG_FI", "Suomi"),
-    ("sv", "CM_LANG_SV", "Svenska"),
-    ("tr", "CM_LANG_TR", "Türkçe"),
-    ("nl-BE", "CM_LANG_NL_BE", "Vlaams"),
-    ("el", "CM_LANG_EL", "Ελληνικά"),
-    ("bg", "CM_LANG_BG", "Български"),
-    ("ru", "CM_LANG_RU", "Русский"),
-    ("sr", "CM_LANG_SR", "Српски"),
-    ("uk", "CM_LANG_UK", "Українська"),
+    ("en", "SM_LANG_EN", "English"),
+    ("ca", "SM_LANG_CA", "Català"),
+    ("cs", "SM_LANG_CS", "Čeština"),
+    ("da", "SM_LANG_DA", "Dansk"),
+    ("de", "SM_LANG_DE", "Deutsch"),
+    ("et", "SM_LANG_ET", "Eesti"),
+    ("es", "SM_LANG_ES", "Español"),
+    ("fr", "SM_LANG_FR", "Français"),
+    ("ga", "SM_LANG_GA", "Gaeilge"),
+    ("hr", "SM_LANG_HR", "Hrvatski"),
+    ("is", "SM_LANG_IS", "Íslenska"),
+    ("it", "SM_LANG_IT", "Italiano"),
+    ("lv", "SM_LANG_LV", "Latviešu"),
+    ("lt", "SM_LANG_LT", "Lietuvių"),
+    ("hu", "SM_LANG_HU", "Magyar"),
+    ("nl", "SM_LANG_NL", "Nederlands"),
+    ("no", "SM_LANG_NO", "Norsk"),
+    ("pl", "SM_LANG_PL", "Polski"),
+    ("pt", "SM_LANG_PT", "Português"),
+    ("ro", "SM_LANG_RO", "Română"),
+    ("sq", "SM_LANG_SQ", "Shqip"),
+    ("sk", "SM_LANG_SK", "Slovenčina"),
+    ("sl", "SM_LANG_SL", "Slovenščina"),
+    ("fi", "SM_LANG_FI", "Suomi"),
+    ("sv", "SM_LANG_SV", "Svenska"),
+    ("tr", "SM_LANG_TR", "Türkçe"),
+    ("nl-BE", "SM_LANG_NL_BE", "Vlaams"),
+    ("el", "SM_LANG_EL", "Ελληνικά"),
+    ("bg", "SM_LANG_BG", "Български"),
+    ("ru", "SM_LANG_RU", "Русский"),
+    ("sr", "SM_LANG_SR", "Српски"),
+    ("uk", "SM_LANG_UK", "Українська"),
 ]
 
 SPEC_RE = re.compile(r"%(?:(\d+)\$)?([-+ #0]*)(\d*)(?:\.(\d+))?(hh|h|ll|l|z|j|t)?([diuxXofFeEgGsc%])")
@@ -145,7 +145,7 @@ def check_scripts(key, text, code):
     This is the typo a machine translation makes and a human never notices:
     a Latin `a` inside a Cyrillic word looks identical and reads as a box on
     a badge with no Latin-Cyrillic lookalike merging. The game's own name is
-    the one honest exception -- Serbian declines it as `CraftMiner-ом`."""
+    the one honest exception -- Serbian declines it as `SynthMiner-ом`."""
     def script(ch):
         n = unicodedata.name(ch, "")
         for s in ("CYRILLIC", "GREEK", "LATIN"):
@@ -154,7 +154,7 @@ def check_scripts(key, text, code):
         return None
 
     for word in re.findall(r"\S+", text):
-        if "CraftMiner" in word:
+        if "SynthMiner" in word:
             continue
         scripts = {script(c) for c in word if script(c)}
         if len(scripts) > 1:
@@ -179,7 +179,7 @@ def c_string(s):
 
 
 def enum_name(key):
-    return "CM_STR_" + re.sub(r"[^A-Z0-9]", "_", key.upper())
+    return "SM_STR_" + re.sub(r"[^A-Z0-9]", "_", key.upper())
 
 
 def build():
@@ -231,49 +231,49 @@ def render():
     order = {k: enum_name(k) for k in keys}
 
     h = [BANNER, """// =====================================================================
-//  CraftMiner  --  every string the UI can show, and every language
+//  SynthMiner  --  every string the UI can show, and every language
 // ---------------------------------------------------------------------
 //  One enum for the strings, one for the languages, and a table of
 //  pointers per language. A lookup is an array index; there is nothing
 //  to parse and nothing to allocate. See i18n.h.
 // =====================================================================
 
-#ifndef CM_STRINGS_GEN_H
-#define CM_STRINGS_GEN_H
+#ifndef SM_STRINGS_GEN_H
+#define SM_STRINGS_GEN_H
 
 typedef enum {"""]
     for k in keys:
         h.append("    %-34s  // %s" % (order[k] + ",", k))
-    h.append("    CM_STR_COUNT")
-    h.append("} cm_str_t;\n")
+    h.append("    SM_STR_COUNT")
+    h.append("} sm_str_t;\n")
     h.append("typedef enum {")
     for code, name, autonym in LANGUAGES:
         h.append("    %-16s  // %-6s %s" % (name + ",", code, autonym))
-    h.append("    CM_LANG_COUNT")
-    h.append("} cm_lang_t;\n")
+    h.append("    SM_LANG_COUNT")
+    h.append("} sm_lang_t;\n")
     h.append("// [language][string]. Full for every language: a translation that")
     h.append("// does not have a string was given the English one when this was")
     h.append("// generated, so nothing has to fall back at run time.")
-    h.append("extern char const* const CM_STRINGS[CM_LANG_COUNT][CM_STR_COUNT];")
-    h.append("extern char const* const CM_LANG_CODES[CM_LANG_COUNT];")
-    h.append("extern char const* const CM_LANG_NAMES[CM_LANG_COUNT];")
+    h.append("extern char const* const SM_STRINGS[SM_LANG_COUNT][SM_STR_COUNT];")
+    h.append("extern char const* const SM_LANG_CODES[SM_LANG_COUNT];")
+    h.append("extern char const* const SM_LANG_NAMES[SM_LANG_COUNT];")
     h.append("// The key each string is known by in lang/*.txt, for the override")
     h.append("// files a player may put on the SD card (i18n_load_overrides).")
-    h.append("extern char const* const CM_STR_KEYS[CM_STR_COUNT];")
-    h.append("\n#endif  // CM_STRINGS_GEN_H")
+    h.append("extern char const* const SM_STR_KEYS[SM_STR_COUNT];")
+    h.append("\n#endif  // SM_STRINGS_GEN_H")
 
     c = [BANNER, '#include "i18n/strings_gen.h"\n']
-    c.append("char const* const CM_LANG_CODES[CM_LANG_COUNT] = {")
+    c.append("char const* const SM_LANG_CODES[SM_LANG_COUNT] = {")
     c.append("    " + " ".join('%s,' % c_string(code) for code, _, _ in LANGUAGES))
     c.append("};\n")
-    c.append("char const* const CM_LANG_NAMES[CM_LANG_COUNT] = {")
+    c.append("char const* const SM_LANG_NAMES[SM_LANG_COUNT] = {")
     c.append("    " + " ".join('%s,' % c_string(a) for _, _, a in LANGUAGES))
     c.append("};\n")
-    c.append("char const* const CM_STR_KEYS[CM_STR_COUNT] = {")
+    c.append("char const* const SM_STR_KEYS[SM_STR_COUNT] = {")
     for k in keys:
         c.append("    %s," % c_string(k))
     c.append("};\n")
-    c.append("char const* const CM_STRINGS[CM_LANG_COUNT][CM_STR_COUNT] = {")
+    c.append("char const* const SM_STRINGS[SM_LANG_COUNT][SM_STR_COUNT] = {")
     for code, name, autonym in LANGUAGES:
         c.append("    [%s] = {  // %s" % (name, autonym))
         for k in keys:

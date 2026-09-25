@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  controls (see input.h)
+//  SynthMiner  --  controls (see input.h)
 // =====================================================================
 
 #include "game/input.h"
@@ -24,31 +24,31 @@
 // what settings.txt keys its binding by (it was the NVS key when the
 // bindings lived in NVS): it must never change once a build has shipped
 // or everyone's bindings move.
-static se_binding_def_t const BINDINGS[CM_ACTION_COUNT] = {
-    [CM_FORWARD]    = {CM_FORWARD, "Forward", "fwd", BSP_INPUT_SCANCODE_W},
-    [CM_BACK]       = {CM_BACK, "Back", "back", BSP_INPUT_SCANCODE_S},
-    [CM_LEFT]       = {CM_LEFT, "Left", "left", BSP_INPUT_SCANCODE_A},
-    [CM_RIGHT]      = {CM_RIGHT, "Right", "right", BSP_INPUT_SCANCODE_D},
-    [CM_JUMP]       = {CM_JUMP, "Jump", "jump", BSP_INPUT_SCANCODE_SPACE},
-    [CM_SNEAK]      = {CM_SNEAK, "Sneak", "sneak", BSP_INPUT_SCANCODE_LEFTSHIFT},
-    [CM_ATTACK]     = {CM_ATTACK, "Break", "attack", BSP_INPUT_SCANCODE_Q},
-    [CM_USE]        = {CM_USE, "Place", "use", BSP_INPUT_SCANCODE_E},
-    [CM_LOOK_UP]    = {CM_LOOK_UP, "Look up", "lookup", BSP_INPUT_SCANCODE_ESCAPED_GREY_UP},
-    [CM_LOOK_DOWN]  = {CM_LOOK_DOWN, "Look down", "lookdown", BSP_INPUT_SCANCODE_ESCAPED_GREY_DOWN},
-    [CM_LOOK_LEFT]  = {CM_LOOK_LEFT, "Look left", "lookleft", BSP_INPUT_SCANCODE_ESCAPED_GREY_LEFT},
-    [CM_LOOK_RIGHT] = {CM_LOOK_RIGHT, "Look right", "lookright", BSP_INPUT_SCANCODE_ESCAPED_GREY_RIGHT},
-    [CM_SLOT1]      = {CM_SLOT1, "Slot 1", "slot1", BSP_INPUT_SCANCODE_F1},
-    [CM_SLOT2]      = {CM_SLOT2, "Slot 2", "slot2", BSP_INPUT_SCANCODE_F2},
-    [CM_SLOT3]      = {CM_SLOT3, "Slot 3", "slot3", BSP_INPUT_SCANCODE_F3},
-    [CM_SLOT4]      = {CM_SLOT4, "Slot 4", "slot4", BSP_INPUT_SCANCODE_F4},
-    [CM_SLOT5]      = {CM_SLOT5, "Slot 5", "slot5", BSP_INPUT_SCANCODE_F5},
-    [CM_SLOT6]      = {CM_SLOT6, "Slot 6", "slot6", BSP_INPUT_SCANCODE_F6},
-    [CM_INVENTORY]  = {CM_INVENTORY, "Inventory", "inv", BSP_INPUT_SCANCODE_TAB},
-    [CM_PAUSE]      = {CM_PAUSE, "Pause", "pause", BSP_INPUT_SCANCODE_ESC},
-    [CM_DROP]       = {CM_DROP, "Drop", "drop", BSP_INPUT_SCANCODE_G},
-    [CM_INFO]       = {CM_INFO, "Show position", "info", BSP_INPUT_SCANCODE_BACKSPACE},
-    [CM_SCREENSHOT] = {CM_SCREENSHOT, "Screenshot", "screenshot", BSP_INPUT_SCANCODE_0},
-    [CM_CRAFT]      = {CM_CRAFT, "Crafting", "craft", BSP_INPUT_SCANCODE_C},
+static se_binding_def_t const BINDINGS[SM_ACTION_COUNT] = {
+    [SM_FORWARD]    = {SM_FORWARD, "Forward", "fwd", BSP_INPUT_SCANCODE_W},
+    [SM_BACK]       = {SM_BACK, "Back", "back", BSP_INPUT_SCANCODE_S},
+    [SM_LEFT]       = {SM_LEFT, "Left", "left", BSP_INPUT_SCANCODE_A},
+    [SM_RIGHT]      = {SM_RIGHT, "Right", "right", BSP_INPUT_SCANCODE_D},
+    [SM_JUMP]       = {SM_JUMP, "Jump", "jump", BSP_INPUT_SCANCODE_SPACE},
+    [SM_SNEAK]      = {SM_SNEAK, "Sneak", "sneak", BSP_INPUT_SCANCODE_LEFTSHIFT},
+    [SM_ATTACK]     = {SM_ATTACK, "Break", "attack", BSP_INPUT_SCANCODE_Q},
+    [SM_USE]        = {SM_USE, "Place", "use", BSP_INPUT_SCANCODE_E},
+    [SM_LOOK_UP]    = {SM_LOOK_UP, "Look up", "lookup", BSP_INPUT_SCANCODE_ESCAPED_GREY_UP},
+    [SM_LOOK_DOWN]  = {SM_LOOK_DOWN, "Look down", "lookdown", BSP_INPUT_SCANCODE_ESCAPED_GREY_DOWN},
+    [SM_LOOK_LEFT]  = {SM_LOOK_LEFT, "Look left", "lookleft", BSP_INPUT_SCANCODE_ESCAPED_GREY_LEFT},
+    [SM_LOOK_RIGHT] = {SM_LOOK_RIGHT, "Look right", "lookright", BSP_INPUT_SCANCODE_ESCAPED_GREY_RIGHT},
+    [SM_SLOT1]      = {SM_SLOT1, "Slot 1", "slot1", BSP_INPUT_SCANCODE_F1},
+    [SM_SLOT2]      = {SM_SLOT2, "Slot 2", "slot2", BSP_INPUT_SCANCODE_F2},
+    [SM_SLOT3]      = {SM_SLOT3, "Slot 3", "slot3", BSP_INPUT_SCANCODE_F3},
+    [SM_SLOT4]      = {SM_SLOT4, "Slot 4", "slot4", BSP_INPUT_SCANCODE_F4},
+    [SM_SLOT5]      = {SM_SLOT5, "Slot 5", "slot5", BSP_INPUT_SCANCODE_F5},
+    [SM_SLOT6]      = {SM_SLOT6, "Slot 6", "slot6", BSP_INPUT_SCANCODE_F6},
+    [SM_INVENTORY]  = {SM_INVENTORY, "Inventory", "inv", BSP_INPUT_SCANCODE_TAB},
+    [SM_PAUSE]      = {SM_PAUSE, "Pause", "pause", BSP_INPUT_SCANCODE_ESC},
+    [SM_DROP]       = {SM_DROP, "Drop", "drop", BSP_INPUT_SCANCODE_G},
+    [SM_INFO]       = {SM_INFO, "Show position", "info", BSP_INPUT_SCANCODE_BACKSPACE},
+    [SM_SCREENSHOT] = {SM_SCREENSHOT, "Screenshot", "screenshot", BSP_INPUT_SCANCODE_0},
+    [SM_CRAFT]      = {SM_CRAFT, "Crafting", "craft", BSP_INPUT_SCANCODE_C},
 };
 
 // The navigation key a scancode ALSO arrives as, where there is one.
@@ -77,11 +77,11 @@ static bsp_input_navigation_key_t nav_for(uint16_t sc) {
     }
 }
 
-_Static_assert(CM_ACTION_COUNT <= SE_BINDINGS_MAX,
+_Static_assert(SM_ACTION_COUNT <= SE_BINDINGS_MAX,
                "more actions than the engine keeps bindings for: se_bindings_init clamps, and the last ones "
                "would silently never fire (F-11)");
 
-static cm_actions_t s_last, s_pressed;
+static sm_actions_t s_last, s_pressed;
 
 // --- The gyroscope ------------------------------------------------------
 //
@@ -157,7 +157,7 @@ void input_init(void) {
     static se_bindings_config_t const cfg = {
         .nvs_namespace = NULL,
         .defs          = BINDINGS,
-        .count         = CM_ACTION_COUNT,
+        .count         = SM_ACTION_COUNT,
     };
     se_bindings_init(&cfg);
 }
@@ -165,39 +165,39 @@ void input_init(void) {
 // The label a PLAYER sees, in their language. The English in BINDINGS
 // above stays as it is: that column is the engine's, and the id column
 // beside it is what settings.txt writes, so neither may move.
-static cm_str_t const ACTION_STRINGS[CM_ACTION_COUNT] = {
-    [CM_FORWARD]    = CM_STR_ACTION_FORWARD,
-    [CM_BACK]       = CM_STR_ACTION_BACK,
-    [CM_LEFT]       = CM_STR_ACTION_LEFT,
-    [CM_RIGHT]      = CM_STR_ACTION_RIGHT,
-    [CM_JUMP]       = CM_STR_ACTION_JUMP,
-    [CM_SNEAK]      = CM_STR_ACTION_SNEAK,
-    [CM_ATTACK]     = CM_STR_ACTION_ATTACK,
-    [CM_USE]        = CM_STR_ACTION_USE,
-    [CM_LOOK_UP]    = CM_STR_ACTION_LOOKUP,
-    [CM_LOOK_DOWN]  = CM_STR_ACTION_LOOKDOWN,
-    [CM_LOOK_LEFT]  = CM_STR_ACTION_LOOKLEFT,
-    [CM_LOOK_RIGHT] = CM_STR_ACTION_LOOKRIGHT,
-    [CM_SLOT1]      = CM_STR_ACTION_SLOT1,
-    [CM_SLOT2]      = CM_STR_ACTION_SLOT2,
-    [CM_SLOT3]      = CM_STR_ACTION_SLOT3,
-    [CM_SLOT4]      = CM_STR_ACTION_SLOT4,
-    [CM_SLOT5]      = CM_STR_ACTION_SLOT5,
-    [CM_SLOT6]      = CM_STR_ACTION_SLOT6,
-    [CM_INVENTORY]  = CM_STR_ACTION_INV,
-    [CM_PAUSE]      = CM_STR_ACTION_PAUSE,
-    [CM_DROP]       = CM_STR_ACTION_DROP,
-    [CM_INFO]       = CM_STR_ACTION_INFO,
-    [CM_SCREENSHOT] = CM_STR_ACTION_SCREENSHOT,
-    [CM_CRAFT]      = CM_STR_ACTION_CRAFT,
+static sm_str_t const ACTION_STRINGS[SM_ACTION_COUNT] = {
+    [SM_FORWARD]    = SM_STR_ACTION_FORWARD,
+    [SM_BACK]       = SM_STR_ACTION_BACK,
+    [SM_LEFT]       = SM_STR_ACTION_LEFT,
+    [SM_RIGHT]      = SM_STR_ACTION_RIGHT,
+    [SM_JUMP]       = SM_STR_ACTION_JUMP,
+    [SM_SNEAK]      = SM_STR_ACTION_SNEAK,
+    [SM_ATTACK]     = SM_STR_ACTION_ATTACK,
+    [SM_USE]        = SM_STR_ACTION_USE,
+    [SM_LOOK_UP]    = SM_STR_ACTION_LOOKUP,
+    [SM_LOOK_DOWN]  = SM_STR_ACTION_LOOKDOWN,
+    [SM_LOOK_LEFT]  = SM_STR_ACTION_LOOKLEFT,
+    [SM_LOOK_RIGHT] = SM_STR_ACTION_LOOKRIGHT,
+    [SM_SLOT1]      = SM_STR_ACTION_SLOT1,
+    [SM_SLOT2]      = SM_STR_ACTION_SLOT2,
+    [SM_SLOT3]      = SM_STR_ACTION_SLOT3,
+    [SM_SLOT4]      = SM_STR_ACTION_SLOT4,
+    [SM_SLOT5]      = SM_STR_ACTION_SLOT5,
+    [SM_SLOT6]      = SM_STR_ACTION_SLOT6,
+    [SM_INVENTORY]  = SM_STR_ACTION_INV,
+    [SM_PAUSE]      = SM_STR_ACTION_PAUSE,
+    [SM_DROP]       = SM_STR_ACTION_DROP,
+    [SM_INFO]       = SM_STR_ACTION_INFO,
+    [SM_SCREENSHOT] = SM_STR_ACTION_SCREENSHOT,
+    [SM_CRAFT]      = SM_STR_ACTION_CRAFT,
 };
 
-char const* input_action_label(cm_action_t a) {
-    return (a >= 0 && a < CM_ACTION_COUNT) ? T(ACTION_STRINGS[a]) : "";
+char const* input_action_label(sm_action_t a) {
+    return (a >= 0 && a < SM_ACTION_COUNT) ? T(ACTION_STRINGS[a]) : "";
 }
 
-char const* input_action_id(cm_action_t a) {
-    return (a >= 0 && a < CM_ACTION_COUNT) ? BINDINGS[a].nvs_key : "";
+char const* input_action_id(sm_action_t a) {
+    return (a >= 0 && a < SM_ACTION_COUNT) ? BINDINGS[a].nvs_key : "";
 }
 
 static bool held_sc(uint16_t sc) {
@@ -212,20 +212,20 @@ static bool held_nav(bsp_input_navigation_key_t key) {
     return gl_input_read_navigation_key(key, &state) == ESP_OK && state;
 }
 
-cm_actions_t input_sample(void) {
-    cm_actions_t m = 0;
-    for (int a = 0; a < CM_ACTION_COUNT; a++) {
+sm_actions_t input_sample(void) {
+    sm_actions_t m = 0;
+    for (int a = 0; a < SM_ACTION_COUNT; a++) {
         // The CURRENT binding, not the default: that is the whole point
         // of going through se_bindings rather than the table above.
         uint16_t const sc = se_bindings_get(a);
-        if (held_sc(sc) || held_nav(nav_for(sc))) m |= (cm_actions_t)1u << a;
+        if (held_sc(sc) || held_nav(nav_for(sc))) m |= (sm_actions_t)1u << a;
     }
     s_pressed = m & ~s_last;
     s_last    = m;
     return m;
 }
 
-cm_actions_t input_feed(cm_actions_t mask) {
+sm_actions_t input_feed(sm_actions_t mask) {
     s_pressed = mask & ~s_last;
     s_last    = mask;
     return mask;
@@ -241,33 +241,33 @@ void input_gyro_set_owed(float dyaw, float dpitch) {
     s_owed_pitch = dpitch;
 }
 
-cm_actions_t input_pressed(void) {
+sm_actions_t input_pressed(void) {
     return s_pressed;
 }
 
-void input_look(cm_actions_t mask, float* dyaw, float* dpitch) {
-    float const x = (act_held(mask, CM_LOOK_RIGHT) ? 1.0f : 0.0f) - (act_held(mask, CM_LOOK_LEFT) ? 1.0f : 0.0f);
+void input_look(sm_actions_t mask, float* dyaw, float* dpitch) {
+    float const x = (act_held(mask, SM_LOOK_RIGHT) ? 1.0f : 0.0f) - (act_held(mask, SM_LOOK_LEFT) ? 1.0f : 0.0f);
     // Positive pitch looks DOWN (raycast.h), so "look up" is negative.
-    float const y = (act_held(mask, CM_LOOK_DOWN) ? 1.0f : 0.0f) - (act_held(mask, CM_LOOK_UP) ? 1.0f : 0.0f);
+    float const y = (act_held(mask, SM_LOOK_DOWN) ? 1.0f : 0.0f) - (act_held(mask, SM_LOOK_UP) ? 1.0f : 0.0f);
     // The keys, plus whatever the badge turned since the last tick.
     if (dyaw != NULL) *dyaw = x * LOOK_RATE + s_owed_yaw;
     if (dpitch != NULL) *dpitch = y * LOOK_RATE + s_owed_pitch;
     s_owed_yaw = s_owed_pitch = 0.0f;
 }
 
-uint16_t input_key(cm_action_t a) {
-    return (a >= 0 && a < CM_ACTION_COUNT) ? se_bindings_get(a) : 0;
+uint16_t input_key(sm_action_t a) {
+    return (a >= 0 && a < SM_ACTION_COUNT) ? se_bindings_get(a) : 0;
 }
 
-uint16_t input_default_key(cm_action_t a) {
-    return (a >= 0 && a < CM_ACTION_COUNT) ? BINDINGS[a].default_sc : 0;
+uint16_t input_default_key(sm_action_t a) {
+    return (a >= 0 && a < SM_ACTION_COUNT) ? BINDINGS[a].default_sc : 0;
 }
 
-void input_bind(cm_action_t a, uint16_t sc) {
-    if (a < 0 || a >= CM_ACTION_COUNT || sc == 0) return;
+void input_bind(sm_action_t a, uint16_t sc) {
+    if (a < 0 || a >= SM_ACTION_COUNT || sc == 0) return;
     uint16_t const old = se_bindings_get(a);
     if (old == sc) return;
-    for (int b = 0; b < CM_ACTION_COUNT; b++) {
+    for (int b = 0; b < SM_ACTION_COUNT; b++) {
         if (b != (int)a && se_bindings_get(b) == sc) se_bindings_set(b, old);
     }
     se_bindings_set(a, sc);
@@ -275,12 +275,12 @@ void input_bind(cm_action_t a, uint16_t sc) {
 }
 
 void input_reset_defaults(void) {
-    for (int a = 0; a < CM_ACTION_COUNT; a++) se_bindings_set(a, BINDINGS[a].default_sc);
+    for (int a = 0; a < SM_ACTION_COUNT; a++) se_bindings_set(a, BINDINGS[a].default_sc);
     settings_save();
 }
 
 bool input_key_bound(uint16_t sc) {
-    for (int a = 0; a < CM_ACTION_COUNT; a++) {
+    for (int a = 0; a < SM_ACTION_COUNT; a++) {
         if (se_bindings_get(a) == sc) return true;
     }
     return false;

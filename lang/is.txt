@@ -1,9 +1,9 @@
-# CraftMiner -- Íslenska
+# SynthMiner -- Íslenska
 #
 # Þessi þýðing er gerð af gervigreind og bíður einhvers sem talar málið í
 # alvöru. Ef þú veist betur: lagaðu línuna og keyrðu
 # `python3 tools/make_lang.py`. Það má líka gera án verkfæra -- skrá
-# /sd/craftminer/lang/is.txt á kortinu, með sömu línum, gengur fyrir því
+# /sd/synthminer/lang/is.txt á kortinu, með sömu línum, gengur fyrir því
 # sem er innbyggt (i18n.h).
 #
 # Lyklarnir eru í lang/en.txt. %-staðgenglarnir þaðan verða að koma fyrir
@@ -104,7 +104,7 @@ common.back = Til baka
 hint.list = upp / niður velur, Enter staðfestir, Esc fer til baka
 hint.adjust = upp / niður velur, vinstri / hægri breytir, Esc fer til baka
 
-status.newer = Gerður með nýrri CraftMiner: uppfærðu til að spila hann
+status.newer = Gerður með nýrri SynthMiner: uppfærðu til að spila hann
 status.older = Eldra vistunarsnið: þessi útgáfa kann ekki að uppfæra það
 status.needs_name = Heimur þarf nafn
 status.renamed = Endurnefndur

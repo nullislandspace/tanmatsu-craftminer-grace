@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  a camera you can fly by hand (see flycam.h)
+//  SynthMiner  --  a camera you can fly by hand (see flycam.h)
 // =====================================================================
 
 #include "game/flycam.h"

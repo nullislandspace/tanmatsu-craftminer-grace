@@ -1,15 +1,15 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  worlds on the SD card
+//  SynthMiner  --  worlds on the SD card
 // ---------------------------------------------------------------------
-//  A world is a directory: its metadata and the player in `level.cmw`,
-//  its terrain in `region/r.<rx>.<rz>.cmr`. This owns creating, listing,
+//  A world is a directory: its metadata and the player in `level.smw`,
+//  its terrain in `region/r.<rx>.<rz>.smr`. This owns creating, listing,
 //  opening, saving and deleting them, and is the only thing that knows
 //  where any of it lives -- the chunk worker asks for a chunk, not for
 //  a path.
 //
 //      <base>/worlds/worlds.idx          an index, an optimisation only
-//      <base>/worlds/<slug>/level.cmw    metadata + player, NBT
+//      <base>/worlds/<slug>/level.smw    metadata + player, NBT
 //      <base>/worlds/<slug>/region/...   terrain
 //
 //  BOTH FORMATS ARE BUILT TO GROW. That is a requirement, not a nicety:
@@ -27,7 +27,7 @@
 //
 //  Block ids grow through a PALETTE. The chunk planes store one byte per
 //  cell, so a saved id only means anything next to the table that was
-//  current when it was written. `level.cmw` therefore records that
+//  current when it was written. `level.smw` therefore records that
 //  table: every block's NAME against the id it had. On open, each name
 //  is looked up in today's registry and a remap is built, which
 //  chunk_decode applies as it unpacks (chunk_codec.h). Blocks can then
@@ -44,35 +44,41 @@
 #include "world/chunk.h"
 #include "world/farlands.h"
 
-#define CM_WORLD_NAME_MAX 32
-#define CM_WORLD_SLUG_MAX 24
-// The MAJOR version, and it lives in the file's magic: "CMW" + digit.
+#define SM_WORLD_NAME_MAX 32
+#define SM_WORLD_SLUG_MAX 24
+// The MAJOR version, and it lives in the file's magic: "SMW" + digit.
 // It is bumped only when the layout changes in a way a reader cannot
 // absorb -- never for a new field, which tags and NBT handle by
 // themselves. A file whose major does not match is refused rather than
 // guessed at, so a future upgrader has something definite to act on.
-#define CM_LEVEL_MAGIC  "CMW"
-#define CM_LEVEL_MAJOR  '1'
-#define CM_LEVEL_FORMAT 1
-#define CM_WORLDS_MAX     32
+#define SM_LEVEL_MAGIC  "SMW"
+// What this game wrote when it was called CraftMiner (D-91). The reader
+// takes it, because a save made before a rename is still a save; the
+// writer never produces it again, so a world converts itself the first
+// time it is played. The major digit after it means the same thing in
+// both, which is what makes accepting the old one safe.
+#define SM_LEVEL_MAGIC_WAS "CMW"
+#define SM_LEVEL_MAJOR  '1'
+#define SM_LEVEL_FORMAT 1
+#define SM_WORLDS_MAX     32
 
-// SAVE SLOTS. A world lives in one of CM_SLOTS numbered slots, in the
+// SAVE SLOTS. A world lives in one of SM_SLOTS numbered slots, in the
 // directory "slot<n>" (n from 1), and carries the name the player gave
-// it in level.cmw. The slot is where it is; the name is what it is
+// it in level.smw. The slot is where it is; the name is what it is
 // called -- so renaming a world never moves a file, and a name can be
 // anything the keyboard can type.
-#define CM_SLOTS 8
+#define SM_SLOTS 8
 
 // What the world-select screen shows without opening a world.
 typedef struct {
-    char     slug[CM_WORLD_SLUG_MAX];  // the directory name
-    char     name[CM_WORLD_NAME_MAX];  // what the player called it
+    char     slug[SM_WORLD_SLUG_MAX];  // the directory name
+    char     name[SM_WORLD_NAME_MAX];  // what the player called it
     uint32_t seed;
     int64_t  created;
     int64_t  last_played;
     uint32_t play_secs;
     int32_t  spawn_x, spawn_y, spawn_z;  // world spawn, chosen at creation
-    int32_t  format;                     // CM_LEVEL_FORMAT when written
+    int32_t  format;                     // SM_LEVEL_FORMAT when written
     // The world's clock in ticks (game/daytime.h): ONE per world, however
     // many players it has had (D-52). Elapsed ticks, advanced only while
     // the world is being played (D-51).
@@ -133,7 +139,7 @@ void player_state_defaults(player_state_t* p, world_meta_t const* meta);
 
 // --- The store --------------------------------------------------------
 
-// `base` is the player's data directory (CM_DATA_DIR, /sd/craftminer, on
+// `base` is the player's data directory (SM_DATA_DIR, /sd/synthminer, on
 // the badge -- NOT the install directory, which the launcher may empty;
 // datadir.h -- and a temporary directory in the host checks). Creates
 // <base>/worlds if missing.
@@ -143,7 +149,7 @@ bool worldstore_init(char const* base);
 int worldstore_list(world_meta_t* out, int max);
 
 // Make a new world. `name` is what the player typed; the slug is derived
-// from it and made unique. Writes level.cmw and leaves the world OPEN.
+// from it and made unique. Writes level.smw and leaves the world OPEN.
 bool worldstore_create(char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player);
 
 // --- Save slots ---------------------------------------------------------
@@ -164,7 +170,7 @@ typedef enum {
     SLOT_WORLD,    // readable; `meta` filled in
     SLOT_NEWER,    // saved by a newer build: leave it alone
     SLOT_OLDER,    // an older major format: needs the upgrader (not written yet)
-    SLOT_DAMAGED,  // a level.cmw that cannot be read
+    SLOT_DAMAGED,  // a level.smw that cannot be read
 } slot_state_t;
 
 slot_state_t worldstore_slot_state(int slot, world_meta_t* meta);
@@ -173,7 +179,7 @@ slot_state_t worldstore_slot_state(int slot, world_meta_t* meta);
 // worldstore_create. False if the slot is taken.
 bool worldstore_create_in(int slot, char const* name, uint32_t seed, world_meta_t* meta, player_state_t* player);
 
-// Give a world a new name. Only level.cmw changes. Safe with another
+// Give a world a new name. Only level.smw changes. Safe with another
 // world open: that world's state is left alone.
 bool worldstore_rename(char const* slug, char const* name);
 
@@ -185,7 +191,7 @@ bool worldstore_rename(char const* slug, char const* name);
 // exactly where it was.
 int worldstore_adopt_legacy(char const* legacy_slug, char const* name);
 
-// Open an existing world: reads level.cmw, builds the block remap.
+// Open an existing world: reads level.smw, builds the block remap.
 // `items`, if not NULL, gets what was lying on the ground.
 bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* player, world_items_t* items);
 
@@ -204,11 +210,11 @@ bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* 
 // A persisted world for the renderer measurements, and deliberately NOT
 // one of the player's. It lives BESIDE `worlds/` rather than inside it:
 // worldstore_list() scans that one directory for anything with a
-// level.cmw, so a world outside it cannot appear in the world-select
+// level.smw, so a world outside it cannot appear in the world-select
 // screen, cannot be opened by accident and cannot be deleted from
 // there.
 //
-//      <base>/bench/level.cmw
+//      <base>/bench/level.smw
 //      <base>/bench/region/...
 //
 // Fixed seed, fixed path, so it can be thrown away and remade exactly
@@ -217,11 +223,11 @@ bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* 
 // different seed and has been discarded -- a world whose terrain this
 // build would not generate is worse than no world, because every
 // measurement taken on it would be of something nobody can reproduce.
-#define CM_BENCH_SLUG "bench"
+#define SM_BENCH_SLUG "bench"
 
 bool worldstore_open_bench(uint32_t seed, world_meta_t* meta, player_state_t* player, bool* fresh);
 
-// Write level.cmw for the open world. Chunks are saved separately, as
+// Write level.smw for the open world. Chunks are saved separately, as
 // they are evicted (see world_chunk_save). `items` may be NULL: none.
 bool worldstore_save(world_meta_t const* meta, player_state_t const* player, world_items_t const* items);
 

@@ -1,7 +1,7 @@
 // =====================================================================
-//  CraftMiner  --  meshing blocks (see voxel_mesh.h)
+//  SynthMiner  --  meshing blocks (see voxel_mesh.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/craftminer/voxel/voxel_mesh.c. Changes here are CraftMiner's;
+//  main/craftminer/voxel/voxel_mesh.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 
@@ -213,7 +213,7 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
     // + 1, 0 none. Light in the key is what stops a lit face merging
     // with a dark one.
     int const side = w > d ? w : d;
-    uint16_t* mask = cm_calloc((size_t)side * (size_t)(side > band ? side : band),
+    uint16_t* mask = sm_calloc((size_t)side * (size_t)(side > band ? side : band),
                                sizeof(uint16_t));  // F-12: PSRAM, not the scarce internal heap
     if (!mask) {
         m->failed = true;
@@ -335,7 +335,7 @@ void voxel_mesh_build(mesh_t* m, vox_grid_t const* g, vox_mesh_mode_t mode) {
             }
         }
     }
-    cm_free(mask);
+    sm_free(mask);
     // The plants (fancy meshes only), torches and signs, one by one (whole
     // blocks only: a coarse grid has neither).
     if (g->step != 1) return;

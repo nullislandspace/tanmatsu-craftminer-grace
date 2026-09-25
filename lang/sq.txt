@@ -1,9 +1,9 @@
-# CraftMiner -- Shqip
+# SynthMiner -- Shqip
 #
 # Këtë përkthim e bëri një inteligjencë artificiale dhe pret dikë që e flet
 # vërtet gjuhën. Nëse e dini më mirë: korrigjoni rreshtin dhe ekzekutoni
 # `python3 tools/make_lang.py`. Bëhet edhe pa vegla -- një skedar
-# /sd/craftminer/lang/sq.txt në kartë, me të njëjtat rreshta, ka përparësi
+# /sd/synthminer/lang/sq.txt në kartë, me të njëjtat rreshta, ka përparësi
 # ndaj tekstit të integruar (i18n.h).
 #
 # Çelësat janë në lang/en.txt. Vendmbajtësit % prej andej duhet të shfaqen
@@ -104,7 +104,7 @@ common.back = Prapa
 hint.list = lart / poshtë zgjedh, Enter konfirmon, Esc kthehet
 hint.adjust = lart / poshtë zgjedh, majtas / djathtas ndryshon, Esc kthehet
 
-status.newer = Bërë me një CraftMiner më të ri: përditësoni që ta luani
+status.newer = Bërë me një SynthMiner më të ri: përditësoni që ta luani
 status.older = Format i vjetër ruajtjeje: ky version nuk di ta shndërrojë ende
 status.needs_name = Bota ka nevojë për një emër
 status.renamed = U riemërtua

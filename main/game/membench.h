@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  what the memory actually costs
+//  SynthMiner  --  what the memory actually costs
 // ---------------------------------------------------------------------
 //  A rasteriser that is fill-bound is bound on something. This measures
 //  which, by replaying the span loop's exact memory pattern -- read a

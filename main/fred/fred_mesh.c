@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the miner's meshes (see fred_mesh.h)
+//  SynthMiner  --  the miner's meshes (see fred_mesh.h)
 // =====================================================================
 
 #include "fred/fred_mesh.h"

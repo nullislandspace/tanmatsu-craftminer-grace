@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  "how many?"
+//  SynthMiner  --  "how many?"
 // ---------------------------------------------------------------------
 //  A small modal over whatever screen asked for it: moving a stack of
 //  more than one into or out of a chest, or into a furnace, asks first

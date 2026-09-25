@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the crafting book (see craft_ui.h)
+//  SynthMiner  --  the crafting book (see craft_ui.h)
 // =====================================================================
 
 #include "ui/craft_ui.h"
@@ -226,14 +226,14 @@ void craft_ui_update(inventory_t* inv) {
                 s_detail = true;
                 sfx_play(SFX_DENY);
             } else if (did > 0) {
-                i18n_fmt(s_msg, sizeof(s_msg), CM_STR_CRAFT_MADE, (int)r->out_n, T(item_label(r->out)));
+                i18n_fmt(s_msg, sizeof(s_msg), SM_STR_CRAFT_MADE, (int)r->out_n, T(item_label(r->out)));
                 s_msg_until = showtime_now() + MSG_SECONDS;
                 sfx_play(SFX_CRAFT);
             } else {
                 // Everything was there and it still did not happen, so
                 // the output had nowhere to go (recipes.c keeps the
                 // ingredients in that case).
-                snprintf(s_msg, sizeof(s_msg), "%s", T(CM_STR_CRAFT_FULL));
+                snprintf(s_msg, sizeof(s_msg), "%s", T(SM_STR_CRAFT_FULL));
                 s_msg_until = showtime_now() + MSG_SECONDS;
                 sfx_play(SFX_DENY);
             }
@@ -251,7 +251,7 @@ static void ingredients_line(recipe_t const* r, inventory_t const* inv, char* ou
     for (int i = 0; i < r->n_in; i++) {
         char      part[64];
         int const have = inv_count(inv, r->in[i].item);
-        i18n_fmt(part, sizeof(part), CM_STR_CRAFT_ING, T(item_label(r->in[i].item)), have,
+        i18n_fmt(part, sizeof(part), SM_STR_CRAFT_ING, T(item_label(r->in[i].item)), have,
                  (int)r->in[i].count);
         if (out[0] != '\0') strncat(out, "   ", cap - strlen(out) - 1);
         strncat(out, part, cap - strlen(out) - 1);
@@ -276,7 +276,7 @@ static void draw_detail(pax_buf_t* fb, inventory_t const* inv) {
         // further in every language with longer words than English.
         // Two numbers cannot do that, and say the same thing.
         snprintf(labels[i], sizeof(labels[i]), "%s", T(item_label(r->in[i].item)));
-        i18n_fmt(vals[i], sizeof(vals[i]), CM_STR_CRAFT_DETAIL_HAVE, have, (int)r->in[i].count);
+        i18n_fmt(vals[i], sizeof(vals[i]), SM_STR_CRAFT_DETAIL_HAVE, have, (int)r->in[i].count);
         memset(&rows[i], 0, sizeof(rows[i]));
         rows[i].label = labels[i];
         rows[i].kind  = SE_MENU_VAL_TEXT;
@@ -285,10 +285,10 @@ static void draw_detail(pax_buf_t* fb, inventory_t const* inv) {
 
     se_menu_def_t const def = {
         .title     = T(item_label(r->out)),
-        .subtitle  = T(CM_STR_CRAFT_DETAIL_SUB),
+        .subtitle  = T(SM_STR_CRAFT_DETAIL_SUB),
         .rows      = rows,
         .row_count = r->n_in,
-        .hint      = T(CM_STR_CRAFT_DETAIL_HINT),
+        .hint      = T(SM_STR_CRAFT_DETAIL_HINT),
         .title_h   = 32.0f,
         .row_h     = 38.0f,
         .value_dx  = 380.0f,
@@ -316,9 +316,9 @@ void craft_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
     for (int i = 0; i < s_list_n; i++) {
         recipe_t const* r = recipe_at(s_list[i]);
         if ((s_auto ? recipe_can_make_auto(r, inv, s_station) : recipe_can_make(r, inv, 1)) >= 1) {
-            i18n_fmt(vals[n], sizeof(vals[n]), CM_STR_CRAFT_VALUE_MAKE, (int)r->out_n);
+            i18n_fmt(vals[n], sizeof(vals[n]), SM_STR_CRAFT_VALUE_MAKE, (int)r->out_n);
         } else {
-            snprintf(vals[n], sizeof(vals[n]), "%s", T(CM_STR_CRAFT_VALUE_MISSING));
+            snprintf(vals[n], sizeof(vals[n]), "%s", T(SM_STR_CRAFT_VALUE_MISSING));
         }
         rows[n].label      = T(item_label(r->out));
         rows[n].kind       = SE_MENU_VAL_TEXT;
@@ -335,18 +335,18 @@ void craft_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
     // an empty filter is you having mistyped.
     if (n == 0) {
         memset(&rows[0], 0, sizeof(rows[0]));
-        rows[0].label = T(s_known_n == 0 ? CM_STR_CRAFT_EMPTY : CM_STR_CRAFT_NO_MATCH);
+        rows[0].label = T(s_known_n == 0 ? SM_STR_CRAFT_EMPTY : SM_STR_CRAFT_NO_MATCH);
         rows[0].kind  = SE_MENU_VAL_NONE;
         n             = 1;
     }
 
     char search[FOLD_MAX + 64];
-    i18n_fmt(search, sizeof(search), CM_STR_CRAFT_SEARCH, s_query);
+    i18n_fmt(search, sizeof(search), SM_STR_CRAFT_SEARCH, s_query);
     // A caret, so an empty box still looks like something you type into
     // -- then the planner's state, which has nowhere else to go: the
     // rows are recipes and the footer is the cursor's ingredients.
     strncat(search, "_   ", sizeof(search) - strlen(search) - 1);
-    strncat(search, T(s_auto ? CM_STR_CRAFT_AUTO_ON : CM_STR_CRAFT_AUTO_OFF), sizeof(search) - strlen(search) - 1);
+    strncat(search, T(s_auto ? SM_STR_CRAFT_AUTO_ON : SM_STR_CRAFT_AUTO_OFF), sizeof(search) - strlen(search) - 1);
 
     // The footer carries the cursor's ingredients -- or, for a moment
     // after crafting, what just happened.
@@ -356,11 +356,11 @@ void craft_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
     } else if (s_list_n > 0) {
         ingredients_line(recipe_at(s_list[s_cursor]), inv, footer, sizeof(footer));
     } else {
-        snprintf(footer, sizeof(footer), "%s", T(s_known_n == 0 ? CM_STR_CRAFT_EMPTY_SUB : CM_STR_CRAFT_HINT));
+        snprintf(footer, sizeof(footer), "%s", T(s_known_n == 0 ? SM_STR_CRAFT_EMPTY_SUB : SM_STR_CRAFT_HINT));
     }
 
     se_menu_def_t const def = {
-        .title        = T(s_station == RS_TABLE ? CM_STR_CRAFT_TITLE_TABLE : CM_STR_CRAFT_TITLE),
+        .title        = T(s_station == RS_TABLE ? SM_STR_CRAFT_TITLE_TABLE : SM_STR_CRAFT_TITLE),
         .subtitle     = search,
         .rows         = rows,
         .row_count    = n,

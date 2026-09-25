@@ -1,18 +1,18 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the game's own settings
+//  SynthMiner  --  the game's own settings
 // ---------------------------------------------------------------------
 //  What the Graphics, Audio and Controls menus change -- key bindings
 //  included -- in ONE TEXT FILE ON THE SD CARD, next to the worlds:
 //
-//      /sd/craftminer/settings.txt
+//      /sd/synthminer/settings.txt
 //
 //  so copying that directory backs up a player's worlds and their
 //  settings together (D-67). Not the app's install directory: the
 //  launcher owns that, and may empty it on an update (datadir.h, D-80). It is plain `key=value` lines: readable, and
 //  fixable by hand if it ever needs to be. Unknown keys are ignored and
 //  missing ones keep their defaults, so the file survives settings being
-//  added and removed, the way level.cmw survives new tags.
+//  added and removed, the way level.smw survives new tags.
 //
 //  NOT here: volume and the three brightnesses. Those are the device's,
 //  shared with the launcher and every other app, and se_hw.h owns them;
@@ -29,7 +29,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// View distance: an index into cm_view_preset() -- 0 near, 1 medium,
+// View distance: an index into sm_view_preset() -- 0 near, 1 medium,
 // 2 far.
 #define SETTINGS_VIEW_COUNT 3
 // What a player gets before choosing: near, the user's call (D-76) --
@@ -41,7 +41,7 @@
 // settings_save asks i18n_language() what to write. There is no
 // settings_language() -- one copy of that state, not two.
 
-// Read settings.txt from `dir` (CM_DATA_DIR, datadir.h). Missing
+// Read settings.txt from `dir` (SM_DATA_DIR, datadir.h). Missing
 // keys keep their defaults (English, near, textured, half resolution,
 // music and effects on, gyroscope off, every key its default binding).
 // Call once at boot, AFTER input_init(): the key bindings it restores are

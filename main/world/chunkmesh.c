@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  turning a chunk into triangles (see chunkmesh.h)
+//  SynthMiner  --  turning a chunk into triangles (see chunkmesh.h)
 // =====================================================================
 
 #include "world/chunkmesh.h"

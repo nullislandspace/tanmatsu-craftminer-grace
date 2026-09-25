@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the game's own settings (see settings.h)
+//  SynthMiner  --  the game's own settings (see settings.h)
 // =====================================================================
 
 #include "ui/settings.h"
@@ -53,7 +53,7 @@ static void apply_line(char* line) {
         // The only setting whose value is a word: "de", "nl-BE". One
         // this build does not know leaves the language alone, which is
         // English unless something else has already set it.
-        cm_lang_t lang;
+        sm_lang_t lang;
         if (i18n_language_from_code(value, &lang)) i18n_set_language(lang);
     } else if (strcmp(key, "view") == 0) {
         s_view = v < SETTINGS_VIEW_COUNT ? (int)v : SETTINGS_VIEW_DEFAULT;
@@ -81,8 +81,8 @@ static void apply_line(char* line) {
         s_left = v != 0;
     } else if (strncmp(key, KEY_PREFIX, strlen(KEY_PREFIX)) == 0) {
         char const* name = key + strlen(KEY_PREFIX);
-        for (int a = 0; a < CM_ACTION_COUNT; a++) {
-            if (strcmp(name, input_action_id((cm_action_t)a)) == 0 && v != 0 && v <= 0xFFFFu) {
+        for (int a = 0; a < SM_ACTION_COUNT; a++) {
+            if (strcmp(name, input_action_id((sm_action_t)a)) == 0 && v != 0 && v <= 0xFFFFu) {
                 se_bindings_set(a, (uint16_t)v);
             }
         }
@@ -117,7 +117,7 @@ void settings_save(void) {
         ESP_LOGW(TAG, "could not write %s", s_tmp);
         return;
     }
-    fputs("# CraftMiner settings. Volume and brightness are the badge's own and live\n"
+    fputs("# SynthMiner settings. Volume and brightness are the badge's own and live\n"
           "# with the launcher. Keys are BSP scancodes; delete a line to get its default.\n", f);
     fprintf(f, "language=%s\n", i18n_language_code(i18n_language()));
     fprintf(f,
@@ -125,8 +125,8 @@ void settings_save(void) {
             "music_volume=%u\neffects_volume=%u\ngyro=%d\nautocraft=%d\n",
             s_view, s_textured, s_half, s_clouds, s_third, s_left, s_music, s_sfx, (unsigned)s_music_vol,
             (unsigned)s_sfx_vol, s_gyro, s_autocraft);
-    for (int a = 0; a < CM_ACTION_COUNT; a++) {
-        fprintf(f, KEY_PREFIX "%s=0x%04x\n", input_action_id((cm_action_t)a), (unsigned)input_key((cm_action_t)a));
+    for (int a = 0; a < SM_ACTION_COUNT; a++) {
+        fprintf(f, KEY_PREFIX "%s=0x%04x\n", input_action_id((sm_action_t)a), (unsigned)input_key((sm_action_t)a));
     }
     bool const ok = fflush(f) == 0;
     fclose(f);
@@ -136,8 +136,8 @@ void settings_save(void) {
     }
     // FAT will not rename over an existing file. Between the remove and
     // the rename only the .tmp exists, which settings_load also reads.
-    cm_remove(s_path);
-    if (!cm_rename(s_tmp, s_path)) ESP_LOGW(TAG, "could not move %s into place", s_tmp);
+    sm_remove(s_path);
+    if (!sm_rename(s_tmp, s_path)) ESP_LOGW(TAG, "could not move %s into place", s_tmp);
 }
 
 void settings_load(char const* dir) {

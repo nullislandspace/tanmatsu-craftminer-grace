@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the disassembly bench
+//  SynthMiner  --  the disassembly bench
 // ---------------------------------------------------------------------
 //  A list of what you are carrying that comes apart, and enter takes
 //  one of it apart. Nothing else: the bench has no slots and keeps

@@ -1,7 +1,7 @@
 // =====================================================================
 //  Showreel  --  vectors, transforms and paths (see xform.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/xform.c. Changes here are CraftMiner's;
+//  main/xform.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

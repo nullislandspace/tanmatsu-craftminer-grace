@@ -17,7 +17,7 @@
 //  they have one; mesh_transform_from() then moves the part just built
 //  into place (e.g. a spoke rotated out to its angle).
 //  Lifted from tanmatsu-showreel-grace,
-//  main/mesh.h. Changes here are CraftMiner's;
+//  main/mesh.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

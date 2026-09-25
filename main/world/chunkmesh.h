@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  turning a chunk into triangles
+//  SynthMiner  --  turning a chunk into triangles
 // ---------------------------------------------------------------------
 //  The greedy mesher (voxel/voxel_mesh.h) reads a dense box of cells
 //  with a one-cell border, because whether a face shows depends on the

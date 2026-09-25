@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  packing a chunk into bytes
+//  SynthMiner  --  packing a chunk into bytes
 // ---------------------------------------------------------------------
 //  A chunk is two 16 KiB planes of one byte per cell. Stored raw that
 //  would be 32 KiB a chunk on a slow SD card, nearly all of it runs of

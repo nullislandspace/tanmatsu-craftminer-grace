@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  a body moving through blocks
+//  SynthMiner  --  a body moving through blocks
 // ---------------------------------------------------------------------
 //  An axis-aligned box swept against the voxel world. The player is one
 //  of these; so is every animal and mob later, which is why nothing

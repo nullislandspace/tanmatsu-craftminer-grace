@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CraftMiner -- generate main/i18n/fold_table.h from lang/*.txt.
+"""SynthMiner -- generate main/i18n/fold_table.h from lang/*.txt.
 
 The badge has one fixed QWERTY and the game speaks 32 languages, so the
 crafting book's search box matches a FOLDED form of every name: accents

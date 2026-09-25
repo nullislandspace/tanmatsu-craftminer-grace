@@ -1,7 +1,7 @@
 // =====================================================================
 //  Showreel  --  where the horizon lies on screen (see horizon.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/horizon.c. Changes here are CraftMiner's;
+//  main/horizon.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

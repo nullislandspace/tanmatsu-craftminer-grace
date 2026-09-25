@@ -1,9 +1,9 @@
-# CraftMiner -- Norsk
+# SynthMiner -- Norsk
 #
 # Denne oversettelsen er laget av en KI og venter på noen som faktisk
 # snakker språket. Vet du bedre: rett linjen og kjør
 # `python3 tools/make_lang.py`. Det går også uten verktøy -- en fil
-# /sd/craftminer/lang/no.txt på kortet, med de samme linjene, går foran det
+# /sd/synthminer/lang/no.txt på kortet, med de samme linjene, går foran det
 # innebygde (i18n.h).
 #
 # Nøklene står i lang/en.txt. %-plassholderne derfra må være med her; de kan
@@ -104,7 +104,7 @@ common.back = Tilbake
 hint.list = opp / ned velger, Enter bekrefter, Esc går tilbake
 hint.adjust = opp / ned velger, venstre / høyre endrer, Esc går tilbake
 
-status.newer = Laget av en nyere CraftMiner: oppdater for å spille den
+status.newer = Laget av en nyere SynthMiner: oppdater for å spille den
 status.older = Eldre lagringsformat: denne versjonen kan ikke oppdatere det ennå
 status.needs_name = En verden trenger et navn
 status.renamed = Fikk nytt navn

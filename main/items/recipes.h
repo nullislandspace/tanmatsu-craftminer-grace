@@ -1,9 +1,9 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the recipe registry
+//  SynthMiner  --  the recipe registry
 // ---------------------------------------------------------------------
 //  A THIRD TABLE, like blocks.h and items.h, and adding a recipe is a
-//  row. See claudeplans/craftminer.md, Part C, for the design; the two
+//  row. See claudeplans/synthminer.md, Part C, for the design; the two
 //  things worth knowing before reading this file:
 //
 //  1. A RECIPE IS A MULTISET, NOT A GRID. The badge has a keyboard and

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  what the player is carrying (see inventory.h)
+//  SynthMiner  --  what the player is carrying (see inventory.h)
 // =====================================================================
 
 #include "items/inventory.h"

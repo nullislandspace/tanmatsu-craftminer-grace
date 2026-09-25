@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  named, typed, skippable fields, in memory
+//  SynthMiner  --  named, typed, skippable fields, in memory
 // ---------------------------------------------------------------------
 //  NBT's idea, without NBT's FILE*. se_nbt.h writes through stdio, which
 //  is right for a whole file and wrong for the inside of a chunk: a

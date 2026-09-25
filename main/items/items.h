@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the item registry
+//  SynthMiner  --  the item registry
 // ---------------------------------------------------------------------
 //  ONE TABLE, like blocks.h, and for the same reason: adding a thing is
 //  a row, not a search for every switch that needs a new case.
@@ -19,7 +19,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "i18n/strings_gen.h"  // cm_str_t: the name the player reads
+#include "i18n/strings_gen.h"  // sm_str_t: the name the player reads
 #include "world/blocks.h"
 
 // The items that are not blocks. The first is BLK_COUNT, so the two id
@@ -45,7 +45,7 @@ enum {
 
 typedef struct {
     char const* name;        // stable id, as blocks have one
-    cm_str_t    label;       // what the player reads, in their language (i18n.h)
+    sm_str_t    label;       // what the player reads, in their language (i18n.h)
     uint8_t     stack_max;   // 1 for a tool, ITEM_STACK_MAX for most things
     uint8_t     tool;        // tool_t this counts as, TOOL_NONE for anything else
     uint8_t     tool_level;  // 1 wood, 2 stone, 3 iron
@@ -69,7 +69,7 @@ static inline uint8_t item_block(uint16_t id) {
 
 // The item called `name`, or 0 if this build has no such item. How a
 // saved inventory survives items being added or renumbered: it stores
-// names, the way level.cmw's palette does for blocks (D-31).
+// names, the way level.smw's palette does for blocks (D-31).
 uint16_t item_by_name(char const* name);
 
 // What to call `id` on screen, in the player's language. The stable
@@ -77,7 +77,7 @@ uint16_t item_by_name(char const* name);
 // the other one. Every item a player can carry has a label, and
 // worldcheck fails the build over one that does not -- a nameless row
 // in the crafting book is not a thing anybody would notice by playing.
-static inline cm_str_t item_label(uint16_t id) {
+static inline sm_str_t item_label(uint16_t id) {
     return item_def(id).label;
 }
 

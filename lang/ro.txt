@@ -1,9 +1,9 @@
-# CraftMiner -- Română
+# SynthMiner -- Română
 #
 # Această traducere a fost făcută de o inteligență artificială și așteaptă pe
 # cineva care chiar vorbește limba. Dacă știți mai bine: corectați rândul și
 # rulați `python3 tools/make_lang.py`. Se poate și fără unelte -- un fișier
-# /sd/craftminer/lang/ro.txt pe card, cu aceleași rânduri, are prioritate față
+# /sd/synthminer/lang/ro.txt pe card, cu aceleași rânduri, are prioritate față
 # de textul compilat (i18n.h).
 #
 # Cheile sunt în lang/en.txt. Marcajele % de acolo trebuie să apară și aici;
@@ -104,7 +104,7 @@ common.back = Înapoi
 hint.list = sus / jos alege, Enter confirmă, Esc revine
 hint.adjust = sus / jos alege, stânga / dreapta schimbă, Esc revine
 
-status.newer = Făcută de un CraftMiner mai nou: actualizați pentru a o juca
+status.newer = Făcută de un SynthMiner mai nou: actualizați pentru a o juca
 status.older = Format de salvare mai vechi: această versiune nu îl poate converti încă
 status.needs_name = O lume are nevoie de un nume
 status.renamed = Redenumită

@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the time of day
+//  SynthMiner  --  the time of day
 // ---------------------------------------------------------------------
 //  A world's clock is a tick count (world_meta_t.time_of_day, D-51's
 //  rule: elapsed ticks, advanced by the world's own tick, never a wall

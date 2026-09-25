@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  CraftMiner  --  the host-purity rule
+#  SynthMiner  --  the host-purity rule
 # ---------------------------------------------------------------------
 #  A module in the "pure" set must compile with a plain host compiler,
 #  so that tools/worldcheck.c can test the world, the mesher, physics,
 #  picking and crafting on a PC in seconds instead of on the badge in
-#  minutes (claudeplans/craftminer.md, Part H).
+#  minutes (claudeplans/synthminer.md, Part H).
 #
 #  The rule: no engine header, no RTOS header, no ESP-IDF header. The
 #  one thing these modules need that differs between host and badge is

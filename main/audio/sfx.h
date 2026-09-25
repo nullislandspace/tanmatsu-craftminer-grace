@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the sound effects
+//  SynthMiner  --  the sound effects
 // ---------------------------------------------------------------------
 //  Every sound the game makes is ONE ROW in a table (sfx.c), not one
 //  file per noise. The synthracer pattern this is descended from gave
@@ -19,7 +19,7 @@
 //  file's: `block_def_t.sound` names a material class (SND_STONE,
 //  SND_WOOD, ...) and the step / break / place sounds follow from it.
 //  Adding a block therefore adds its sounds too, in the same row, with
-//  no edit here (claudeplans/craftminer.md, Part L).
+//  no edit here (claudeplans/synthminer.md, Part L).
 //
 //  Every voice is registered with the engine mixer and frees itself when
 //  its envelope closes. Playing is fire-and-forget and never blocks; if

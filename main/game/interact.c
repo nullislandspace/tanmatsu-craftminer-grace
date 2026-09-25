@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  breaking and placing (see interact.h)
+//  SynthMiner  --  breaking and placing (see interact.h)
 // =====================================================================
 
 #include "game/interact.h"
@@ -35,7 +35,7 @@ static int drop_for(uint8_t block, int32_t x, int32_t y, int32_t z, uint16_t too
     if (d->drop_max > d->drop_min) {
         // Deterministic from the cell, so a replay drops the same
         // number and two players breaking the same block agree.
-        float const r = cm_rand3(x, y, z, 0x0D40Fu);
+        float const r = sm_rand3(x, y, z, 0x0D40Fu);
         n += (int)(r * (float)(d->drop_max - d->drop_min + 1));
         if (n > d->drop_max) n = d->drop_max;
     }

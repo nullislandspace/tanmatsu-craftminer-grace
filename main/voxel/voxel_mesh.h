@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  meshing blocks
+//  SynthMiner  --  meshing blocks
 // ---------------------------------------------------------------------
 //  Turns a box of blocks into a mesh (mesh.h) of the faces that can be
 //  seen. Four kinds of block:
@@ -43,7 +43,7 @@
 //  Pure data, no engine calls: the host mesh check builds and verifies
 //  it (tools/meshcheck_assets.h).
 //  Lifted from tanmatsu-showreel-grace,
-//  main/craftminer/voxel/voxel_mesh.h. Changes here are CraftMiner's;
+//  main/craftminer/voxel/voxel_mesh.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

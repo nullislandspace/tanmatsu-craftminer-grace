@@ -1,7 +1,7 @@
 // =====================================================================
-//  CraftMiner  --  the recipe table (see recipes.h)
+//  SynthMiner  --  the recipe table (see recipes.h)
 // ---------------------------------------------------------------------
-//  Quantities are Minecraft's, as the user asked. Where CraftMiner
+//  Quantities are Minecraft's, as the user asked. Where SynthMiner
 //  invents something -- the disassembly bench, the trashcan -- the row
 //  says so.
 // =====================================================================

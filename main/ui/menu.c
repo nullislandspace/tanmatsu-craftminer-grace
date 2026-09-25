@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the menus (see menu.h)
+//  SynthMiner  --  the menus (see menu.h)
 // =====================================================================
 
 #include "audio/sfx.h"
@@ -66,19 +66,19 @@ static int      s_typed_n;
 // The save slots, read when the slot list opens. Reading is a file
 // open per slot, which is fine a few times a session and not fine per
 // frame.
-static world_meta_t s_slot_meta[CM_SLOTS];
-static slot_state_t s_slot_state[CM_SLOTS];
+static world_meta_t s_slot_meta[SM_SLOTS];
+static slot_state_t s_slot_state[SM_SLOTS];
 static int          s_slot;  // the slot the WORLD / NEW / DELETE screens are about
 
 // The new-world form.
-static char s_new_name[CM_WORLD_NAME_MAX];
+static char s_new_name[SM_WORLD_NAME_MAX];
 static char s_new_seed[12];
 
 // Typing. The text is edited in a copy and only written back on Enter,
 // so Esc really does leave the old value alone.
 typedef enum { FIELD_NEW_NAME = 0, FIELD_NEW_SEED, FIELD_RENAME } field_t;
 static field_t     s_field;
-static char        s_text[CM_WORLD_NAME_MAX];
+static char        s_text[SM_WORLD_NAME_MAX];
 static int         s_text_cap;
 static screen_t    s_text_return;
 static char const* s_text_title;
@@ -108,11 +108,11 @@ static void go(screen_t scr) {
 }
 
 static void refresh_slots(void) {
-    for (int i = 0; i < CM_SLOTS; i++) {
+    for (int i = 0; i < SM_SLOTS; i++) {
         s_slot_state[i] = worldstore_slot_state(i, &s_slot_meta[i]);
         // A damaged world still gets the world screen -- to delete it --
         // under a name that says what it is.
-        if (s_slot_state[i] == SLOT_DAMAGED) snprintf(s_slot_meta[i].name, sizeof(s_slot_meta[i].name), "%s", T(CM_STR_WORLDS_DAMAGED));
+        if (s_slot_state[i] == SLOT_DAMAGED) snprintf(s_slot_meta[i].name, sizeof(s_slot_meta[i].name), "%s", T(SM_STR_WORLDS_DAMAGED));
     }
 }
 
@@ -143,7 +143,7 @@ static uint8_t pct_step(uint8_t cur, int delta) {
 // nothing at all is random.
 static uint32_t seed_from(char const* t) {
     if (t[0] == '\0') {
-        return (uint32_t)cm_mix64((uint64_t)esp_timer_get_time() ^ 0x9E3779B97F4A7C15ull);
+        return (uint32_t)sm_mix64((uint64_t)esp_timer_get_time() ^ 0x9E3779B97F4A7C15ull);
     }
     char const* p   = t + (t[0] == '-' ? 1 : 0);
     bool        num = *p != '\0';
@@ -207,7 +207,7 @@ bool menu_show(char const* name) {
         if (strcmp(name, SHOW[i].name) != 0) continue;
         refresh_slots();
         s_slot = 0;
-        i18n_fmt(s_new_name, sizeof(s_new_name), CM_STR_NEW_DEFAULT_NAME, 2);
+        i18n_fmt(s_new_name, sizeof(s_new_name), SM_STR_NEW_DEFAULT_NAME, 2);
         s_new_seed[0]     = '\0';
         s_settings_parent = SCR_TITLE;
         go(SHOW[i].scr);
@@ -293,23 +293,23 @@ static menu_cmd_t update_title(void) {
 static menu_cmd_t update_worlds(void) {
     menu_cmd_t cmd = {0};
     int*       cur = &s_cursor[SCR_WORLDS];
-    nav(cur, CM_SLOTS + 1);
+    nav(cur, SM_SLOTS + 1);
     if (s_act & ACT_OK) {
-        if (*cur == CM_SLOTS) {
+        if (*cur == SM_SLOTS) {
             go(SCR_TITLE);
         } else if (s_slot_state[*cur] == SLOT_NEWER) {
             // Somebody's world, from a later build. Not ours to open, and
             // not free either: nothing is offered.
-            menu_status(T(CM_STR_STATUS_NEWER));
+            menu_status(T(SM_STR_STATUS_NEWER));
         } else if (s_slot_state[*cur] == SLOT_OLDER) {
-            menu_status(T(CM_STR_STATUS_OLDER));
+            menu_status(T(SM_STR_STATUS_OLDER));
         } else if (s_slot_state[*cur] != SLOT_EMPTY) {
             s_slot               = *cur;
             s_cursor[SCR_WORLD] = 0;
             go(SCR_WORLD);
         } else {
             s_slot = *cur;
-            i18n_fmt(s_new_name, sizeof(s_new_name), CM_STR_NEW_DEFAULT_NAME, *cur + 1);
+            i18n_fmt(s_new_name, sizeof(s_new_name), SM_STR_NEW_DEFAULT_NAME, *cur + 1);
             s_new_seed[0]      = '\0';
             s_cursor[SCR_NEW] = 0;
             go(SCR_NEW);
@@ -331,7 +331,7 @@ static menu_cmd_t update_world(void) {
                 cmd.slot = s_slot;
                 break;
             case 1:
-                begin_text(FIELD_RENAME, T(CM_STR_TEXT_TITLE_RENAME), s_slot_meta[s_slot].name, CM_WORLD_NAME_MAX, SCR_WORLD);
+                begin_text(FIELD_RENAME, T(SM_STR_TEXT_TITLE_RENAME), s_slot_meta[s_slot].name, SM_WORLD_NAME_MAX, SCR_WORLD);
                 break;
             case 2:
                 // "No" first, so a second Enter does not delete a world.
@@ -352,13 +352,13 @@ static menu_cmd_t update_new(void) {
     nav(cur, 4);
     if (s_act & ACT_OK) {
         switch (*cur) {
-            case 0: begin_text(FIELD_NEW_NAME, T(CM_STR_TEXT_TITLE_NAME), s_new_name, CM_WORLD_NAME_MAX, SCR_NEW); break;
+            case 0: begin_text(FIELD_NEW_NAME, T(SM_STR_TEXT_TITLE_NAME), s_new_name, SM_WORLD_NAME_MAX, SCR_NEW); break;
             case 1:
-                begin_text(FIELD_NEW_SEED, T(CM_STR_TEXT_TITLE_SEED), s_new_seed, (int)sizeof(s_new_seed), SCR_NEW);
+                begin_text(FIELD_NEW_SEED, T(SM_STR_TEXT_TITLE_SEED), s_new_seed, (int)sizeof(s_new_seed), SCR_NEW);
                 break;
             case 2:
                 if (s_new_name[0] == '\0') {
-                    menu_status(T(CM_STR_STATUS_NEEDS_NAME));
+                    menu_status(T(SM_STR_STATUS_NEEDS_NAME));
                     break;
                 }
                 cmd.kind = MENU_CMD_CREATE;
@@ -394,9 +394,9 @@ static void update_text(void) {
                 }
                 if (worldstore_rename(s_slot_meta[s_slot].slug, s_text)) {
                     refresh_slots();
-                    menu_status(T(CM_STR_STATUS_RENAMED));
+                    menu_status(T(SM_STR_STATUS_RENAMED));
                 } else {
-                    menu_status(T(CM_STR_STATUS_RENAME_FAILED));
+                    menu_status(T(SM_STR_STATUS_RENAME_FAILED));
                 }
                 break;
         }
@@ -413,7 +413,7 @@ static void update_delete(void) {
         if (*cur == 1) {
             bool const ok = worldstore_delete(s_slot_meta[s_slot].slug);
             ESP_LOGI(TAG, "deleted slot %d (\"%s\"): %s", s_slot + 1, s_slot_meta[s_slot].name, ok ? "ok" : "FAILED");
-            menu_status(T(ok ? CM_STR_STATUS_DELETED : CM_STR_STATUS_DELETE_FAILED));
+            menu_status(T(ok ? SM_STR_STATUS_DELETED : SM_STR_STATUS_DELETE_FAILED));
             refresh_slots();
             go(SCR_WORLDS);
         } else {
@@ -446,15 +446,15 @@ static void update_settings(void) {
 // Every language, then Back. Choosing one takes effect on the next frame
 // -- every label is fetched where it is drawn -- and is written to
 // settings.txt at once, the way every other setting is.
-#define LANGUAGE_ROWS (CM_LANG_COUNT + 1)
+#define LANGUAGE_ROWS (SM_LANG_COUNT + 1)
 
 static void update_language(void) {
     int* cur = &s_cursor[SCR_LANGUAGE];
     nav(cur, LANGUAGE_ROWS);
     if (s_act & ACT_OK) {
-        if (*cur < CM_LANG_COUNT) {
-            i18n_set_language((cm_lang_t)*cur);
-            i18n_load_overrides(CM_DATA_DIR);
+        if (*cur < SM_LANG_COUNT) {
+            i18n_set_language((sm_lang_t)*cur);
+            i18n_load_overrides(SM_DATA_DIR);
             settings_save();
             ESP_LOGI(TAG, "language: %s", i18n_language_code(i18n_language()));
         }
@@ -467,7 +467,7 @@ static void update_language(void) {
 // Rows: the gyroscope checkbox (first, as in synthracer), every action,
 // then "Reset to defaults", then "Back".
 #define CONTROLS_FIRST_KEY 1
-#define CONTROLS_ROWS      (CONTROLS_FIRST_KEY + CM_ACTION_COUNT + 2)
+#define CONTROLS_ROWS      (CONTROLS_FIRST_KEY + SM_ACTION_COUNT + 2)
 
 static void update_controls(void) {
     int* cur = &s_cursor[SCR_CONTROLS];
@@ -476,21 +476,21 @@ static void update_controls(void) {
         settings_set_gyro(!settings_gyro());
     } else if (s_act & ACT_OK) {
         int const key = *cur - CONTROLS_FIRST_KEY;
-        if (key < CM_ACTION_COUNT) {
+        if (key < SM_ACTION_COUNT) {
             // The engine's blocking "press a key" capture, as synthracer
             // uses it. It takes any key, Esc and the cursor keys included
             // (the cursor keys since engine 2.1), so there is no cancel:
             // pressing the key it already had keeps it.
-            cm_action_t const a  = (cm_action_t)key;
+            sm_action_t const a  = (sm_action_t)key;
             uint16_t const    sc = se_ui_capture_key(input_action_label(a));
             if (sc != 0) {
                 char name[24];
                 input_bind(a, sc);
                 ESP_LOGI(TAG, "%s bound to %s", input_action_label(a), input_key_name(sc, name, sizeof(name)));
             }
-        } else if (key == CM_ACTION_COUNT) {
+        } else if (key == SM_ACTION_COUNT) {
             input_reset_defaults();
-            menu_status(T(CM_STR_STATUS_KEYS_RESET));
+            menu_status(T(SM_STR_STATUS_KEYS_RESET));
         } else {
             go(SCR_SETTINGS);
         }
@@ -500,8 +500,8 @@ static void update_controls(void) {
 }
 
 // Fetched when drawn, not once: the language can change under them.
-static cm_str_t const VIEW_NAMES[SETTINGS_VIEW_COUNT] = {CM_STR_VIEW_NEAR, CM_STR_VIEW_MEDIUM,
-                                                         CM_STR_VIEW_FAR};
+static sm_str_t const VIEW_NAMES[SETTINGS_VIEW_COUNT] = {SM_STR_VIEW_NEAR, SM_STR_VIEW_MEDIUM,
+                                                         SM_STR_VIEW_FAR};
 #define GRAPHICS_ROWS 7
 
 static menu_cmd_t update_graphics(void) {
@@ -704,14 +704,14 @@ static void draw_list_dense(pax_buf_t* fb, char const* title, se_menu_row_t cons
     se_menu_draw(&m, fb);
 }
 
-#define HINT_LIST   T(CM_STR_HINT_LIST)
-#define HINT_ADJUST T(CM_STR_HINT_ADJUST)
+#define HINT_LIST   T(SM_STR_HINT_LIST)
+#define HINT_ADJUST T(SM_STR_HINT_ADJUST)
 
 // The title's own row: a strip along the bottom, under the word, so the
 // word stays in view. The rest of the menus are panels over it.
 static void draw_title_bar(pax_buf_t* fb) {
-    static cm_str_t const    ITEMS[TITLE_ROWS] = {CM_STR_MENU_PLAY, CM_STR_MENU_SETTINGS,
-                                                  CM_STR_MENU_QUIT};
+    static sm_str_t const    ITEMS[TITLE_ROWS] = {SM_STR_MENU_PLAY, SM_STR_MENU_SETTINGS,
+                                                  SM_STR_MENU_QUIT};
     float const              h                 = 26.0f;
     float const              gap               = 56.0f;
     float                    w[TITLE_ROWS];
@@ -745,80 +745,80 @@ void menu_draw(pax_buf_t* fb) {
         case SCR_TITLE: draw_title_bar(fb); break;
 
         case SCR_WORLDS: {
-            static char   labels[CM_SLOTS][CM_WORLD_NAME_MAX + 8];
-            se_menu_row_t rows[CM_SLOTS + 1];
+            static char   labels[SM_SLOTS][SM_WORLD_NAME_MAX + 8];
+            se_menu_row_t rows[SM_SLOTS + 1];
             memset(rows, 0, sizeof(rows));
-            for (int i = 0; i < CM_SLOTS; i++) {
+            for (int i = 0; i < SM_SLOTS; i++) {
                 switch (s_slot_state[i]) {
                     case SLOT_WORLD:
                     case SLOT_DAMAGED:
-                        i18n_fmt(labels[i], sizeof(labels[i]), CM_STR_WORLDS_SLOT, i + 1,
+                        i18n_fmt(labels[i], sizeof(labels[i]), SM_STR_WORLDS_SLOT, i + 1,
                                  s_slot_meta[i].name);
                         break;
                     case SLOT_NEWER:
-                        i18n_fmt(labels[i], sizeof(labels[i]), CM_STR_WORLDS_SLOT_NEWER, i + 1);
+                        i18n_fmt(labels[i], sizeof(labels[i]), SM_STR_WORLDS_SLOT_NEWER, i + 1);
                         break;
                     case SLOT_OLDER:
-                        i18n_fmt(labels[i], sizeof(labels[i]), CM_STR_WORLDS_SLOT_OLDER, i + 1);
+                        i18n_fmt(labels[i], sizeof(labels[i]), SM_STR_WORLDS_SLOT_OLDER, i + 1);
                         break;
-                    default: i18n_fmt(labels[i], sizeof(labels[i]), CM_STR_WORLDS_SLOT_EMPTY, i + 1); break;
+                    default: i18n_fmt(labels[i], sizeof(labels[i]), SM_STR_WORLDS_SLOT_EMPTY, i + 1); break;
                 }
                 rows[i].label = labels[i];
             }
-            rows[CM_SLOTS].label = T(CM_STR_COMMON_BACK);
-            draw_list(fb, T(CM_STR_WORLDS_TITLE), NULL, rows, CM_SLOTS + 1, s_cursor[SCR_WORLDS], HINT_LIST, 0.0f);
+            rows[SM_SLOTS].label = T(SM_STR_COMMON_BACK);
+            draw_list(fb, T(SM_STR_WORLDS_TITLE), NULL, rows, SM_SLOTS + 1, s_cursor[SCR_WORLDS], HINT_LIST, 0.0f);
         } break;
 
         case SCR_WORLD: {
             static char sub[48];
-            i18n_fmt(sub, sizeof(sub), CM_STR_WORLD_SUB, s_slot + 1, (unsigned)s_slot_meta[s_slot].seed);
-            se_menu_row_t const rows[4] = {{.label = T(CM_STR_WORLD_PLAY)},
-                                           {.label = T(CM_STR_WORLD_RENAME)},
-                                           {.label = T(CM_STR_WORLD_DELETE)},
-                                           {.label = T(CM_STR_COMMON_BACK)}};
+            i18n_fmt(sub, sizeof(sub), SM_STR_WORLD_SUB, s_slot + 1, (unsigned)s_slot_meta[s_slot].seed);
+            se_menu_row_t const rows[4] = {{.label = T(SM_STR_WORLD_PLAY)},
+                                           {.label = T(SM_STR_WORLD_RENAME)},
+                                           {.label = T(SM_STR_WORLD_DELETE)},
+                                           {.label = T(SM_STR_COMMON_BACK)}};
             draw_list(fb, s_slot_meta[s_slot].name, sub, rows, 4, s_cursor[SCR_WORLD], HINT_LIST, 0.0f);
         } break;
 
         case SCR_NEW: {
             static char sub[32];
-            i18n_fmt(sub, sizeof(sub), CM_STR_NEW_SUB, s_slot + 1);
+            i18n_fmt(sub, sizeof(sub), SM_STR_NEW_SUB, s_slot + 1);
             se_menu_row_t const rows[4] = {
-                {.label = T(CM_STR_NEW_NAME), .kind = SE_MENU_VAL_TEXT, .value = s_new_name},
-                {.label = T(CM_STR_NEW_SEED),
+                {.label = T(SM_STR_NEW_NAME), .kind = SE_MENU_VAL_TEXT, .value = s_new_name},
+                {.label = T(SM_STR_NEW_SEED),
                  .kind  = SE_MENU_VAL_TEXT,
-                 .value = s_new_seed[0] ? s_new_seed : T(CM_STR_NEW_SEED_RANDOM)},
-                {.label = T(CM_STR_NEW_CREATE)},
-                {.label = T(CM_STR_NEW_CANCEL)},
+                 .value = s_new_seed[0] ? s_new_seed : T(SM_STR_NEW_SEED_RANDOM)},
+                {.label = T(SM_STR_NEW_CREATE)},
+                {.label = T(SM_STR_NEW_CANCEL)},
             };
-            draw_list(fb, T(CM_STR_NEW_TITLE), sub, rows, 4, s_cursor[SCR_NEW], HINT_LIST, 120.0f);
+            draw_list(fb, T(SM_STR_NEW_TITLE), sub, rows, 4, s_cursor[SCR_NEW], HINT_LIST, 120.0f);
         } break;
 
         case SCR_TEXT: {
-            static char shown[CM_WORLD_NAME_MAX + 2];
+            static char shown[SM_WORLD_NAME_MAX + 2];
             snprintf(shown, sizeof(shown), "%s_", s_text);
             se_menu_row_t const row = {.label = shown};
-            draw_list(fb, s_text_title, T(CM_STR_TEXT_SUB), &row, 1, 0, T(CM_STR_TEXT_HINT), 0.0f);
+            draw_list(fb, s_text_title, T(SM_STR_TEXT_SUB), &row, 1, 0, T(SM_STR_TEXT_HINT), 0.0f);
         } break;
 
         case SCR_DELETE: {
-            static char title[CM_WORLD_NAME_MAX + 12];
-            i18n_fmt(title, sizeof(title), CM_STR_DELETE_TITLE, s_slot_meta[s_slot].name);
-            se_menu_row_t const rows[2] = {{.label = T(CM_STR_DELETE_NO)}, {.label = T(CM_STR_DELETE_YES)}};
-            draw_list(fb, title, T(CM_STR_DELETE_SUB), rows, 2, s_cursor[SCR_DELETE], HINT_LIST, 0.0f);
+            static char title[SM_WORLD_NAME_MAX + 12];
+            i18n_fmt(title, sizeof(title), SM_STR_DELETE_TITLE, s_slot_meta[s_slot].name);
+            se_menu_row_t const rows[2] = {{.label = T(SM_STR_DELETE_NO)}, {.label = T(SM_STR_DELETE_YES)}};
+            draw_list(fb, title, T(SM_STR_DELETE_SUB), rows, 2, s_cursor[SCR_DELETE], HINT_LIST, 0.0f);
         } break;
 
         case SCR_SETTINGS: {
             se_menu_row_t const rows[SETTINGS_ROWS] = {
-                {.label = T(CM_STR_SETTINGS_LANGUAGE),
+                {.label = T(SM_STR_SETTINGS_LANGUAGE),
                  .kind  = SE_MENU_VAL_TEXT,
                  .value = i18n_language_name(i18n_language())},
-                {.label = T(CM_STR_SETTINGS_CONTROLS)},
-                {.label = T(CM_STR_SETTINGS_GRAPHICS)},
-                {.label = T(CM_STR_SETTINGS_AUDIO)},
-                {.label = T(CM_STR_SETTINGS_DISPLAY)},
-                {.label = T(CM_STR_COMMON_BACK)},
+                {.label = T(SM_STR_SETTINGS_CONTROLS)},
+                {.label = T(SM_STR_SETTINGS_GRAPHICS)},
+                {.label = T(SM_STR_SETTINGS_AUDIO)},
+                {.label = T(SM_STR_SETTINGS_DISPLAY)},
+                {.label = T(SM_STR_COMMON_BACK)},
             };
-            draw_list(fb, T(CM_STR_SETTINGS_TITLE), NULL, rows, SETTINGS_ROWS, s_cursor[SCR_SETTINGS],
+            draw_list(fb, T(SM_STR_SETTINGS_TITLE), NULL, rows, SETTINGS_ROWS, s_cursor[SCR_SETTINGS],
                       HINT_LIST, 260.0f);
         } break;
 
@@ -826,104 +826,104 @@ void menu_draw(pax_buf_t* fb) {
             // Each language stands in its OWN name, never translated: the
             // player who needs this screen is the one who cannot read the
             // language the game is in.
-            se_menu_row_t rows[CM_LANG_COUNT + 1];
+            se_menu_row_t rows[SM_LANG_COUNT + 1];
             memset(rows, 0, sizeof(rows));
-            for (int i = 0; i < CM_LANG_COUNT; i++) {
-                rows[i].label = i18n_language_name((cm_lang_t)i);
+            for (int i = 0; i < SM_LANG_COUNT; i++) {
+                rows[i].label = i18n_language_name((sm_lang_t)i);
                 // A radio, not a tick: one of these is the language, and
                 // choosing another unchooses this one (engine 2.1).
                 rows[i].kind    = SE_MENU_VAL_RADIO;
                 rows[i].checked = i == (int)i18n_language();
             }
-            rows[CM_LANG_COUNT].label = T(CM_STR_COMMON_BACK);
+            rows[SM_LANG_COUNT].label = T(SM_STR_COMMON_BACK);
             // 280, not the usual 180: "Nederlands" and "Български" are
             // longer than any label English has, and the tick belongs
             // clear of them.
-            draw_list_dense(fb, T(CM_STR_LANGUAGE_TITLE), rows, LANGUAGE_ROWS, s_cursor[SCR_LANGUAGE],
+            draw_list_dense(fb, T(SM_STR_LANGUAGE_TITLE), rows, LANGUAGE_ROWS, s_cursor[SCR_LANGUAGE],
                             HINT_LIST, 280.0f);
         } break;
 
         case SCR_CONTROLS: {
             se_menu_row_t rows[CONTROLS_ROWS];
             memset(rows, 0, sizeof(rows));
-            rows[0].label   = T(CM_STR_CONTROLS_GYRO);
+            rows[0].label   = T(SM_STR_CONTROLS_GYRO);
             rows[0].kind    = SE_MENU_VAL_CHECK;
             rows[0].checked = settings_gyro();
-            for (int a = 0; a < CM_ACTION_COUNT; a++) {
+            for (int a = 0; a < SM_ACTION_COUNT; a++) {
                 se_menu_row_t* r = &rows[CONTROLS_FIRST_KEY + a];
-                r->label         = input_action_label((cm_action_t)a);
+                r->label         = input_action_label((sm_action_t)a);
                 r->kind          = SE_MENU_VAL_CUSTOM;
                 r->draw_value    = controls_keybind_draw;
-                r->ctx           = (void*)(uintptr_t)input_key((cm_action_t)a);
+                r->ctx           = (void*)(uintptr_t)input_key((sm_action_t)a);
             }
-            rows[CONTROLS_FIRST_KEY + CM_ACTION_COUNT].label     = T(CM_STR_CONTROLS_RESET);
-            rows[CONTROLS_FIRST_KEY + CM_ACTION_COUNT + 1].label = T(CM_STR_COMMON_BACK);
-            draw_list(fb, T(CM_STR_CONTROLS_TITLE), NULL, rows, CONTROLS_ROWS, s_cursor[SCR_CONTROLS],
-                      T(CM_STR_CONTROLS_HINT), 260.0f);
+            rows[CONTROLS_FIRST_KEY + SM_ACTION_COUNT].label     = T(SM_STR_CONTROLS_RESET);
+            rows[CONTROLS_FIRST_KEY + SM_ACTION_COUNT + 1].label = T(SM_STR_COMMON_BACK);
+            draw_list(fb, T(SM_STR_CONTROLS_TITLE), NULL, rows, CONTROLS_ROWS, s_cursor[SCR_CONTROLS],
+                      T(SM_STR_CONTROLS_HINT), 260.0f);
         } break;
 
         case SCR_GRAPHICS: {
             se_menu_row_t const rows[GRAPHICS_ROWS] = {
-                {.label = T(CM_STR_GRAPHICS_VIEW),
+                {.label = T(SM_STR_GRAPHICS_VIEW),
                  .kind  = SE_MENU_VAL_TEXT,
                  .value = T(VIEW_NAMES[settings_view()])},
-                {.label = T(CM_STR_GRAPHICS_TEXTURES), .kind = SE_MENU_VAL_CHECK, .checked = settings_textured()},
-                {.label = T(CM_STR_GRAPHICS_RESOLUTION),
+                {.label = T(SM_STR_GRAPHICS_TEXTURES), .kind = SE_MENU_VAL_CHECK, .checked = settings_textured()},
+                {.label = T(SM_STR_GRAPHICS_RESOLUTION),
                  .kind  = SE_MENU_VAL_TEXT,
-                 .value = T(settings_half_res() ? CM_STR_RES_HALF : CM_STR_RES_FULL)},
-                {.label = T(CM_STR_GRAPHICS_CLOUDS), .kind = SE_MENU_VAL_CHECK, .checked = settings_clouds()},
-                {.label = T(CM_STR_GRAPHICS_CAMERA),
+                 .value = T(settings_half_res() ? SM_STR_RES_HALF : SM_STR_RES_FULL)},
+                {.label = T(SM_STR_GRAPHICS_CLOUDS), .kind = SE_MENU_VAL_CHECK, .checked = settings_clouds()},
+                {.label = T(SM_STR_GRAPHICS_CAMERA),
                  .kind  = SE_MENU_VAL_TEXT,
-                 .value = T(settings_third_person() ? CM_STR_CAMERA_THIRD : CM_STR_CAMERA_FIRST)},
-                {.label = T(CM_STR_GRAPHICS_HAND),
+                 .value = T(settings_third_person() ? SM_STR_CAMERA_THIRD : SM_STR_CAMERA_FIRST)},
+                {.label = T(SM_STR_GRAPHICS_HAND),
                  .kind  = SE_MENU_VAL_TEXT,
-                 .value = T(settings_left_handed() ? CM_STR_HAND_LEFT : CM_STR_HAND_RIGHT)},
-                {.label = T(CM_STR_COMMON_BACK)},
+                 .value = T(settings_left_handed() ? SM_STR_HAND_LEFT : SM_STR_HAND_RIGHT)},
+                {.label = T(SM_STR_COMMON_BACK)},
             };
-            draw_list_w(fb, T(CM_STR_GRAPHICS_TITLE), NULL, rows, GRAPHICS_ROWS, s_cursor[SCR_GRAPHICS],
+            draw_list_w(fb, T(SM_STR_GRAPHICS_TITLE), NULL, rows, GRAPHICS_ROWS, s_cursor[SCR_GRAPHICS],
                         HINT_ADJUST, 340.0f, PANEL_W_WIDE);
         } break;
 
         case SCR_AUDIO: {
             se_menu_row_t const rows[AUDIO_ROWS] = {
-                {.label = T(CM_STR_AUDIO_VOLUME), .kind = SE_MENU_VAL_RANGE, .range_pct = se_hw_get_volume()},
-                {.label = T(CM_STR_AUDIO_MUSIC), .kind = SE_MENU_VAL_CHECK, .checked = settings_music()},
-                {.label     = T(CM_STR_AUDIO_MUSIC_VOLUME),
+                {.label = T(SM_STR_AUDIO_VOLUME), .kind = SE_MENU_VAL_RANGE, .range_pct = se_hw_get_volume()},
+                {.label = T(SM_STR_AUDIO_MUSIC), .kind = SE_MENU_VAL_CHECK, .checked = settings_music()},
+                {.label     = T(SM_STR_AUDIO_MUSIC_VOLUME),
                  .kind      = SE_MENU_VAL_RANGE,
                  .range_pct = settings_music_volume()},
-                {.label = T(CM_STR_AUDIO_SFX), .kind = SE_MENU_VAL_CHECK, .checked = settings_sfx()},
-                {.label     = T(CM_STR_AUDIO_SFX_VOLUME),
+                {.label = T(SM_STR_AUDIO_SFX), .kind = SE_MENU_VAL_CHECK, .checked = settings_sfx()},
+                {.label     = T(SM_STR_AUDIO_SFX_VOLUME),
                  .kind      = SE_MENU_VAL_RANGE,
                  .range_pct = settings_sfx_volume()},
-                {.label = T(CM_STR_COMMON_BACK)},
+                {.label = T(SM_STR_COMMON_BACK)},
             };
-            draw_list_w(fb, T(CM_STR_AUDIO_TITLE), T(CM_STR_AUDIO_SUB), rows, AUDIO_ROWS,
+            draw_list_w(fb, T(SM_STR_AUDIO_TITLE), T(SM_STR_AUDIO_SUB), rows, AUDIO_ROWS,
                         s_cursor[SCR_AUDIO], HINT_ADJUST, 390.0f, PANEL_W_WIDE);
         } break;
 
         case SCR_DISPLAY: {
             se_menu_row_t const rows[4] = {
-                {.label     = T(CM_STR_DISPLAY_SCREEN),
+                {.label     = T(SM_STR_DISPLAY_SCREEN),
                  .kind      = SE_MENU_VAL_RANGE,
                  .range_pct = se_hw_get_display_brightness()},
-                {.label     = T(CM_STR_DISPLAY_KEYBOARD),
+                {.label     = T(SM_STR_DISPLAY_KEYBOARD),
                  .kind      = SE_MENU_VAL_RANGE,
                  .range_pct = se_hw_get_keyboard_brightness()},
-                {.label = T(CM_STR_DISPLAY_LEDS), .kind = SE_MENU_VAL_RANGE, .range_pct = se_hw_get_led_brightness()},
-                {.label = T(CM_STR_COMMON_BACK)},
+                {.label = T(SM_STR_DISPLAY_LEDS), .kind = SE_MENU_VAL_RANGE, .range_pct = se_hw_get_led_brightness()},
+                {.label = T(SM_STR_COMMON_BACK)},
             };
-            draw_list(fb, T(CM_STR_DISPLAY_TITLE), T(CM_STR_DISPLAY_SUB), rows, 4, s_cursor[SCR_DISPLAY],
+            draw_list(fb, T(SM_STR_DISPLAY_TITLE), T(SM_STR_DISPLAY_SUB), rows, 4, s_cursor[SCR_DISPLAY],
                       HINT_ADJUST, 300.0f);
         } break;
 
         case SCR_PAUSE: {
             se_menu_row_t const rows[4] = {
-                {.label = T(CM_STR_PAUSE_RESUME)},
-                {.label = T(CM_STR_PAUSE_SAVE)},
-                {.label = T(CM_STR_SETTINGS_TITLE)},
-                {.label = T(CM_STR_PAUSE_QUIT)},
+                {.label = T(SM_STR_PAUSE_RESUME)},
+                {.label = T(SM_STR_PAUSE_SAVE)},
+                {.label = T(SM_STR_SETTINGS_TITLE)},
+                {.label = T(SM_STR_PAUSE_QUIT)},
             };
-            draw_list(fb, T(CM_STR_PAUSE_TITLE), NULL, rows, 4, s_cursor[SCR_PAUSE], HINT_LIST, 0.0f);
+            draw_list(fb, T(SM_STR_PAUSE_TITLE), NULL, rows, 4, s_cursor[SCR_PAUSE], HINT_LIST, 0.0f);
         } break;
 
         default: break;

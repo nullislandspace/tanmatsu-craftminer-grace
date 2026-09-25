@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the player
+//  SynthMiner  --  the player
 // ---------------------------------------------------------------------
 //  A body (physics.h), a direction to look, and what the two of them do
 //  with a tick's worth of input. Health, hunger and the inventory are
@@ -146,7 +146,7 @@ bool player_place(player_t* p, double x, double y, double z, float yaw, float pi
 // Advance one simulation tick. `mask` is the tick's input, `pressed`
 // the actions that went down since the last tick (so a held key places
 // one block, not twenty).
-void player_tick(player_t* p, cm_actions_t mask, cm_actions_t pressed);
+void player_tick(player_t* p, sm_actions_t mask, sm_actions_t pressed);
 
 // The eye for the frame being drawn. `alpha` is how far through the
 // current tick it is, 0..1.

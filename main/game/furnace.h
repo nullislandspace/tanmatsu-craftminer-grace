@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the furnace
+//  SynthMiner  --  the furnace
 // ---------------------------------------------------------------------
 //  Three slots -- what goes in, what burns, what comes out -- and the
 //  user's design, not a filtered recipe book (2026-09-23, replacing the

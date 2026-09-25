@@ -1,7 +1,7 @@
 // =====================================================================
 //  Showreel  --  scene camera helpers (see camera.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/camera.c. Changes here are CraftMiner's;
+//  main/camera.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

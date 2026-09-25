@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  Standard MIDI File sequencer
+//  SynthMiner  --  Standard MIDI File sequencer
 //  PORTED from ../tanmatsu-tadoom/main/midi_player.c. See midi_seq.h
 //  for what changed and why.
 // =====================================================================

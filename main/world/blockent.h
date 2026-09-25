@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  blocks that remember more than a byte
+//  SynthMiner  --  blocks that remember more than a byte
 // ---------------------------------------------------------------------
 //  THE THIRD TIER (chunk.h). A cell is a block id and a state byte, and
 //  that is enough for most of the world -- which way a sign faces, how

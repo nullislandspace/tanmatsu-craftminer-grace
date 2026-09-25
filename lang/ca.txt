@@ -1,9 +1,9 @@
-# CraftMiner -- Català
+# SynthMiner -- Català
 #
 # Aquesta traducció l'ha feta una IA i espera algú que parli realment la
 # llengua. Si ho sabeu fer millor: corregiu la línia i executeu
 # `python3 tools/make_lang.py`. També es pot sense eines: un fitxer
-# /sd/craftminer/lang/ca.txt a la targeta, amb les mateixes línies, té
+# /sd/synthminer/lang/ca.txt a la targeta, amb les mateixes línies, té
 # prioritat sobre el que ve compilat (i18n.h).
 #
 # Les claus són a lang/en.txt. Els marcadors % han de tornar a sortir aquí;
@@ -104,7 +104,7 @@ common.back = Enrere
 hint.list = amunt / avall tria, Enter confirma, Esc torna
 hint.adjust = amunt / avall tria, esquerra / dreta canvia, Esc torna
 
-status.newer = Fet per un CraftMiner més nou: actualitzeu per jugar-hi
+status.newer = Fet per un SynthMiner més nou: actualitzeu per jugar-hi
 status.older = Format de desament antic: aquesta versió encara no el converteix
 status.needs_name = Un món necessita un nom
 status.renamed = Nom canviat

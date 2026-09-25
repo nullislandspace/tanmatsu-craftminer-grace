@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  starfield
+//  SynthMiner  --  starfield
 // ---------------------------------------------------------------------
 //  A fixed sky of single-pixel stars (scene_point). Each star is a
 //  direction, drawn at the camera position plus that direction times a
@@ -12,7 +12,7 @@
 //  ones), with a mild white / blue / yellow tint spread; ~40% of the
 //  stars crowd a band across the sky, a hint of a galactic plane.
 //  Lifted from tanmatsu-showreel-grace,
-//  main/common/starfield.h. Changes here are CraftMiner's;
+//  main/common/starfield.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

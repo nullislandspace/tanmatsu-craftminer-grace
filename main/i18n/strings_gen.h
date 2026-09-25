@@ -3,286 +3,286 @@
 // fails if these files are older than the lang files they came from.
 
 // =====================================================================
-//  CraftMiner  --  every string the UI can show, and every language
+//  SynthMiner  --  every string the UI can show, and every language
 // ---------------------------------------------------------------------
 //  One enum for the strings, one for the languages, and a table of
 //  pointers per language. A lookup is an array index; there is nothing
 //  to parse and nothing to allocate. See i18n.h.
 // =====================================================================
 
-#ifndef CM_STRINGS_GEN_H
-#define CM_STRINGS_GEN_H
+#ifndef SM_STRINGS_GEN_H
+#define SM_STRINGS_GEN_H
 
 typedef enum {
-    CM_STR_MENU_PLAY,                   // menu.play
-    CM_STR_MENU_SETTINGS,               // menu.settings
-    CM_STR_MENU_QUIT,                   // menu.quit
-    CM_STR_WORLDS_TITLE,                // worlds.title
-    CM_STR_WORLDS_SLOT,                 // worlds.slot
-    CM_STR_WORLDS_SLOT_NEWER,           // worlds.slot_newer
-    CM_STR_WORLDS_SLOT_OLDER,           // worlds.slot_older
-    CM_STR_WORLDS_SLOT_EMPTY,           // worlds.slot_empty
-    CM_STR_WORLDS_DAMAGED,              // worlds.damaged
-    CM_STR_WORLD_PLAY,                  // world.play
-    CM_STR_WORLD_RENAME,                // world.rename
-    CM_STR_WORLD_DELETE,                // world.delete
-    CM_STR_WORLD_SUB,                   // world.sub
-    CM_STR_NEW_TITLE,                   // new.title
-    CM_STR_NEW_SUB,                     // new.sub
-    CM_STR_NEW_NAME,                    // new.name
-    CM_STR_NEW_SEED,                    // new.seed
-    CM_STR_NEW_SEED_RANDOM,             // new.seed_random
-    CM_STR_NEW_CREATE,                  // new.create
-    CM_STR_NEW_CANCEL,                  // new.cancel
-    CM_STR_NEW_DEFAULT_NAME,            // new.default_name
-    CM_STR_TEXT_TITLE_RENAME,           // text.title_rename
-    CM_STR_TEXT_TITLE_NAME,             // text.title_name
-    CM_STR_TEXT_TITLE_SEED,             // text.title_seed
-    CM_STR_TEXT_SUB,                    // text.sub
-    CM_STR_TEXT_HINT,                   // text.hint
-    CM_STR_DELETE_TITLE,                // delete.title
-    CM_STR_DELETE_SUB,                  // delete.sub
-    CM_STR_DELETE_NO,                   // delete.no
-    CM_STR_DELETE_YES,                  // delete.yes
-    CM_STR_SETTINGS_TITLE,              // settings.title
-    CM_STR_SETTINGS_LANGUAGE,           // settings.language
-    CM_STR_SETTINGS_CONTROLS,           // settings.controls
-    CM_STR_SETTINGS_GRAPHICS,           // settings.graphics
-    CM_STR_SETTINGS_AUDIO,              // settings.audio
-    CM_STR_SETTINGS_DISPLAY,            // settings.display
-    CM_STR_LANGUAGE_TITLE,              // language.title
-    CM_STR_CONTROLS_TITLE,              // controls.title
-    CM_STR_CONTROLS_GYRO,               // controls.gyro
-    CM_STR_CONTROLS_RESET,              // controls.reset
-    CM_STR_CONTROLS_HINT,               // controls.hint
-    CM_STR_GRAPHICS_TITLE,              // graphics.title
-    CM_STR_GRAPHICS_VIEW,               // graphics.view
-    CM_STR_GRAPHICS_TEXTURES,           // graphics.textures
-    CM_STR_GRAPHICS_RESOLUTION,         // graphics.resolution
-    CM_STR_GRAPHICS_CLOUDS,             // graphics.clouds
-    CM_STR_GRAPHICS_CAMERA,             // graphics.camera
-    CM_STR_GRAPHICS_HAND,               // graphics.hand
-    CM_STR_VIEW_NEAR,                   // view.near
-    CM_STR_VIEW_MEDIUM,                 // view.medium
-    CM_STR_VIEW_FAR,                    // view.far
-    CM_STR_RES_HALF,                    // res.half
-    CM_STR_RES_FULL,                    // res.full
-    CM_STR_CAMERA_FIRST,                // camera.first
-    CM_STR_CAMERA_THIRD,                // camera.third
-    CM_STR_HAND_LEFT,                   // hand.left
-    CM_STR_HAND_RIGHT,                  // hand.right
-    CM_STR_AUDIO_TITLE,                 // audio.title
-    CM_STR_AUDIO_SUB,                   // audio.sub
-    CM_STR_AUDIO_VOLUME,                // audio.volume
-    CM_STR_AUDIO_MUSIC,                 // audio.music
-    CM_STR_AUDIO_SFX,                   // audio.sfx
-    CM_STR_AUDIO_MUSIC_VOLUME,          // audio.music_volume
-    CM_STR_AUDIO_SFX_VOLUME,            // audio.sfx_volume
-    CM_STR_DISPLAY_TITLE,               // display.title
-    CM_STR_DISPLAY_SUB,                 // display.sub
-    CM_STR_DISPLAY_SCREEN,              // display.screen
-    CM_STR_DISPLAY_KEYBOARD,            // display.keyboard
-    CM_STR_DISPLAY_LEDS,                // display.leds
-    CM_STR_PAUSE_TITLE,                 // pause.title
-    CM_STR_PAUSE_RESUME,                // pause.resume
-    CM_STR_PAUSE_SAVE,                  // pause.save
-    CM_STR_PAUSE_QUIT,                  // pause.quit
-    CM_STR_COMMON_BACK,                 // common.back
-    CM_STR_HINT_LIST,                   // hint.list
-    CM_STR_HINT_ADJUST,                 // hint.adjust
-    CM_STR_STATUS_NEWER,                // status.newer
-    CM_STR_STATUS_OLDER,                // status.older
-    CM_STR_STATUS_NEEDS_NAME,           // status.needs_name
-    CM_STR_STATUS_RENAMED,              // status.renamed
-    CM_STR_STATUS_RENAME_FAILED,        // status.rename_failed
-    CM_STR_STATUS_DELETED,              // status.deleted
-    CM_STR_STATUS_DELETE_FAILED,        // status.delete_failed
-    CM_STR_STATUS_KEYS_RESET,           // status.keys_reset
-    CM_STR_LOADING_PLAIN,               // loading.plain
-    CM_STR_LOADING_WORLD,               // loading.world
-    CM_STR_LOADING_CREATING,            // loading.creating
-    CM_STR_HUD_INVENTORY,               // hud.inventory
-    CM_STR_HUD_INVENTORY_HINT,          // hud.inventory_hint
-    CM_STR_INFO_POSITION,               // info.position
-    CM_STR_INFO_FACING,                 // info.facing
-    CM_STR_INFO_CLOCK,                  // info.clock
-    CM_STR_INFO_RECORDING,              // info.recording
-    CM_STR_INFO_REPLAY,                 // info.replay
-    CM_STR_DIR_N,                       // dir.n
-    CM_STR_DIR_NE,                      // dir.ne
-    CM_STR_DIR_E,                       // dir.e
-    CM_STR_DIR_SE,                      // dir.se
-    CM_STR_DIR_S,                       // dir.s
-    CM_STR_DIR_SW,                      // dir.sw
-    CM_STR_DIR_W,                       // dir.w
-    CM_STR_DIR_NW,                      // dir.nw
-    CM_STR_SHOT_SAVED,                  // shot.saved
-    CM_STR_SHOT_FAILED,                 // shot.failed
-    CM_STR_SHOT_FULL,                   // shot.full
-    CM_STR_CRAFT_TITLE,                 // craft.title
-    CM_STR_CRAFT_TITLE_TABLE,           // craft.title_table
-    CM_STR_CRAFT_SEARCH,                // craft.search
-    CM_STR_CRAFT_HINT,                  // craft.hint
-    CM_STR_CRAFT_EMPTY,                 // craft.empty
-    CM_STR_CRAFT_EMPTY_SUB,             // craft.empty_sub
-    CM_STR_CRAFT_NO_MATCH,              // craft.no_match
-    CM_STR_CRAFT_VALUE_MAKE,            // craft.value_make
-    CM_STR_CRAFT_VALUE_MISSING,         // craft.value_missing
-    CM_STR_CRAFT_ING,                   // craft.ing
-    CM_STR_CRAFT_MADE,                  // craft.made
-    CM_STR_CRAFT_FULL,                  // craft.full
-    CM_STR_CRAFT_AUTO_ON,               // craft.auto_on
-    CM_STR_CRAFT_AUTO_OFF,              // craft.auto_off
-    CM_STR_CRAFT_AUTO_MADE,             // craft.auto_made
-    CM_STR_CRAFT_DETAIL_SUB,            // craft.detail_sub
-    CM_STR_CRAFT_DETAIL_HINT,           // craft.detail_hint
-    CM_STR_CRAFT_DETAIL_HAVE,           // craft.detail_have
-    CM_STR_ITEM_GRASS,                  // item.grass
-    CM_STR_ITEM_DIRT,                   // item.dirt
-    CM_STR_ITEM_STONE,                  // item.stone
-    CM_STR_ITEM_COBBLESTONE,            // item.cobblestone
-    CM_STR_ITEM_SAND,                   // item.sand
-    CM_STR_ITEM_WATER,                  // item.water
-    CM_STR_ITEM_LOG,                    // item.log
-    CM_STR_ITEM_PLANKS,                 // item.planks
-    CM_STR_ITEM_LEAVES,                 // item.leaves
-    CM_STR_ITEM_COAL_ORE,               // item.coal_ore
-    CM_STR_ITEM_GLASS,                  // item.glass
-    CM_STR_ITEM_TORCH,                  // item.torch
-    CM_STR_ITEM_FLOWER_RED,             // item.flower_red
-    CM_STR_ITEM_FLOWER_YELLOW,          // item.flower_yellow
-    CM_STR_ITEM_TALL_GRASS,             // item.tall_grass
-    CM_STR_ITEM_BEDROCK,                // item.bedrock
-    CM_STR_ITEM_GRAVEL,                 // item.gravel
-    CM_STR_ITEM_SIGN,                   // item.sign
-    CM_STR_ITEM_CRAFTING_TABLE,         // item.crafting_table
-    CM_STR_ITEM_FURNACE,                // item.furnace
-    CM_STR_ITEM_IRON_ORE,               // item.iron_ore
-    CM_STR_ITEM_CHEST,                  // item.chest
-    CM_STR_ITEM_TRASH_CHEST,            // item.trash_chest
-    CM_STR_ITEM_DISASSEMBLY_BENCH,      // item.disassembly_bench
-    CM_STR_ITEM_BIRCH_LOG,              // item.birch_log
-    CM_STR_ITEM_BIRCH_LEAVES,           // item.birch_leaves
-    CM_STR_ITEM_CACTUS,                 // item.cactus
-    CM_STR_ITEM_SNOW,                   // item.snow
-    CM_STR_ITEM_SANDSTONE,              // item.sandstone
-    CM_STR_ITEM_COAL,                   // item.coal
-    CM_STR_ITEM_STICK,                  // item.stick
-    CM_STR_ITEM_PICKAXE_WOOD,           // item.pickaxe_wood
-    CM_STR_ITEM_PICKAXE_STONE,          // item.pickaxe_stone
-    CM_STR_ITEM_AXE_WOOD,               // item.axe_wood
-    CM_STR_ITEM_AXE_STONE,              // item.axe_stone
-    CM_STR_ITEM_SHOVEL_WOOD,            // item.shovel_wood
-    CM_STR_ITEM_SHOVEL_STONE,           // item.shovel_stone
-    CM_STR_ITEM_IRON_INGOT,             // item.iron_ingot
-    CM_STR_ITEM_PICKAXE_IRON,           // item.pickaxe_iron
-    CM_STR_ITEM_AXE_IRON,               // item.axe_iron
-    CM_STR_ITEM_SHOVEL_IRON,            // item.shovel_iron
-    CM_STR_FURNACE_TITLE,               // furnace.title
-    CM_STR_FURNACE_INPUT,               // furnace.input
-    CM_STR_FURNACE_FUEL,                // furnace.fuel
-    CM_STR_FURNACE_OUTPUT,              // furnace.output
-    CM_STR_FURNACE_EMPTY,               // furnace.empty
-    CM_STR_FURNACE_SLOT,                // furnace.slot
-    CM_STR_FURNACE_HINT,                // furnace.hint
-    CM_STR_FURNACE_SMELTING,            // furnace.smelting
-    CM_STR_FURNACE_NO_INPUT,            // furnace.no_input
-    CM_STR_FURNACE_NO_FUEL,             // furnace.no_fuel
-    CM_STR_FURNACE_FULL,                // furnace.full
-    CM_STR_FURNACE_TOOK,                // furnace.took
-    CM_STR_FURNACE_PICK_INPUT,          // furnace.pick_input
-    CM_STR_FURNACE_PICK_FUEL,           // furnace.pick_fuel
-    CM_STR_FURNACE_PICK_NONE_INPUT,     // furnace.pick_none_input
-    CM_STR_FURNACE_PICK_NONE_FUEL,      // furnace.pick_none_fuel
-    CM_STR_FURNACE_PICK_HINT,           // furnace.pick_hint
-    CM_STR_FURNACE_BECOMES,             // furnace.becomes
-    CM_STR_FURNACE_BURNS,               // furnace.burns
-    CM_STR_CHEST_TITLE,                 // chest.title
-    CM_STR_CHEST_TITLE_TRASH,           // chest.title_trash
-    CM_STR_CHEST_YOURS,                 // chest.yours
-    CM_STR_CHEST_HINT,                  // chest.hint
-    CM_STR_CHEST_NO_ROOM,               // chest.no_room
-    CM_STR_CHEST_TRASH_WARN,            // chest.trash_warn
-    CM_STR_CHEST_TRASH_GONE,            // chest.trash_gone
-    CM_STR_AMOUNT_TITLE,                // amount.title
-    CM_STR_AMOUNT_HINT,                 // amount.hint
-    CM_STR_BENCH_TITLE,                 // bench.title
-    CM_STR_BENCH_HINT,                  // bench.hint
-    CM_STR_BENCH_EMPTY,                 // bench.empty
-    CM_STR_BENCH_GIVES,                 // bench.gives
-    CM_STR_BENCH_DONE,                  // bench.done
-    CM_STR_HUD_NEEDS_TOOL,              // hud.needs_tool
-    CM_STR_ACTION_FORWARD,              // action.forward
-    CM_STR_ACTION_BACK,                 // action.back
-    CM_STR_ACTION_LEFT,                 // action.left
-    CM_STR_ACTION_RIGHT,                // action.right
-    CM_STR_ACTION_JUMP,                 // action.jump
-    CM_STR_ACTION_SNEAK,                // action.sneak
-    CM_STR_ACTION_ATTACK,               // action.attack
-    CM_STR_ACTION_USE,                  // action.use
-    CM_STR_ACTION_LOOKUP,               // action.lookup
-    CM_STR_ACTION_LOOKDOWN,             // action.lookdown
-    CM_STR_ACTION_LOOKLEFT,             // action.lookleft
-    CM_STR_ACTION_LOOKRIGHT,            // action.lookright
-    CM_STR_ACTION_SLOT1,                // action.slot1
-    CM_STR_ACTION_SLOT2,                // action.slot2
-    CM_STR_ACTION_SLOT3,                // action.slot3
-    CM_STR_ACTION_SLOT4,                // action.slot4
-    CM_STR_ACTION_SLOT5,                // action.slot5
-    CM_STR_ACTION_SLOT6,                // action.slot6
-    CM_STR_ACTION_INV,                  // action.inv
-    CM_STR_ACTION_PAUSE,                // action.pause
-    CM_STR_ACTION_DROP,                 // action.drop
-    CM_STR_ACTION_INFO,                 // action.info
-    CM_STR_ACTION_SCREENSHOT,           // action.screenshot
-    CM_STR_ACTION_CRAFT,                // action.craft
-    CM_STR_COUNT
-} cm_str_t;
+    SM_STR_MENU_PLAY,                   // menu.play
+    SM_STR_MENU_SETTINGS,               // menu.settings
+    SM_STR_MENU_QUIT,                   // menu.quit
+    SM_STR_WORLDS_TITLE,                // worlds.title
+    SM_STR_WORLDS_SLOT,                 // worlds.slot
+    SM_STR_WORLDS_SLOT_NEWER,           // worlds.slot_newer
+    SM_STR_WORLDS_SLOT_OLDER,           // worlds.slot_older
+    SM_STR_WORLDS_SLOT_EMPTY,           // worlds.slot_empty
+    SM_STR_WORLDS_DAMAGED,              // worlds.damaged
+    SM_STR_WORLD_PLAY,                  // world.play
+    SM_STR_WORLD_RENAME,                // world.rename
+    SM_STR_WORLD_DELETE,                // world.delete
+    SM_STR_WORLD_SUB,                   // world.sub
+    SM_STR_NEW_TITLE,                   // new.title
+    SM_STR_NEW_SUB,                     // new.sub
+    SM_STR_NEW_NAME,                    // new.name
+    SM_STR_NEW_SEED,                    // new.seed
+    SM_STR_NEW_SEED_RANDOM,             // new.seed_random
+    SM_STR_NEW_CREATE,                  // new.create
+    SM_STR_NEW_CANCEL,                  // new.cancel
+    SM_STR_NEW_DEFAULT_NAME,            // new.default_name
+    SM_STR_TEXT_TITLE_RENAME,           // text.title_rename
+    SM_STR_TEXT_TITLE_NAME,             // text.title_name
+    SM_STR_TEXT_TITLE_SEED,             // text.title_seed
+    SM_STR_TEXT_SUB,                    // text.sub
+    SM_STR_TEXT_HINT,                   // text.hint
+    SM_STR_DELETE_TITLE,                // delete.title
+    SM_STR_DELETE_SUB,                  // delete.sub
+    SM_STR_DELETE_NO,                   // delete.no
+    SM_STR_DELETE_YES,                  // delete.yes
+    SM_STR_SETTINGS_TITLE,              // settings.title
+    SM_STR_SETTINGS_LANGUAGE,           // settings.language
+    SM_STR_SETTINGS_CONTROLS,           // settings.controls
+    SM_STR_SETTINGS_GRAPHICS,           // settings.graphics
+    SM_STR_SETTINGS_AUDIO,              // settings.audio
+    SM_STR_SETTINGS_DISPLAY,            // settings.display
+    SM_STR_LANGUAGE_TITLE,              // language.title
+    SM_STR_CONTROLS_TITLE,              // controls.title
+    SM_STR_CONTROLS_GYRO,               // controls.gyro
+    SM_STR_CONTROLS_RESET,              // controls.reset
+    SM_STR_CONTROLS_HINT,               // controls.hint
+    SM_STR_GRAPHICS_TITLE,              // graphics.title
+    SM_STR_GRAPHICS_VIEW,               // graphics.view
+    SM_STR_GRAPHICS_TEXTURES,           // graphics.textures
+    SM_STR_GRAPHICS_RESOLUTION,         // graphics.resolution
+    SM_STR_GRAPHICS_CLOUDS,             // graphics.clouds
+    SM_STR_GRAPHICS_CAMERA,             // graphics.camera
+    SM_STR_GRAPHICS_HAND,               // graphics.hand
+    SM_STR_VIEW_NEAR,                   // view.near
+    SM_STR_VIEW_MEDIUM,                 // view.medium
+    SM_STR_VIEW_FAR,                    // view.far
+    SM_STR_RES_HALF,                    // res.half
+    SM_STR_RES_FULL,                    // res.full
+    SM_STR_CAMERA_FIRST,                // camera.first
+    SM_STR_CAMERA_THIRD,                // camera.third
+    SM_STR_HAND_LEFT,                   // hand.left
+    SM_STR_HAND_RIGHT,                  // hand.right
+    SM_STR_AUDIO_TITLE,                 // audio.title
+    SM_STR_AUDIO_SUB,                   // audio.sub
+    SM_STR_AUDIO_VOLUME,                // audio.volume
+    SM_STR_AUDIO_MUSIC,                 // audio.music
+    SM_STR_AUDIO_SFX,                   // audio.sfx
+    SM_STR_AUDIO_MUSIC_VOLUME,          // audio.music_volume
+    SM_STR_AUDIO_SFX_VOLUME,            // audio.sfx_volume
+    SM_STR_DISPLAY_TITLE,               // display.title
+    SM_STR_DISPLAY_SUB,                 // display.sub
+    SM_STR_DISPLAY_SCREEN,              // display.screen
+    SM_STR_DISPLAY_KEYBOARD,            // display.keyboard
+    SM_STR_DISPLAY_LEDS,                // display.leds
+    SM_STR_PAUSE_TITLE,                 // pause.title
+    SM_STR_PAUSE_RESUME,                // pause.resume
+    SM_STR_PAUSE_SAVE,                  // pause.save
+    SM_STR_PAUSE_QUIT,                  // pause.quit
+    SM_STR_COMMON_BACK,                 // common.back
+    SM_STR_HINT_LIST,                   // hint.list
+    SM_STR_HINT_ADJUST,                 // hint.adjust
+    SM_STR_STATUS_NEWER,                // status.newer
+    SM_STR_STATUS_OLDER,                // status.older
+    SM_STR_STATUS_NEEDS_NAME,           // status.needs_name
+    SM_STR_STATUS_RENAMED,              // status.renamed
+    SM_STR_STATUS_RENAME_FAILED,        // status.rename_failed
+    SM_STR_STATUS_DELETED,              // status.deleted
+    SM_STR_STATUS_DELETE_FAILED,        // status.delete_failed
+    SM_STR_STATUS_KEYS_RESET,           // status.keys_reset
+    SM_STR_LOADING_PLAIN,               // loading.plain
+    SM_STR_LOADING_WORLD,               // loading.world
+    SM_STR_LOADING_CREATING,            // loading.creating
+    SM_STR_HUD_INVENTORY,               // hud.inventory
+    SM_STR_HUD_INVENTORY_HINT,          // hud.inventory_hint
+    SM_STR_INFO_POSITION,               // info.position
+    SM_STR_INFO_FACING,                 // info.facing
+    SM_STR_INFO_CLOCK,                  // info.clock
+    SM_STR_INFO_RECORDING,              // info.recording
+    SM_STR_INFO_REPLAY,                 // info.replay
+    SM_STR_DIR_N,                       // dir.n
+    SM_STR_DIR_NE,                      // dir.ne
+    SM_STR_DIR_E,                       // dir.e
+    SM_STR_DIR_SE,                      // dir.se
+    SM_STR_DIR_S,                       // dir.s
+    SM_STR_DIR_SW,                      // dir.sw
+    SM_STR_DIR_W,                       // dir.w
+    SM_STR_DIR_NW,                      // dir.nw
+    SM_STR_SHOT_SAVED,                  // shot.saved
+    SM_STR_SHOT_FAILED,                 // shot.failed
+    SM_STR_SHOT_FULL,                   // shot.full
+    SM_STR_CRAFT_TITLE,                 // craft.title
+    SM_STR_CRAFT_TITLE_TABLE,           // craft.title_table
+    SM_STR_CRAFT_SEARCH,                // craft.search
+    SM_STR_CRAFT_HINT,                  // craft.hint
+    SM_STR_CRAFT_EMPTY,                 // craft.empty
+    SM_STR_CRAFT_EMPTY_SUB,             // craft.empty_sub
+    SM_STR_CRAFT_NO_MATCH,              // craft.no_match
+    SM_STR_CRAFT_VALUE_MAKE,            // craft.value_make
+    SM_STR_CRAFT_VALUE_MISSING,         // craft.value_missing
+    SM_STR_CRAFT_ING,                   // craft.ing
+    SM_STR_CRAFT_MADE,                  // craft.made
+    SM_STR_CRAFT_FULL,                  // craft.full
+    SM_STR_CRAFT_AUTO_ON,               // craft.auto_on
+    SM_STR_CRAFT_AUTO_OFF,              // craft.auto_off
+    SM_STR_CRAFT_AUTO_MADE,             // craft.auto_made
+    SM_STR_CRAFT_DETAIL_SUB,            // craft.detail_sub
+    SM_STR_CRAFT_DETAIL_HINT,           // craft.detail_hint
+    SM_STR_CRAFT_DETAIL_HAVE,           // craft.detail_have
+    SM_STR_ITEM_GRASS,                  // item.grass
+    SM_STR_ITEM_DIRT,                   // item.dirt
+    SM_STR_ITEM_STONE,                  // item.stone
+    SM_STR_ITEM_COBBLESTONE,            // item.cobblestone
+    SM_STR_ITEM_SAND,                   // item.sand
+    SM_STR_ITEM_WATER,                  // item.water
+    SM_STR_ITEM_LOG,                    // item.log
+    SM_STR_ITEM_PLANKS,                 // item.planks
+    SM_STR_ITEM_LEAVES,                 // item.leaves
+    SM_STR_ITEM_COAL_ORE,               // item.coal_ore
+    SM_STR_ITEM_GLASS,                  // item.glass
+    SM_STR_ITEM_TORCH,                  // item.torch
+    SM_STR_ITEM_FLOWER_RED,             // item.flower_red
+    SM_STR_ITEM_FLOWER_YELLOW,          // item.flower_yellow
+    SM_STR_ITEM_TALL_GRASS,             // item.tall_grass
+    SM_STR_ITEM_BEDROCK,                // item.bedrock
+    SM_STR_ITEM_GRAVEL,                 // item.gravel
+    SM_STR_ITEM_SIGN,                   // item.sign
+    SM_STR_ITEM_CRAFTING_TABLE,         // item.crafting_table
+    SM_STR_ITEM_FURNACE,                // item.furnace
+    SM_STR_ITEM_IRON_ORE,               // item.iron_ore
+    SM_STR_ITEM_CHEST,                  // item.chest
+    SM_STR_ITEM_TRASH_CHEST,            // item.trash_chest
+    SM_STR_ITEM_DISASSEMBLY_BENCH,      // item.disassembly_bench
+    SM_STR_ITEM_BIRCH_LOG,              // item.birch_log
+    SM_STR_ITEM_BIRCH_LEAVES,           // item.birch_leaves
+    SM_STR_ITEM_CACTUS,                 // item.cactus
+    SM_STR_ITEM_SNOW,                   // item.snow
+    SM_STR_ITEM_SANDSTONE,              // item.sandstone
+    SM_STR_ITEM_COAL,                   // item.coal
+    SM_STR_ITEM_STICK,                  // item.stick
+    SM_STR_ITEM_PICKAXE_WOOD,           // item.pickaxe_wood
+    SM_STR_ITEM_PICKAXE_STONE,          // item.pickaxe_stone
+    SM_STR_ITEM_AXE_WOOD,               // item.axe_wood
+    SM_STR_ITEM_AXE_STONE,              // item.axe_stone
+    SM_STR_ITEM_SHOVEL_WOOD,            // item.shovel_wood
+    SM_STR_ITEM_SHOVEL_STONE,           // item.shovel_stone
+    SM_STR_ITEM_IRON_INGOT,             // item.iron_ingot
+    SM_STR_ITEM_PICKAXE_IRON,           // item.pickaxe_iron
+    SM_STR_ITEM_AXE_IRON,               // item.axe_iron
+    SM_STR_ITEM_SHOVEL_IRON,            // item.shovel_iron
+    SM_STR_FURNACE_TITLE,               // furnace.title
+    SM_STR_FURNACE_INPUT,               // furnace.input
+    SM_STR_FURNACE_FUEL,                // furnace.fuel
+    SM_STR_FURNACE_OUTPUT,              // furnace.output
+    SM_STR_FURNACE_EMPTY,               // furnace.empty
+    SM_STR_FURNACE_SLOT,                // furnace.slot
+    SM_STR_FURNACE_HINT,                // furnace.hint
+    SM_STR_FURNACE_SMELTING,            // furnace.smelting
+    SM_STR_FURNACE_NO_INPUT,            // furnace.no_input
+    SM_STR_FURNACE_NO_FUEL,             // furnace.no_fuel
+    SM_STR_FURNACE_FULL,                // furnace.full
+    SM_STR_FURNACE_TOOK,                // furnace.took
+    SM_STR_FURNACE_PICK_INPUT,          // furnace.pick_input
+    SM_STR_FURNACE_PICK_FUEL,           // furnace.pick_fuel
+    SM_STR_FURNACE_PICK_NONE_INPUT,     // furnace.pick_none_input
+    SM_STR_FURNACE_PICK_NONE_FUEL,      // furnace.pick_none_fuel
+    SM_STR_FURNACE_PICK_HINT,           // furnace.pick_hint
+    SM_STR_FURNACE_BECOMES,             // furnace.becomes
+    SM_STR_FURNACE_BURNS,               // furnace.burns
+    SM_STR_CHEST_TITLE,                 // chest.title
+    SM_STR_CHEST_TITLE_TRASH,           // chest.title_trash
+    SM_STR_CHEST_YOURS,                 // chest.yours
+    SM_STR_CHEST_HINT,                  // chest.hint
+    SM_STR_CHEST_NO_ROOM,               // chest.no_room
+    SM_STR_CHEST_TRASH_WARN,            // chest.trash_warn
+    SM_STR_CHEST_TRASH_GONE,            // chest.trash_gone
+    SM_STR_AMOUNT_TITLE,                // amount.title
+    SM_STR_AMOUNT_HINT,                 // amount.hint
+    SM_STR_BENCH_TITLE,                 // bench.title
+    SM_STR_BENCH_HINT,                  // bench.hint
+    SM_STR_BENCH_EMPTY,                 // bench.empty
+    SM_STR_BENCH_GIVES,                 // bench.gives
+    SM_STR_BENCH_DONE,                  // bench.done
+    SM_STR_HUD_NEEDS_TOOL,              // hud.needs_tool
+    SM_STR_ACTION_FORWARD,              // action.forward
+    SM_STR_ACTION_BACK,                 // action.back
+    SM_STR_ACTION_LEFT,                 // action.left
+    SM_STR_ACTION_RIGHT,                // action.right
+    SM_STR_ACTION_JUMP,                 // action.jump
+    SM_STR_ACTION_SNEAK,                // action.sneak
+    SM_STR_ACTION_ATTACK,               // action.attack
+    SM_STR_ACTION_USE,                  // action.use
+    SM_STR_ACTION_LOOKUP,               // action.lookup
+    SM_STR_ACTION_LOOKDOWN,             // action.lookdown
+    SM_STR_ACTION_LOOKLEFT,             // action.lookleft
+    SM_STR_ACTION_LOOKRIGHT,            // action.lookright
+    SM_STR_ACTION_SLOT1,                // action.slot1
+    SM_STR_ACTION_SLOT2,                // action.slot2
+    SM_STR_ACTION_SLOT3,                // action.slot3
+    SM_STR_ACTION_SLOT4,                // action.slot4
+    SM_STR_ACTION_SLOT5,                // action.slot5
+    SM_STR_ACTION_SLOT6,                // action.slot6
+    SM_STR_ACTION_INV,                  // action.inv
+    SM_STR_ACTION_PAUSE,                // action.pause
+    SM_STR_ACTION_DROP,                 // action.drop
+    SM_STR_ACTION_INFO,                 // action.info
+    SM_STR_ACTION_SCREENSHOT,           // action.screenshot
+    SM_STR_ACTION_CRAFT,                // action.craft
+    SM_STR_COUNT
+} sm_str_t;
 
 typedef enum {
-    CM_LANG_EN,       // en     English
-    CM_LANG_CA,       // ca     Català
-    CM_LANG_CS,       // cs     Čeština
-    CM_LANG_DA,       // da     Dansk
-    CM_LANG_DE,       // de     Deutsch
-    CM_LANG_ET,       // et     Eesti
-    CM_LANG_ES,       // es     Español
-    CM_LANG_FR,       // fr     Français
-    CM_LANG_GA,       // ga     Gaeilge
-    CM_LANG_HR,       // hr     Hrvatski
-    CM_LANG_IS,       // is     Íslenska
-    CM_LANG_IT,       // it     Italiano
-    CM_LANG_LV,       // lv     Latviešu
-    CM_LANG_LT,       // lt     Lietuvių
-    CM_LANG_HU,       // hu     Magyar
-    CM_LANG_NL,       // nl     Nederlands
-    CM_LANG_NO,       // no     Norsk
-    CM_LANG_PL,       // pl     Polski
-    CM_LANG_PT,       // pt     Português
-    CM_LANG_RO,       // ro     Română
-    CM_LANG_SQ,       // sq     Shqip
-    CM_LANG_SK,       // sk     Slovenčina
-    CM_LANG_SL,       // sl     Slovenščina
-    CM_LANG_FI,       // fi     Suomi
-    CM_LANG_SV,       // sv     Svenska
-    CM_LANG_TR,       // tr     Türkçe
-    CM_LANG_NL_BE,    // nl-BE  Vlaams
-    CM_LANG_EL,       // el     Ελληνικά
-    CM_LANG_BG,       // bg     Български
-    CM_LANG_RU,       // ru     Русский
-    CM_LANG_SR,       // sr     Српски
-    CM_LANG_UK,       // uk     Українська
-    CM_LANG_COUNT
-} cm_lang_t;
+    SM_LANG_EN,       // en     English
+    SM_LANG_CA,       // ca     Català
+    SM_LANG_CS,       // cs     Čeština
+    SM_LANG_DA,       // da     Dansk
+    SM_LANG_DE,       // de     Deutsch
+    SM_LANG_ET,       // et     Eesti
+    SM_LANG_ES,       // es     Español
+    SM_LANG_FR,       // fr     Français
+    SM_LANG_GA,       // ga     Gaeilge
+    SM_LANG_HR,       // hr     Hrvatski
+    SM_LANG_IS,       // is     Íslenska
+    SM_LANG_IT,       // it     Italiano
+    SM_LANG_LV,       // lv     Latviešu
+    SM_LANG_LT,       // lt     Lietuvių
+    SM_LANG_HU,       // hu     Magyar
+    SM_LANG_NL,       // nl     Nederlands
+    SM_LANG_NO,       // no     Norsk
+    SM_LANG_PL,       // pl     Polski
+    SM_LANG_PT,       // pt     Português
+    SM_LANG_RO,       // ro     Română
+    SM_LANG_SQ,       // sq     Shqip
+    SM_LANG_SK,       // sk     Slovenčina
+    SM_LANG_SL,       // sl     Slovenščina
+    SM_LANG_FI,       // fi     Suomi
+    SM_LANG_SV,       // sv     Svenska
+    SM_LANG_TR,       // tr     Türkçe
+    SM_LANG_NL_BE,    // nl-BE  Vlaams
+    SM_LANG_EL,       // el     Ελληνικά
+    SM_LANG_BG,       // bg     Български
+    SM_LANG_RU,       // ru     Русский
+    SM_LANG_SR,       // sr     Српски
+    SM_LANG_UK,       // uk     Українська
+    SM_LANG_COUNT
+} sm_lang_t;
 
 // [language][string]. Full for every language: a translation that
 // does not have a string was given the English one when this was
 // generated, so nothing has to fall back at run time.
-extern char const* const CM_STRINGS[CM_LANG_COUNT][CM_STR_COUNT];
-extern char const* const CM_LANG_CODES[CM_LANG_COUNT];
-extern char const* const CM_LANG_NAMES[CM_LANG_COUNT];
+extern char const* const SM_STRINGS[SM_LANG_COUNT][SM_STR_COUNT];
+extern char const* const SM_LANG_CODES[SM_LANG_COUNT];
+extern char const* const SM_LANG_NAMES[SM_LANG_COUNT];
 // The key each string is known by in lang/*.txt, for the override
 // files a player may put on the SD card (i18n_load_overrides).
-extern char const* const CM_STR_KEYS[CM_STR_COUNT];
+extern char const* const SM_STR_KEYS[SM_STR_COUNT];
 
-#endif  // CM_STRINGS_GEN_H
+#endif  // SM_STRINGS_GEN_H

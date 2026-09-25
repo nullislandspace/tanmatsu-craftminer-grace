@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  a body moving through blocks (see physics.h)
+//  SynthMiner  --  a body moving through blocks (see physics.h)
 // =====================================================================
 
 #include "game/physics.h"

@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  things lying on the ground
+//  SynthMiner  --  things lying on the ground
 // ---------------------------------------------------------------------
 //  The first thing in this world that is neither a block nor the
 //  player, so the shape here is the shape every pig, cow and zombie
@@ -16,7 +16,7 @@
 //  must not cost the player their drops. Idling next to them is what
 //  does.
 //
-//  SAVED WITH THE WORLD (D-68): every live item goes into level.cmw on
+//  SAVED WITH THE WORLD (D-68): every live item goes into level.smw on
 //  a save, and comes back when the world is opened. An item whose chunk
 //  is not loaded holds still -- no falling, no ageing, no pickup -- so
 //  keeping them all in one list loses nothing by it.

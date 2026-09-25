@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the furnace screen (see furnace_ui.h)
+//  SynthMiner  --  the furnace screen (see furnace_ui.h)
 // =====================================================================
 
 #include "ui/furnace_ui.h"
@@ -247,7 +247,7 @@ void furnace_ui_update(inventory_t* inv, uint32_t now) {
                         o->wear = 0;
                     }
                     blockent_touch(be);
-                    i18n_fmt(s_msg, sizeof(s_msg), CM_STR_FURNACE_TOOK, took, T(item_label(what)));
+                    i18n_fmt(s_msg, sizeof(s_msg), SM_STR_FURNACE_TOOK, took, T(item_label(what)));
                     s_msg_until = showtime_now() + MSG_SECONDS;
                     sfx_play(SFX_PICKUP);
                 }
@@ -264,9 +264,9 @@ void furnace_ui_update(inventory_t* inv, uint32_t now) {
 // "3 Coal", or "- empty -".
 static void slot_text(inv_slot_t const* s, char* out, size_t cap) {
     if (s->item == 0 || s->count == 0) {
-        snprintf(out, cap, "%s", T(CM_STR_FURNACE_EMPTY));
+        snprintf(out, cap, "%s", T(SM_STR_FURNACE_EMPTY));
     } else {
-        i18n_fmt(out, cap, CM_STR_FURNACE_SLOT, (int)s->count, T(item_label(s->item)));
+        i18n_fmt(out, cap, SM_STR_FURNACE_SLOT, (int)s->count, T(item_label(s->item)));
     }
 }
 
@@ -278,7 +278,7 @@ static void draw_picker(pax_buf_t* fb, inventory_t const* inv) {
     int n = 0;
     for (int i = 0; i < s_pick_n; i++) {
         inv_slot_t const* s = &inv->slot[s_pick[i]];
-        i18n_fmt(labels[n], sizeof(labels[n]), CM_STR_FURNACE_SLOT, (int)s->count, T(item_label(s->item)));
+        i18n_fmt(labels[n], sizeof(labels[n]), SM_STR_FURNACE_SLOT, (int)s->count, T(item_label(s->item)));
         memset(&rows[n], 0, sizeof(rows[n]));
         rows[n].label = labels[n];
         rows[n].kind  = SE_MENU_VAL_NONE;
@@ -286,7 +286,7 @@ static void draw_picker(pax_buf_t* fb, inventory_t const* inv) {
     }
     if (n == 0) {
         memset(&rows[0], 0, sizeof(rows[0]));
-        rows[0].label = T(fuel ? CM_STR_FURNACE_PICK_NONE_FUEL : CM_STR_FURNACE_PICK_NONE_INPUT);
+        rows[0].label = T(fuel ? SM_STR_FURNACE_PICK_NONE_FUEL : SM_STR_FURNACE_PICK_NONE_INPUT);
         n             = 1;
     }
 
@@ -302,16 +302,16 @@ static void draw_picker(pax_buf_t* fb, inventory_t const* inv) {
             // How many items this stack would see through, which is the
             // only number that makes one fuel comparable with another.
             int const per = furnace_fuel_ticks(s->item) / FURNACE_COOK_TICKS;
-            i18n_fmt(foot, sizeof(foot), CM_STR_FURNACE_BURNS, per * (int)s->count);
+            i18n_fmt(foot, sizeof(foot), SM_STR_FURNACE_BURNS, per * (int)s->count);
         } else {
-            i18n_fmt(foot, sizeof(foot), CM_STR_FURNACE_BECOMES, T(item_label(furnace_smelts_to(s->item))));
+            i18n_fmt(foot, sizeof(foot), SM_STR_FURNACE_BECOMES, T(item_label(furnace_smelts_to(s->item))));
         }
     } else {
-        snprintf(foot, sizeof(foot), "%s", T(CM_STR_FURNACE_PICK_HINT));
+        snprintf(foot, sizeof(foot), "%s", T(SM_STR_FURNACE_PICK_HINT));
     }
 
     se_menu_def_t const def = {
-        .title        = T(fuel ? CM_STR_FURNACE_PICK_FUEL : CM_STR_FURNACE_PICK_INPUT),
+        .title        = T(fuel ? SM_STR_FURNACE_PICK_FUEL : SM_STR_FURNACE_PICK_INPUT),
         .rows         = rows,
         .row_count    = n,
         .hint         = foot,
@@ -341,7 +341,7 @@ void furnace_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
 
     static char  vals[ROW_COUNT][48];
     se_menu_row_t rows[ROW_COUNT];
-    cm_str_t const names[ROW_COUNT] = {CM_STR_FURNACE_INPUT, CM_STR_FURNACE_FUEL, CM_STR_FURNACE_OUTPUT};
+    sm_str_t const names[ROW_COUNT] = {SM_STR_FURNACE_INPUT, SM_STR_FURNACE_FUEL, SM_STR_FURNACE_OUTPUT};
     int const      slots[ROW_COUNT] = {BE_FURNACE_INPUT, BE_FURNACE_FUEL, BE_FURNACE_OUTPUT};
 
     for (int i = 0; i < ROW_COUNT; i++) {
@@ -360,19 +360,19 @@ void furnace_ui_draw(pax_buf_t* fb, inventory_t const* inv) {
         snprintf(footer, sizeof(footer), "%s", s_msg);
     } else {
         switch (furnace_idle_reason(be)) {
-            case FURNACE_IDLE_NO_INPUT: snprintf(footer, sizeof(footer), "%s", T(CM_STR_FURNACE_NO_INPUT)); break;
-            case FURNACE_IDLE_NO_FUEL: snprintf(footer, sizeof(footer), "%s", T(CM_STR_FURNACE_NO_FUEL)); break;
-            case FURNACE_IDLE_FULL: snprintf(footer, sizeof(footer), "%s", T(CM_STR_FURNACE_FULL)); break;
-            default: i18n_fmt(footer, sizeof(footer), CM_STR_FURNACE_SMELTING, furnace_progress_pct(be)); break;
+            case FURNACE_IDLE_NO_INPUT: snprintf(footer, sizeof(footer), "%s", T(SM_STR_FURNACE_NO_INPUT)); break;
+            case FURNACE_IDLE_NO_FUEL: snprintf(footer, sizeof(footer), "%s", T(SM_STR_FURNACE_NO_FUEL)); break;
+            case FURNACE_IDLE_FULL: snprintf(footer, sizeof(footer), "%s", T(SM_STR_FURNACE_FULL)); break;
+            default: i18n_fmt(footer, sizeof(footer), SM_STR_FURNACE_SMELTING, furnace_progress_pct(be)); break;
         }
     }
 
     se_menu_def_t const def = {
-        .title     = T(CM_STR_FURNACE_TITLE),
+        .title     = T(SM_STR_FURNACE_TITLE),
         .subtitle  = footer,
         .rows      = rows,
         .row_count = ROW_COUNT,
-        .hint      = T(CM_STR_FURNACE_HINT),
+        .hint      = T(SM_STR_FURNACE_HINT),
         .title_h   = 32.0f,
         .row_h     = 40.0f,
         .value_dx  = 240.0f,

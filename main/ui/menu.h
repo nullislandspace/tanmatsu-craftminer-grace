@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the menus
+//  SynthMiner  --  the menus
 // ---------------------------------------------------------------------
 //  Every screen that is not the game itself:
 //
@@ -49,7 +49,7 @@ typedef enum {
 typedef struct {
     menu_cmd_kind_t kind;
     int             slot;
-    char            name[CM_WORLD_NAME_MAX];
+    char            name[SM_WORLD_NAME_MAX];
     uint32_t        seed;
 } menu_cmd_t;
 

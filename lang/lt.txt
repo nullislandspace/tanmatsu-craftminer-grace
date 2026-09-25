@@ -1,9 +1,9 @@
-# CraftMiner -- Lietuvių
+# SynthMiner -- Lietuvių
 #
 # Šį vertimą padarė dirbtinis intelektas ir jis laukia to, kas kalbą iš tikrųjų
 # moka. Jei žinai geriau: pataisyk eilutę ir paleisk
 # `python3 tools/make_lang.py`. Galima ir be įrankių -- kortelėje esantis
-# failas /sd/craftminer/lang/lt.txt su tomis pačiomis eilutėmis turi pirmenybę
+# failas /sd/synthminer/lang/lt.txt su tomis pačiomis eilutėmis turi pirmenybę
 # prieš įkompiliuotą tekstą (i18n.h).
 #
 # Raktai yra faile lang/en.txt. Ten esantys %-žymekliai turi atsirasti ir čia;
@@ -104,7 +104,7 @@ common.back = Atgal
 hint.list = aukštyn / žemyn renkasi, Enter patvirtina, Esc grįžta
 hint.adjust = aukštyn / žemyn renkasi, kairėn / dešinėn keičia, Esc grįžta
 
-status.newer = Sukurta naujesniu CraftMiner: atnaujink, kad galėtum žaisti
+status.newer = Sukurta naujesniu SynthMiner: atnaujink, kad galėtum žaisti
 status.older = Senesnis įrašo formatas: ši versija jo dar neatnaujina
 status.needs_name = Pasauliui reikia pavadinimo
 status.renamed = Pervadinta

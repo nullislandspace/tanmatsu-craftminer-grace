@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  what the player is carrying
+//  SynthMiner  --  what the player is carrying
 // ---------------------------------------------------------------------
 //  Slots of (item, count, wear). The first INV_HOTBAR are the hotbar,
 //  reachable with F1-F6; the rest is the Tab screen. One array, because

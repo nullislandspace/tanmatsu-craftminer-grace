@@ -1,9 +1,9 @@
-# CraftMiner -- Gaeilge
+# SynthMiner -- Gaeilge
 #
 # Rinne intleacht shaorga an t-aistriúchán seo agus tá sé ag fanacht le duine
 # a bhfuil an teanga aige i ndáiríre. Má tá a fhios agat níos fearr: ceartaigh
 # an líne agus rith `python3 tools/make_lang.py`. Is féidir é gan uirlisí
-# freisin -- téann comhad /sd/craftminer/lang/ga.txt ar an gcárta, leis na
+# freisin -- téann comhad /sd/synthminer/lang/ga.txt ar an gcárta, leis na
 # línte céanna, roimh an méid atá tógtha isteach (i18n.h).
 #
 # Tá na heochracha i lang/en.txt. Caithfidh na sealbhóirí % teacht arís anseo;
@@ -104,7 +104,7 @@ common.back = Ar ais
 hint.list = suas / síos a roghnaíonn, Enter a dhearbhaíonn, Esc ar ais
 hint.adjust = suas / síos a roghnaíonn, clé / deas a athraíonn, Esc ar ais
 
-status.newer = Déanta ag CraftMiner níos nuaí: uasghrádaigh chun é a imirt
+status.newer = Déanta ag SynthMiner níos nuaí: uasghrádaigh chun é a imirt
 status.older = Seanfhormáid sábhála: ní féidir leis an leagan seo é a uasghrádú fós
 status.needs_name = Teastaíonn ainm ó shaol
 status.renamed = Athainmnithe

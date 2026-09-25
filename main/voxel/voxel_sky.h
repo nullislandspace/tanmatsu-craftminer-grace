@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the sky over the block world
+//  SynthMiner  --  the sky over the block world
 // ---------------------------------------------------------------------
 //  A square sun and a square moon, unlit, far out along their directions
 //  (behind everything, so the terrain hides them at the horizon), and a
@@ -8,7 +8,7 @@
 //  colour itself is the scene's backdrop; the stars, at night, are the
 //  shared starfield.
 //  Lifted from tanmatsu-showreel-grace,
-//  main/craftminer/voxel/voxel_sky.h. Changes here are CraftMiner's;
+//  main/craftminer/voxel/voxel_sky.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

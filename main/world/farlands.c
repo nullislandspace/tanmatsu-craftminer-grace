@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the Far Lands (see farlands.h)
+//  SynthMiner  --  the Far Lands (see farlands.h)
 // ---------------------------------------------------------------------
 //  A port of Minecraft Beta 1.7.3's terrain generator: NoiseGeneratorPerlin,
 //  NoiseGeneratorOctaves and ChunkProviderGenerate's density field,
@@ -251,8 +251,8 @@ static beta_gen_t*     s_gen;
 static beta_scratch_t* s_scr;
 
 static bool beta_ready(uint32_t seed) {
-    if (s_gen == NULL) s_gen = cm_calloc(1, sizeof(beta_gen_t));
-    if (s_scr == NULL) s_scr = cm_alloc(sizeof(beta_scratch_t));
+    if (s_gen == NULL) s_gen = sm_calloc(1, sizeof(beta_gen_t));
+    if (s_scr == NULL) s_scr = sm_alloc(sizeof(beta_scratch_t));
     if (s_gen == NULL || s_scr == NULL) return false;
     if (s_gen->ready && s_gen->seed == seed) return true;
 

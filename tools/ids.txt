@@ -1,5 +1,5 @@
 # =====================================================================
-#  CraftMiner  --  every block id and item name ever shipped (D-74)
+#  SynthMiner  --  every block id and item name ever shipped (D-74)
 # ---------------------------------------------------------------------
 #  Worlds on people's cards store BLOCKS as one-byte ids and ITEMS by
 #  name (inventories, dropped items, replays). So:

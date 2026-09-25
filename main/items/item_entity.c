@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  things lying on the ground (see item_entity.h)
+//  SynthMiner  --  things lying on the ground (see item_entity.h)
 // =====================================================================
 
 #include "items/item_entity.h"
@@ -73,8 +73,8 @@ int item_entity_spawn(int32_t x, int32_t y, int32_t z, uint16_t item, int count,
         // so a felled tree's logs do not all land on one point and a
         // replay still puts them in the same places.
         uint32_t const seq = s_spawn_seq++;
-        float const    rx  = cm_rand3(x, (int32_t)(y * 3 + (int32_t)seq), z, 0x1D0Fu) - 0.5f;
-        float const    rz  = cm_rand3(x, (int32_t)(y * 7 + (int32_t)seq), z, 0x2E1Au) - 0.5f;
+        float const    rx  = sm_rand3(x, (int32_t)(y * 3 + (int32_t)seq), z, 0x1D0Fu) - 0.5f;
+        float const    rz  = sm_rand3(x, (int32_t)(y * 7 + (int32_t)seq), z, 0x2E1Au) - 0.5f;
 
         phys_body_init(&e->body, (double)x + 0.5 + (double)rx * 0.4, (double)y + 0.25, (double)z + 0.5 + (double)rz * 0.4);
         e->body.w  = ITEM_ENTITY_SIZE;

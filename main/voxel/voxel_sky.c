@@ -1,7 +1,7 @@
 // =====================================================================
-//  CraftMiner  --  the sky over the block world (see voxel_sky.h)
+//  SynthMiner  --  the sky over the block world (see voxel_sky.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/craftminer/voxel/voxel_sky.c. Changes here are CraftMiner's;
+//  main/craftminer/voxel/voxel_sky.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 
@@ -63,7 +63,7 @@ static void slab(vec3_t eye, float x0, float x1, float z0, float z1, uint32_t to
 // Cloud cells in WORLD cell coordinates: blobs of a smooth noise, not
 // a salt-and-pepper hash.
 static int cloudy(int i, int k) {
-    return cm_noise2((float)i, (float)k, 3.2f, 50u) > 0.6f;
+    return sm_noise2((float)i, (float)k, 3.2f, 50u) > 0.6f;
 }
 
 void voxel_sky_submit(float t, vec3_t sun_dir, uint32_t fog_argb, float light, int32_t ox, int32_t oz, bool clouds) {

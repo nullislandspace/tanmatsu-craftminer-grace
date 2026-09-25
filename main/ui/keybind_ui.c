@@ -1,9 +1,9 @@
 // =====================================================================
-//  CraftMiner  --  keybind value rendering (see keybind_ui.h)
+//  SynthMiner  --  keybind value rendering (see keybind_ui.h)
 //  Ported from tanmatsu-synthracer-grace, main/keybind_ui.c. Changes:
 //  it draws on the `fb` se_ui hands it rather than a global, and the
 //  text labels come from input_key_name() (game/input.h), which also
-//  names the cursor keys -- synthracer never bound those, CraftMiner
+//  names the cursor keys -- synthracer never bound those, SynthMiner
 //  ships them as the look keys.
 // =====================================================================
 

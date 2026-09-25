@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the app skeleton
+//  SynthMiner  --  the app skeleton
 // ---------------------------------------------------------------------
 //  The whole app for now: one block turning in front of the camera, lit
 //  by a sun. It is here to prove the shape of an engine app end to end
@@ -72,7 +72,7 @@
 #include "world/worldgen.h"
 #include "world/worldstore.h"
 
-static char const TAG[] = "craftminer";
+static char const TAG[] = "synthminer";
 
 // The near clip plane has to be closer than the nearest thing the eye
 // can legitimately be to, or that thing is clipped away and the player
@@ -173,7 +173,7 @@ typedef enum { CAM_PLAYER = 0, CAM_FREE, CAM_SCRIPTED } cam_mode_t;
 // reason this is a state machine rather than a flag: the WORLD changes
 // with the screen, and the chunk store has to be told.
 typedef enum {
-    APP_TITLE = 0,  // "CraftMiner" in blocks over a generated meadow
+    APP_TITLE = 0,  // "SynthMiner" in blocks over a generated meadow
     APP_PLAY,       // a real world, open and saving
     APP_LOADING,    // generating what the next state will look at, with a progress bar
 } app_state_t;
@@ -202,13 +202,13 @@ static void start_loading(double wx, double wz, app_state_t next, char const* wh
 
 static daytime_t s_day;
 
-// A screenshot asked for (CM_SCREENSHOT), and the line that says where it
+// A screenshot asked for (SM_SCREENSHOT), and the line that says where it
 // went (take_screenshot).
 static bool   s_shot_wanted;
 static char   s_shot_msg[64];
 static double s_shot_msg_until;
 
-// The position overlay (CM_INFO, Backspace by default).
+// The position overlay (SM_INFO, Backspace by default).
 static bool s_info;
 
 // Fred (fred/fred.h): his walk cycle and the swing of his arm, advanced
@@ -440,10 +440,10 @@ static bool content_select(char const* name) {
     static char base[48];  // the size of the scene buffers below
     char const* dot = strrchr(name, '.');
     if (dot != NULL) {
-        cm_lang_t lang;
+        sm_lang_t lang;
         if (i18n_language_from_code(dot + 1, &lang)) {
             i18n_set_language(lang);
-            i18n_load_overrides(CM_DATA_DIR);
+            i18n_load_overrides(SM_DATA_DIR);
             snprintf(base, sizeof(base), "%.*s", (int)(dot - name), name);
             name = base;
             ESP_LOGI(TAG, "scene language: %s", i18n_language_code(lang));
@@ -455,7 +455,7 @@ static bool content_select(char const* name) {
         s_content_t0 = showtime_now();
         return run_savecheck();
     }
-    // "replay" -- play replays/test.cmr (or the last recording) on a
+    // "replay" -- play replays/test.smr (or the last recording) on a
     // scratch world: the reproducible walk the perf and shots tests want.
     // Options follow as _words, for measuring one feature against another
     // on the same walk: third, left, near / medium / far, nolight,
@@ -553,7 +553,7 @@ static bool content_select(char const* name) {
         s_title_t0 = s_content_t0;
         s_flying     = true;
         if (SCENES[i].preset >= 0) {
-            cm_view_t const v = cm_view_preset(SCENES[i].preset);
+            sm_view_t const v = sm_view_preset(SCENES[i].preset);
             chunk_render_set_view(&v);
             ESP_LOGI(TAG, "scene '%s': draw %d blocks, load radius %d, evict %d", SCENES[i].name, (int)v.draw_dist,
                      v.load_radius, v.evict_radius);
@@ -586,7 +586,7 @@ static devtest_content_t const CONTENT = {
 };
 
 static devtest_config_t const TEST = {
-    .app      = "at.cavac.craftminer",
+    .app      = "at.cavac.synthminer",
     .shot_dir = SCREENSHOT_DIR,
     .content  = &CONTENT,
 };
@@ -690,12 +690,25 @@ static void frame_stats(void) {
     s_frames    = 0;
 }
 
+// The reports datadir.c writes are one line per thing it did, packed
+// into a single buffer. Log them as separate lines: a 1 KB ESP_LOGI is
+// unreadable, and truncated in the debug console besides.
+static void log_lines(char const* what, char* report) {
+    for (char* line = report; *line != '\0';) {
+        char* const end = strchr(line, '\n');
+        if (end != NULL) *end = '\0';
+        ESP_LOGI(TAG, "%s: %s", what, line);
+        if (end == NULL) break;
+        line = end + 1;
+    }
+}
+
 // --- Callbacks ----------------------------------------------------------
 
 // Once, after the engine has booted the display, audio, input and scene.
 static void on_init(void* user) {
     (void)user;
-    ESP_LOGI(TAG, "CraftMiner on SynthEngine3D %s", se_version_string());
+    ESP_LOGI(TAG, "SynthMiner on SynthEngine3D %s", se_version_string());
     devtest_start(&TEST);
 
     // THE ENGINE'S OWN SPLASH, with its version -- the first thing the
@@ -703,7 +716,7 @@ static void on_init(void* user) {
     // because the default subtitle is "Version <se_version_string()>"
     // and tracks the engine instead of going stale in a string here.
     //
-    // The "CraftMiner" card that used to be here was a placeholder and
+    // The "SynthMiner" card that used to be here was a placeholder and
     // is gone: the game's own title belongs on the title screen (step
     // 5.1), not on a second text splash the player has to sit through.
     se_splash();
@@ -765,44 +778,68 @@ static void on_init(void* user) {
     // is applied on entering a world: the title has a view of its own.
     // Bindings registered first: the settings file restores them.
     input_init();
-    // THE PLAYER'S DATA lives in /sd/craftminer, where the launcher cannot
-    // empty it on an update (datadir.h). Earlier builds kept it in the
-    // install directory; it moves across here, before anything reads it.
+    // THE PLAYER'S DATA lives in /sd/synthminer, where the launcher cannot
+    // empty it on an update (datadir.h). CraftMiner's card is turned
+    // into SynthMiner's here, before anything reads a world, and in this
+    // order (D-91, D-92):
+    //
+    //   1. adopt /sd/craftminer          where any recent CraftMiner kept it
+    //   2. adopt /sd/apps/at.cavac.craftminer   where one from before D-80 did
+    //   3. rename the saved files        level.cmw -> .smw, r.*.cmr -> .smr
+    //   4. delete both old directories   once they are provably empty
+    //
+    // 1 before 2 so that a card holding both keeps the NEWER layout: no
+    // adoption overwrites, so whatever arrives first holds the place.
+    // 4 last, and it refuses if 1 or 2 left anything behind.
+    //
+    // This app does NOT adopt from its own install directory. SynthMiner
+    // has only ever existed with the data already split out, so that
+    // directory has never held a player's anything.
     {
         char      report[1024];
-        int const moved = datadir_adopt(graceloader_get_install_basepath(), CM_DATA_DIR, report, sizeof(report));
-        if (moved < 0) ESP_LOGE(TAG, "could not create %s", CM_DATA_DIR);
-        for (char* line = report; *line != '\0';) {
-            char* const end = strchr(line, '\n');
-            if (end != NULL) *end = '\0';
-            ESP_LOGI(TAG, "data: %s", line);
-            if (end == NULL) break;
-            line = end + 1;
-        }
+        int const made = datadir_adopt(SM_DATA_DIR_WAS, SM_DATA_DIR, DD_DATA, report, sizeof(report));
+        if (made < 0) ESP_LOGE(TAG, "could not create %s", SM_DATA_DIR);
+        log_lines("data", report);
+
+        (void)datadir_adopt(SM_INSTALL_WAS, SM_DATA_DIR, DD_INSTALL, report, sizeof(report));
+        log_lines("data", report);
+
+        int const renamed = datadir_rename_saves(SM_DATA_DIR, report, sizeof(report));
+        if (renamed > 0) ESP_LOGI(TAG, "saves: %d file(s) renamed for SynthMiner", renamed);
+        log_lines("saves", report);
+
+        // And the old game goes. The install directory is what the
+        // launcher lists, so removing it is what takes CraftMiner off
+        // the menu -- this app is `external_only`, so it was never in
+        // appfs to be removed from (D-92).
+        datadir_retire(SM_DATA_DIR_WAS, SM_DATA_DIR, DD_DATA, report, sizeof(report));
+        log_lines("retire", report);
+        datadir_retire(SM_INSTALL_WAS, graceloader_get_install_basepath(), DD_INSTALL, report, sizeof(report));
+        log_lines("retire", report);
     }
-    settings_load(CM_DATA_DIR);
+    settings_load(SM_DATA_DIR);
     // settings.txt named the language; this is where a player's own
     // corrections to that language, if they have put any on the card,
     // come in over the baked-in text (i18n.h).
-    i18n_load_overrides(CM_DATA_DIR);
+    i18n_load_overrides(SM_DATA_DIR);
     ESP_LOGI(TAG, "language: %s (%s)", i18n_language_code(i18n_language()),
              i18n_language_name(i18n_language()));
     // The speaker, now that settings.txt has said whether the player
     // wants music and effects. Failing to start is not fatal: the game
     // runs silent (audio.h).
-    cm_audio_init();
+    sm_audio_init();
     // The launcher's key-cap PNGs, for the Controls menu (synthracer's
     // icons.c). Missing ones fall back to a text label.
     icons_load();
     chunk_render_set_textured(settings_textured());
-    chunk_render_set_view(&(cm_view_t){0});
-    cm_view_t const v = cm_view_preset(view_setting());
+    chunk_render_set_view(&(sm_view_t){0});
+    sm_view_t const v = sm_view_preset(view_setting());
     chunk_render_set_view(&v);
     texcache_report();
     log_memory("textures loaded");
 
     // The worlds on the card.
-    if (!worldstore_init(CM_DATA_DIR)) {
+    if (!worldstore_init(SM_DATA_DIR)) {
         ESP_LOGE(TAG, "worldstore_init failed");
         return;
     }
@@ -862,12 +899,12 @@ static bool enter_title(void) {
     // Stop mid-stride: a footstep left ringing across the world change,
     // and a step accumulator carried into the next world, would both be
     // heard (audio.h).
-    cm_audio_leave_world();
+    sm_audio_leave_world();
     drain_and_clear();
     worldstore_close();
     if (!title_begin()) return false;
     chunk_worker_set_world(title_seed(), FARLANDS_X_DEFAULT);
-    cm_view_t const tv = title_view();
+    sm_view_t const tv = title_view();
     chunk_render_set_view(&tv);
 
     // Everything the drift will look at, before the first letter is
@@ -877,7 +914,7 @@ static bool enter_title(void) {
     title_stream_at(0.5 * 16.0, &px, &pz);  // the middle of the loop
     s_cam_mode = CAM_PLAYER;
     menu_close();  // opened when the loading is done
-    start_loading(px, pz, APP_TITLE, T(CM_STR_LOADING_PLAIN), LOAD_GATE_ALL);
+    start_loading(px, pz, APP_TITLE, T(SM_STR_LOADING_PLAIN), LOAD_GATE_ALL);
     return true;
 }
 
@@ -887,7 +924,7 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     drain_and_clear();
     title_end();
 
-    char slug[CM_WORLD_SLUG_MAX];
+    char slug[SM_WORLD_SLUG_MAX];
     worldstore_slot_slug(slot, slug, sizeof(slug));
     bool const ok = create ? worldstore_create_in(slot, name, seed, &s_meta, &s_saved)
                            : worldstore_open(slug, &s_meta, &s_saved, &s_items);
@@ -903,7 +940,7 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     chunk_worker_set_world(s_meta.seed, s_meta.farlands_x);
     // The player's own view distance: the title's is generous because
     // it is looking at one static word, not walking.
-    cm_view_t const pv = cm_view_preset(view_setting());
+    sm_view_t const pv = sm_view_preset(view_setting());
     chunk_render_set_view(&pv);
     // What was lying on the ground when they left.
     item_entity_restore(s_items.e, create ? 0 : s_items.n);
@@ -941,20 +978,20 @@ static bool enter_world(int slot, bool create, char const* name, uint32_t seed) 
     // The ground under the player before the player is on it (D-26),
     // behind a progress bar (5.5). The rest streams in behind them while
     // they are already walking, which is what the freeze above covers.
-    start_loading(s_saved.x, s_saved.z, APP_PLAY, T(create ? CM_STR_LOADING_CREATING : CM_STR_LOADING_WORLD),
+    start_loading(s_saved.x, s_saved.z, APP_PLAY, T(create ? SM_STR_LOADING_CREATING : SM_STR_LOADING_WORLD),
                   create ? LOAD_GATE_ALL : LOAD_GATE_3X3);
     ESP_LOGI(TAG, "entering at %.1f, %.1f, %.1f (%s)", s_saved.x, s_saved.y, s_saved.z,
              s_saved.placed ? "where they left" : "a new player");
     return true;
 }
 
-// Finish a recording and write it to replays/last.cmr.
+// Finish a recording and write it to replays/last.smr.
 static void stop_recording(void) {
     if (!replay_recording()) return;
     char dir[160], path[192];
-    snprintf(dir, sizeof(dir), "%s/replays", CM_DATA_DIR);
-    cm_mkdir_p(dir);
-    snprintf(path, sizeof(path), "%s/last.cmr", dir);
+    snprintf(dir, sizeof(dir), "%s/replays", SM_DATA_DIR);
+    sm_mkdir_p(dir);
+    snprintf(path, sizeof(path), "%s/last.smr", dir);
     bool const ok = replay_record_end(path);
     ESP_LOGI(TAG, "replay recording stopped: %s %s", path, ok ? "written" : "NOT WRITTEN");
 }
@@ -1027,7 +1064,7 @@ static bool run_savecheck(void) {
     }
     report_emitf("SAVECHECK", "{\"t\":\"savecheck\",\"edits\":%d,\"survived\":%d,\"chunks_saved\":%d,\"level\":%s}",
                  SAVECHECK_EDITS, survived, saved, level_ok ? "true" : "false");
-    ESP_LOGI(TAG, "savecheck: %d of %d edits survived (%d chunks saved, level.cmw %s)", survived, SAVECHECK_EDITS,
+    ESP_LOGI(TAG, "savecheck: %d of %d edits survived (%d chunks saved, level.smw %s)", survived, SAVECHECK_EDITS,
              saved, level_ok ? "written" : "FAILED");
     if (survived != SAVECHECK_EDITS || !level_ok) devtest_content_failed("edits were lost across a save and reload");
 
@@ -1068,7 +1105,7 @@ static bool enter_bench(bool generate) {
 
     s_meta.time_of_day = TITLE_TIME;  // a fixed morning: the light is part of the measurement
     chunk_worker_set_world(s_meta.seed, s_meta.farlands_x);
-    cm_view_t const pv = cm_view_preset(view_setting());
+    sm_view_t const pv = sm_view_preset(view_setting());
     chunk_render_set_view(&pv);
     item_entity_reset();
     player_reset(&s_player);
@@ -1094,7 +1131,7 @@ static bool enter_flight(void) {
     worldstore_open_scratch(0xC0FFEEu, &s_meta, &s_saved);
     s_meta.time_of_day = TITLE_TIME;  // a morning, as the old builds always were
     chunk_worker_set_world(0xC0FFEEu, s_meta.farlands_x);
-    cm_view_t const pv = cm_view_preset(view_setting());
+    sm_view_t const pv = sm_view_preset(view_setting());
     chunk_render_set_view(&pv);
     item_entity_reset();
     player_reset(&s_player);
@@ -1118,11 +1155,11 @@ static bool enter_flight(void) {
 static bool enter_replay(void) {
     char           path[192];
     replay_start_t st;
-    snprintf(path, sizeof(path), "%s/replays/test.cmr", CM_DATA_DIR);
+    snprintf(path, sizeof(path), "%s/replays/test.smr", SM_DATA_DIR);
     if (!replay_load(path, &st)) {
-        snprintf(path, sizeof(path), "%s/replays/last.cmr", CM_DATA_DIR);
+        snprintf(path, sizeof(path), "%s/replays/last.smr", SM_DATA_DIR);
         if (!replay_load(path, &st)) {
-            ESP_LOGW(TAG, "no replay to play (replays/test.cmr or replays/last.cmr)");
+            ESP_LOGW(TAG, "no replay to play (replays/test.smr or replays/last.smr)");
             return false;
         }
     }
@@ -1132,7 +1169,7 @@ static bool enter_replay(void) {
     worldstore_open_scratch(st.seed, &s_meta, &s_saved);
     s_meta.time_of_day = st.time_of_day;
     chunk_worker_set_world(st.seed, s_meta.farlands_x);
-    cm_view_t const pv = cm_view_preset(view_setting());
+    sm_view_t const pv = sm_view_preset(view_setting());
     chunk_render_set_view(&pv);
     item_entity_reset();
     player_reset(&s_player);
@@ -1195,7 +1232,7 @@ static void save_world(char const* why) {
 
     s_items.n     = item_entity_copy(s_items.e, ITEM_ENTITY_MAX);
     bool const ok = worldstore_save(&s_meta, &s_saved, &s_items);
-    ESP_LOGI(TAG, "saved (%s): %d chunk(s), level.cmw %s", why, chunks, ok ? "written" : "FAILED");
+    ESP_LOGI(TAG, "saved (%s): %d chunk(s), level.smw %s", why, chunks, ok ? "written" : "FAILED");
     menu_status(ok ? "Saved" : "SAVING FAILED");
 }
 
@@ -1342,7 +1379,7 @@ static void loading_step(void) {
 static void draw_loading(pax_buf_t* fb) {
     pax_background(fb, 0xFF14181Eu);
     float const       w   = (float)DISPLAY_LOG_W, h = (float)DISPLAY_LOG_H;
-    char const* const msg = s_load.what != NULL ? s_load.what : T(CM_STR_LOADING_PLAIN);
+    char const* const msg = s_load.what != NULL ? s_load.what : T(SM_STR_LOADING_PLAIN);
     pax_vec2f const   sz  = rendertext_size(NULL, 30.0f, msg);
     rendertext_draw(fb, 0xFFFFFFFFu, NULL, 30.0f, (w - sz.x) * 0.5f, h * 0.40f, msg);
     // The world's name -- not a scratch world's placeholder.
@@ -1413,7 +1450,7 @@ static void on_update(float dt, void* user) {
     // it is not part of the world and a paused game should not freeze
     // mid-piece. Reads the card when a new piece is due, which is why it
     // is here on the game thread and not in the mixer (music.h).
-    cm_audio_frame(dt);
+    sm_audio_frame(dt);
 
     // Generating what the next screen needs, a slice a frame.
     if (s_app == APP_LOADING) {
@@ -1471,13 +1508,13 @@ static void on_update(float dt, void* user) {
                 break;
             case MENU_CMD_LEAVE:
                 ESP_LOGI(TAG, "leaving for the launcher");
-                cm_audio_shutdown();  // a speaker left running across the restart squeals
+                sm_audio_shutdown();  // a speaker left running across the restart squeals
                 bsp_device_restart_to_launcher();
                 break;
             case MENU_CMD_GRAPHICS:
                 chunk_render_set_textured(settings_textured());
                 if (s_app == APP_PLAY) {
-                    cm_view_t const v = cm_view_preset(view_setting());
+                    sm_view_t const v = sm_view_preset(view_setting());
                     chunk_render_set_view(&v);
                 }
                 break;
@@ -1563,7 +1600,7 @@ static void on_update(float dt, void* user) {
             n              = want > replay_position() ? want - replay_position() : 0;
         }
         for (int i = 0; i < n; i++) {
-            cm_actions_t mask;
+            sm_actions_t mask;
             if (replay_playing()) {
                 uint32_t m  = 0;
                 float    gy = 0.0f, gp = 0.0f;
@@ -1579,7 +1616,7 @@ static void on_update(float dt, void* user) {
                 }
             }
             player_tick(&s_player, mask, input_pressed());
-            cm_audio_player_tick(&s_player);  // footsteps and landings, AFTER the tick
+            sm_audio_player_tick(&s_player);  // footsteps and landings, AFTER the tick
             // A block the player opened. The registry says WHICH blocks
             // open something (BF2_USABLE); what each one opens is here.
             // Only if it is not already showing: OPENING a screen
@@ -1706,7 +1743,7 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
     // who rebinds Pause must not lose the way out. The inventory closes
     // first, the way it does everywhere else. Opening the menu SAVES:
     // on a handheld, pausing is what people do before switching it off.
-    if (sc == input_key(CM_PAUSE) || sc == BSP_INPUT_SCANCODE_ESC) {
+    if (sc == input_key(SM_PAUSE) || sc == BSP_INPUT_SCANCODE_ESC) {
         if (s_player.inv.open) {
             s_player.inv.open = false;
             return;
@@ -1723,21 +1760,21 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
     // The crafting book, on its own binding. An event and not a polled
     // binding, like the overlay below: opening a screen happens once,
     // when the key goes down.
-    if (sc == input_key(CM_CRAFT)) {
+    if (sc == input_key(SM_CRAFT)) {
         s_player.inv.open = false;  // one full-screen thing at a time
         craft_ui_open(RS_INVENTORY);
         return;
     }
 
     // The position overlay, on its own binding.
-    if (sc == input_key(CM_INFO)) {
+    if (sc == input_key(SM_INFO)) {
         s_info = !s_info;
         return;
     }
 
     // A screenshot: taken at the end of the frame being drawn, once
     // everything including the HUD is on it (on_render).
-    if (sc == input_key(CM_SCREENSHOT)) {
+    if (sc == input_key(SM_SCREENSHOT)) {
         s_shot_wanted = true;
         return;
     }
@@ -1753,7 +1790,7 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
             return;
         case BSP_INPUT_SCANCODE_R:
             // Record a replay: from here, until R again. Written to
-            // replays/last.cmr; copy it to test.cmr to make it the one
+            // replays/last.smr; copy it to test.smr to make it the one
             // the `replay` scene plays.
             if (replay_recording()) {
                 stop_recording();
@@ -1816,17 +1853,17 @@ static void on_input(bsp_input_event_t const* ev, void* user) {
 // from +z towards +x (forward (sin yaw, cos yaw), right (cos yaw,
 // -sin yaw)), which is north-to-east on a map with north up; and the sun
 // rises at +x (game/daytime.c), so east is where it should be.
-// --- Screenshots (CM_SCREENSHOT, 0 by default) ---------------------------
+// --- Screenshots (SM_SCREENSHOT, 0 by default) ---------------------------
 //
 // The player's own, not the test kit's: the frame as they see it, HUD and
-// all, into /sd/craftminer/screenshots/shotNNN.png -- next to the worlds,
+// all, into /sd/synthminer/screenshots/shotNNN.png -- next to the worlds,
 // so it comes off the card with them. The "saved" line shows on the frames
 // AFTER the capture, so it is never in the picture.
 
 static void take_screenshot(pax_buf_t* fb) {
     char dir[160], path[192];
-    snprintf(dir, sizeof(dir), "%s/screenshots", CM_DATA_DIR);
-    cm_mkdir_p(dir);
+    snprintf(dir, sizeof(dir), "%s/screenshots", SM_DATA_DIR);
+    sm_mkdir_p(dir);
     // The next free number. The stdio here has no stat(), so "free" is
     // "does not open".
     int n = 1;
@@ -1838,17 +1875,17 @@ static void take_screenshot(pax_buf_t* fb) {
     }
     bool const ok = n < 1000 && screenshot_capture_to(fb, path);
     if (ok) {
-        i18n_fmt(s_shot_msg, sizeof(s_shot_msg), CM_STR_SHOT_SAVED, n);
+        i18n_fmt(s_shot_msg, sizeof(s_shot_msg), SM_STR_SHOT_SAVED, n);
     } else {
-        snprintf(s_shot_msg, sizeof(s_shot_msg), "%s", T(n < 1000 ? CM_STR_SHOT_FAILED : CM_STR_SHOT_FULL));
+        snprintf(s_shot_msg, sizeof(s_shot_msg), "%s", T(n < 1000 ? SM_STR_SHOT_FAILED : SM_STR_SHOT_FULL));
     }
     ESP_LOGI(TAG, "screenshot: %s", s_shot_msg);
     s_shot_msg_until = showtime_now() + 2.5;
 }
 
 static void draw_info(pax_buf_t* fb) {
-    static cm_str_t const NAMES[8] = {CM_STR_DIR_N,  CM_STR_DIR_NE, CM_STR_DIR_E,  CM_STR_DIR_SE,
-                                      CM_STR_DIR_S,  CM_STR_DIR_SW, CM_STR_DIR_W,  CM_STR_DIR_NW};
+    static sm_str_t const NAMES[8] = {SM_STR_DIR_N,  SM_STR_DIR_NE, SM_STR_DIR_E,  SM_STR_DIR_SE,
+                                      SM_STR_DIR_S,  SM_STR_DIR_SW, SM_STR_DIR_W,  SM_STR_DIR_NW};
     float deg = s_player.yaw * (180.0f / 3.14159265f);
     deg       = fmodf(deg, 360.0f);
     if (deg < 0.0f) deg += 360.0f;
@@ -1858,13 +1895,13 @@ static void draw_info(pax_buf_t* fb) {
     daytime_clock(s_meta.time_of_day, &hh, &mm);
 
     char pos[64], face[48], clock[48], extra[48];
-    i18n_fmt(pos, sizeof(pos), CM_STR_INFO_POSITION, (double)s_player.body.x, (double)s_player.body.y,
+    i18n_fmt(pos, sizeof(pos), SM_STR_INFO_POSITION, (double)s_player.body.x, (double)s_player.body.y,
              (double)s_player.body.z);
-    i18n_fmt(face, sizeof(face), CM_STR_INFO_FACING, T(NAMES[octant]), (int)(deg + 0.5f) % 360);
-    i18n_fmt(clock, sizeof(clock), CM_STR_INFO_CLOCK, hh, mm, (long long)(s_meta.time_of_day / DAY_TICKS) + 1);
+    i18n_fmt(face, sizeof(face), SM_STR_INFO_FACING, T(NAMES[octant]), (int)(deg + 0.5f) % 360);
+    i18n_fmt(clock, sizeof(clock), SM_STR_INFO_CLOCK, hh, mm, (long long)(s_meta.time_of_day / DAY_TICKS) + 1);
     extra[0] = '\0';
-    if (replay_recording()) snprintf(extra, sizeof(extra), "%s", T(CM_STR_INFO_RECORDING));
-    if (replay_playing()) i18n_fmt(extra, sizeof(extra), CM_STR_INFO_REPLAY, replay_position(), replay_length());
+    if (replay_recording()) snprintf(extra, sizeof(extra), "%s", T(SM_STR_INFO_RECORDING));
+    if (replay_playing()) i18n_fmt(extra, sizeof(extra), SM_STR_INFO_REPLAY, replay_position(), replay_length());
     bool const        msg      = showtime_now() < s_shot_msg_until;
     char const* const lines[5] = {pos, face, clock, extra, msg ? s_shot_msg : NULL};
     hud_text_lines(fb, lines, 5);
@@ -2064,7 +2101,7 @@ static void on_render(pax_buf_t* fb, void* user) {
         if (cheat_ui_active()) cheat_ui_draw(fb);
         if (s_player.needs_tool != 0) {
             char line[96];
-            i18n_fmt(line, sizeof(line), CM_STR_HUD_NEEDS_TOOL, T(item_label(s_player.needs_tool)));
+            i18n_fmt(line, sizeof(line), SM_STR_HUD_NEEDS_TOOL, T(item_label(s_player.needs_tool)));
             char const* const lines = line;
             hud_text_lines(fb, &lines, 1);
         } else if (s_info || replay_recording()) {

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  terrain generation (see worldgen.h)
+//  SynthMiner  --  terrain generation (see worldgen.h)
 // ---------------------------------------------------------------------
 //  The shape of a world, in the order it is built:
 //
@@ -138,8 +138,8 @@ void worldgen_biome_weights(int32_t x, int32_t z, uint32_t seed, float w[BIOME_C
     // SLOWER THAN THE HILLS AND FASTER THAN THE CONTINENTS: at 420 and
     // 360 blocks a biome is a few minutes across on foot, which is far
     // enough to feel like somewhere and near enough to find another.
-    float const temp  = cm_fbm2((float)x, (float)z, 420.0f, 3, seed ^ S_TEMP);
-    float const humid = cm_fbm2((float)x, (float)z, 360.0f, 3, seed ^ S_HUMID);
+    float const temp  = sm_fbm2((float)x, (float)z, 420.0f, 3, seed ^ S_TEMP);
+    float const humid = sm_fbm2((float)x, (float)z, 360.0f, 3, seed ^ S_HUMID);
 
     float const cold = step_down(temp, 0.32f);
     float const hot  = step_up(temp, 0.60f);
@@ -150,7 +150,7 @@ void worldgen_biome_weights(int32_t x, int32_t z, uint32_t seed, float w[BIOME_C
     // kinds of wood. It is its own field rather than a corner of the
     // temperature/humidity square because a birch wood is not a
     // climate -- it is which trees happened to win here.
-    float const birchy = step_up(cm_fbm2((float)x, (float)z, 260.0f, 2, seed ^ S_VARIANT), 0.66f);
+    float const birchy = step_up(sm_fbm2((float)x, (float)z, 260.0f, 2, seed ^ S_VARIANT), 0.66f);
 
     // In order of precedence, each one taking what the ones before it
     // left: cold ground is mountains whatever else it is, hot AND dry
@@ -174,7 +174,7 @@ bool worldgen_snow(int32_t x, int32_t z, uint32_t seed) {
     // ground, which is the number that was asked for. Swept, like the
     // cave mouths and the cold edge: 0.74 gives 9%, 0.70 gives 15%,
     // 0.66 gives 22%. worldcheck prints the share every run.
-    return cm_fbm2((float)x, (float)z, 300.0f, 2, seed ^ S_SNOW) > 0.67f;
+    return sm_fbm2((float)x, (float)z, 300.0f, 2, seed ^ S_SNOW) > 0.67f;
 }
 
 uint8_t worldgen_biome(int32_t x, int32_t z, uint32_t seed) {
@@ -196,11 +196,11 @@ int worldgen_height(int32_t x, int32_t z, uint32_t seed) {
 
     // Broad: decides land and sea. Pushed through a smoothstep-ish
     // curve so coasts are definite rather than endless shallows.
-    float c = cm_fbm2(fx, fz, 320.0f, 3, seed ^ S_CONT);
+    float c = sm_fbm2(fx, fz, 320.0f, 3, seed ^ S_CONT);
     c = c * c * (3.0f - 2.0f * c);
 
     // Fine: hills. Squared, so flat ground is common and peaks are not.
-    float const h = cm_fbm2(fx, fz, 56.0f, 4, seed ^ S_HILL);
+    float const h = sm_fbm2(fx, fz, 56.0f, 4, seed ^ S_HILL);
 
     // The three numbers, mixed by each biome's smooth share of this
     // spot. Continuous because the weights are, so a biome border is a
@@ -217,7 +217,7 @@ int worldgen_height(int32_t x, int32_t z, uint32_t seed) {
     float y = base + c * cont + h * h * hill;
 
     // A little per-block wobble keeps long slopes from looking milled.
-    y += (cm_noise2(fx, fz, 7.0f, seed ^ S_DETAIL) - 0.5f) * 1.5f;
+    y += (sm_noise2(fx, fz, 7.0f, seed ^ S_DETAIL) - 0.5f) * 1.5f;
 
     int const iy = (int)floorf(y);
     return iy < 1 ? 1 : iy > CH_H - 8 ? CH_H - 8 : iy;
@@ -238,7 +238,7 @@ int worldgen_height(int32_t x, int32_t z, uint32_t seed) {
 // worldcheck's "ores" section prints the number and fails either way
 // off it.
 static bool cave_mouth(int32_t x, int32_t z, uint32_t seed) {
-    return cm_fbm2((float)x, (float)z, 160.0f, 2, seed ^ S_MOUTH) > 0.84f;
+    return sm_fbm2((float)x, (float)z, 160.0f, 2, seed ^ S_MOUTH) > 0.84f;
 }
 
 // Caves. The field is sampled at block resolution, which is exactly the
@@ -251,8 +251,8 @@ static bool cave_at(int32_t x, int y, int32_t z, int surface, uint32_t seed, boo
 
     // Two fields at right angles to each other carve tunnels where both
     // are near their midpoint -- long worms rather than round bubbles.
-    float const a = cm_noise3((float)x, (float)y * 2.0f, (float)z, 22.0f, seed ^ S_CAVE);
-    float const b = cm_noise3((float)x, (float)y * 2.0f, (float)z, 22.0f, seed ^ (S_CAVE + 0x99u));
+    float const a = sm_noise3((float)x, (float)y * 2.0f, (float)z, 22.0f, seed ^ S_CAVE);
+    float const b = sm_noise3((float)x, (float)y * 2.0f, (float)z, 22.0f, seed ^ (S_CAVE + 0x99u));
     float const da = fabsf(a - 0.5f), db = fabsf(b - 0.5f);
 
     // Wider with depth, so the deep world is more open than the shallow
@@ -306,19 +306,19 @@ static bool vein_at(int32_t x, int y, int32_t z, uint32_t seed, uint32_t salt, i
             for (int dy = -1; dy <= 1; dy++) {
                 int32_t const gx = cx + dx, gz = cz + dz;
                 int const     gy = cy + dy;
-                if (cm_rand3(gx, gy, gz, seed ^ salt) > chance) continue;
+                if (sm_rand3(gx, gy, gz, seed ^ salt) > chance) continue;
 
                 // Where in its cell the vein sits, and how it is shaped.
-                float const ox = (float)(gx * VEIN_GRID) + cm_rand3(gx, gy, gz, seed ^ (salt + 1u)) * VEIN_GRID;
-                float const oy = (float)(gy * VEIN_GRID) + cm_rand3(gx, gy, gz, seed ^ (salt + 2u)) * VEIN_GRID;
-                float const oz = (float)(gz * VEIN_GRID) + cm_rand3(gx, gy, gz, seed ^ (salt + 3u)) * VEIN_GRID;
+                float const ox = (float)(gx * VEIN_GRID) + sm_rand3(gx, gy, gz, seed ^ (salt + 1u)) * VEIN_GRID;
+                float const oy = (float)(gy * VEIN_GRID) + sm_rand3(gx, gy, gz, seed ^ (salt + 2u)) * VEIN_GRID;
+                float const oz = (float)(gz * VEIN_GRID) + sm_rand3(gx, gy, gz, seed ^ (salt + 3u)) * VEIN_GRID;
                 if (oy > (float)ymax) continue;
 
                 // Three radii, not one: a sphere of ore reads as a
                 // decoration, a lumpy blob reads as a vein.
-                float const rx = r * (0.75f + cm_rand3(gx, gy, gz, seed ^ (salt + 4u)) * 0.7f);
-                float const ry = r * (0.60f + cm_rand3(gx, gy, gz, seed ^ (salt + 5u)) * 0.6f);
-                float const rz = r * (0.75f + cm_rand3(gx, gy, gz, seed ^ (salt + 6u)) * 0.7f);
+                float const rx = r * (0.75f + sm_rand3(gx, gy, gz, seed ^ (salt + 4u)) * 0.7f);
+                float const ry = r * (0.60f + sm_rand3(gx, gy, gz, seed ^ (salt + 5u)) * 0.6f);
+                float const rz = r * (0.75f + sm_rand3(gx, gy, gz, seed ^ (salt + 6u)) * 0.7f);
 
                 float const fx = ((float)x + 0.5f - ox) / rx;
                 float const fy = ((float)y + 0.5f - oy) / ry;
@@ -338,7 +338,7 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
 
     // How deep the soil runs here, from the biome's band.
     int const span = (int)bd->soil_max - (int)bd->soil_min + 1;
-    int const soil = (int)bd->soil_min + (int)(cm_rand2(wx, wz, seed ^ S_DETAIL) * (float)span);
+    int const soil = (int)bd->soil_min + (int)(sm_rand2(wx, wz, seed ^ S_DETAIL) * (float)span);
 
     // THE WATERLINE IS SAND WHATEVER THE BIOME IS. A beach is not a
     // place, it is an edge, and grass running into the sea looks wrong
@@ -352,7 +352,7 @@ static void fill_column(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint
     // from a field slower than a mountain is wide -- so a summit is
     // snowy or it is bare, rather than the cap being speckled.
     bool const snow = !beach && sy >= (int)bd->snow_above &&
-                      cm_fbm2((float)wx, (float)wz, 300.0f, 2, seed ^ S_SNOW) > 0.67f;
+                      sm_fbm2((float)wx, (float)wz, 300.0f, 2, seed ^ S_SNOW) > 0.67f;
     // Asked once per column, not once per cell: it does not vary
     // with height and it is two octaves of noise.
     bool const mouth = !beach && cave_mouth(wx, wz, seed);
@@ -440,7 +440,7 @@ static void place_tree(chunk_t* c, int32_t wx, int32_t wz, uint32_t seed) {
     // the chunk being filled: a forest that thinned out at its border
     // because the neighbouring chunk asked would not be a forest.
     biome_def_t const* bd = &BIOMES[worldgen_biome(wx, wz, seed)];
-    if (cm_rand2(wx, wz, seed ^ S_TREE) > bd->tree_chance) return;
+    if (sm_rand2(wx, wz, seed ^ S_TREE) > bd->tree_chance) return;
     if (bd->log_block == BLK_AIR) return;
 
     // A tree needs grass to stand on, and the ground under it must be
@@ -449,7 +449,7 @@ static void place_tree(chunk_t* c, int32_t wx, int32_t wz, uint32_t seed) {
     if (sy <= CH_SEA_LEVEL + 1) return;  // no trees on the beach or in the water
     if (sy >= (int)bd->rock_above) return;  // nor above the treeline
 
-    int const h = TREE_MIN_H + (int)(cm_rand2(wx + 1, wz - 1, seed ^ S_TREE) * (TREE_MAX_H - TREE_MIN_H + 1));
+    int const h = TREE_MIN_H + (int)(sm_rand2(wx + 1, wz - 1, seed ^ S_TREE) * (TREE_MAX_H - TREE_MIN_H + 1));
     int const top = sy + h;
     if (top + 2 >= CH_H) return;
 
@@ -462,7 +462,7 @@ static void place_tree(chunk_t* c, int32_t wx, int32_t wz, uint32_t seed) {
                 // Clip the corners of the widest layers, so the canopy
                 // is round rather than a slab.
                 if (r == 2 && dx * dx + dz * dz > 5) continue;
-                if (r == 2 && dx * dx + dz * dz == 5 && cm_rand3(wx + dx, y, wz + dz, seed ^ S_TREE) < 0.45f) continue;
+                if (r == 2 && dx * dx + dz * dz == 5 && sm_rand3(wx + dx, y, wz + dz, seed ^ S_TREE) < 0.45f) continue;
                 stamp(c, wx + dx, y, wz + dz, bd->leaf_block, false);
             }
         }
@@ -478,7 +478,7 @@ static void place_tree(chunk_t* c, int32_t wx, int32_t wz, uint32_t seed) {
 static void place_column_plant(chunk_t* c, int lx, int lz, int32_t wx, int32_t wz, uint32_t seed,
                                biome_def_t const* bd, int sy) {
     if (bd->column_plant == BLK_AIR || bd->column_chance <= 0.0f) return;
-    if (cm_rand2(wx, wz, seed ^ (S_PLANT + 0x51u)) > bd->column_chance) return;
+    if (sm_rand2(wx, wz, seed ^ (S_PLANT + 0x51u)) > bd->column_chance) return;
 
     uint8_t* col = &c->id[CH_IDX(lx, 0, lz)];
     // It stands ON the surface, so the surface has to be there and the
@@ -486,7 +486,7 @@ static void place_column_plant(chunk_t* c, int lx, int lz, int32_t wx, int32_t w
     if (sy + 1 >= CH_H || col[sy] != bd->surface || col[sy + 1] != BLK_AIR) return;
 
     int const span = (int)bd->column_max - (int)bd->column_min + 1;
-    int       h    = (int)bd->column_min + (int)(cm_rand2(wx + 7, wz - 3, seed ^ S_PLANT) * (float)span);
+    int       h    = (int)bd->column_min + (int)(sm_rand2(wx + 7, wz - 3, seed ^ S_PLANT) * (float)span);
     if (sy + h >= CH_H - 1) h = CH_H - 2 - sy;
     for (int i = 1; i <= h; i++) col[sy + i] = bd->column_plant;
 }
@@ -515,7 +515,7 @@ static void decorate_plants(chunk_t* c, uint32_t seed) {
             if (bd->plant_chance <= 0.0f) continue;
             if (col[sy + 1] != BLK_AIR) continue;  // a cactus went there
 
-            float const r = cm_rand2(wx, wz, seed ^ S_PLANT);
+            float const r = sm_rand2(wx, wz, seed ^ S_PLANT);
             float const t = 1.0f - bd->plant_chance;
             if (r <= t) continue;
 
@@ -543,9 +543,9 @@ static void decorate_plants(chunk_t* c, uint32_t seed) {
 
 static void place_edge_sign(chunk_t* c, uint32_t seed, int32_t edge_x) {
     if (edge_x == FARLANDS_NONE || c->cx * CH_W != edge_x) return;
-    if (cm_rand2(c->cx, c->cz, seed ^ S_SIGN) > SIGN_CHANCE) return;
-    int const lx = (int)(cm_rand2(c->cx + 1, c->cz, seed ^ S_SIGN) * 3.0f);
-    int const lz = (int)(cm_rand2(c->cx, c->cz + 1, seed ^ S_SIGN) * (float)CH_D);
+    if (sm_rand2(c->cx, c->cz, seed ^ S_SIGN) > SIGN_CHANCE) return;
+    int const lx = (int)(sm_rand2(c->cx + 1, c->cz, seed ^ S_SIGN) * 3.0f);
+    int const lz = (int)(sm_rand2(c->cx, c->cz + 1, seed ^ S_SIGN) * (float)CH_D);
     uint8_t*  col = &c->id[CH_IDX(lx, 0, lz)];
     int       y   = CH_H - 2;
     while (y > 0 && !block_solid(col[y])) y--;
@@ -581,8 +581,8 @@ void worldgen_chunk(chunk_t* c, uint32_t seed, int32_t farlands_x) {
         for (int32_t gx = gx0; gx <= gx1; gx++) {
             // The candidate's exact spot inside its grid square, so the
             // trees are not on a visible lattice.
-            int32_t const wx = gx * TREE_GRID + (int32_t)(cm_rand2(gx, gz, seed ^ 0xA1u) * TREE_GRID);
-            int32_t const wz = gz * TREE_GRID + (int32_t)(cm_rand2(gx, gz, seed ^ 0xB2u) * TREE_GRID);
+            int32_t const wx = gx * TREE_GRID + (int32_t)(sm_rand2(gx, gz, seed ^ 0xA1u) * TREE_GRID);
+            int32_t const wz = gz * TREE_GRID + (int32_t)(sm_rand2(gx, gz, seed ^ 0xB2u) * TREE_GRID);
             // Ordinary trees grow on ordinary ground only. One rooted
             // just east of the edge still leans its canopy over the wall,
             // so a Far Lands chunk runs this too.

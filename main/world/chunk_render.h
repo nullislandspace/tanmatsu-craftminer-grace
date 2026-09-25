@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  drawing the streamed world
+//  SynthMiner  --  drawing the streamed world
 // ---------------------------------------------------------------------
 //  Each frame, for every chunk that should be resident: keep it loaded,
 //  keep a level of detail meshed, and submit the ones the camera can
@@ -39,19 +39,19 @@ typedef struct {
     uint32_t fog_argb;
     int      load_radius;   // chunks kept resident
     int      evict_radius;  // ... and dropped beyond (hysteresis)
-} cm_view_t;
+} sm_view_t;
 
-#define CM_SKY_ARGB 0xFF8EC4F0u
+#define SM_SKY_ARGB 0xFF8EC4F0u
 
 // Near / medium / far, as the graphics menu will offer them.
-cm_view_t cm_view_preset(int level);  // 0 near (the default, D-76), 1 medium, 2 far
+sm_view_t sm_view_preset(int level);  // 0 near (the default, D-76), 1 medium, 2 far
 
 // Load the block textures and build the material tables. After
 // texcache_init().
 bool chunk_render_init(void);
 void chunk_render_shutdown(void);
 
-void             chunk_render_set_view(cm_view_t const* v);
+void             chunk_render_set_view(sm_view_t const* v);
 
 // What the far chunks fade into, overriding the view's own fog colour:
 // the sky's colour at this time of day (game/daytime.h). 0 goes back to
@@ -62,7 +62,7 @@ void chunk_render_set_fog(uint32_t argb);
 // order voxel_build_cube() wants: for a block drawn outside the world,
 // in Fred's hand or lying on the ground.
 void chunk_render_block_mats(uint8_t block, mesh_mat_t out[3]);
-cm_view_t const* chunk_render_view(void);
+sm_view_t const* chunk_render_view(void);
 
 // Flat mean colours instead of textures everywhere: 3-4x cheaper to
 // fill, and the graphics menu's cheapest setting.
@@ -90,7 +90,7 @@ void chunk_render_stream(double wx, double wz);
 
 // How many of the NINE chunks around (wx, wz) are resident, 0..9.
 //
-// This is the gate on entering a world (claudeplans/craftminer.md,
+// This is the gate on entering a world (claudeplans/synthminer.md,
 // D-26): the chunk the player stands in and the eight they could step
 // into, and nothing beyond. Play starts when it reaches 9 and the rest
 // of the view distance streams in behind them, so a large view distance

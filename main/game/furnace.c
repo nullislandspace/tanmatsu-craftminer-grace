@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the furnace (see furnace.h)
+//  SynthMiner  --  the furnace (see furnace.h)
 // =====================================================================
 
 #include "game/furnace.h"

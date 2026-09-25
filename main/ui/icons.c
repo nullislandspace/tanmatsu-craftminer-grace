@@ -1,7 +1,7 @@
 // =====================================================================
-//  CraftMiner  --  key-cap icons (see icons.h)
+//  SynthMiner  --  key-cap icons (see icons.h)
 //  Ported from tanmatsu-synthracer-grace, main/icons.c. Changes here are
-//  CraftMiner's; synthracer stays the origin to diff against.
+//  SynthMiner's; synthracer stays the origin to diff against.
 // =====================================================================
 
 #include "ui/icons.h"

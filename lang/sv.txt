@@ -1,9 +1,9 @@
-# CraftMiner -- Svenska
+# SynthMiner -- Svenska
 #
 # Den här översättningen är gjord av en AI och väntar på någon som faktiskt
 # talar språket. Vet du bättre: rätta raden och kör
 # `python3 tools/make_lang.py`. Det går också utan verktyg -- en fil
-# /sd/craftminer/lang/sv.txt på kortet, med samma rader, går före det
+# /sd/synthminer/lang/sv.txt på kortet, med samma rader, går före det
 # inbyggda (i18n.h).
 #
 # Nycklarna finns i lang/en.txt. %-platshållarna därifrån måste finnas här
@@ -104,7 +104,7 @@ common.back = Tillbaka
 hint.list = upp / ner väljer, Enter bekräftar, Esc går tillbaka
 hint.adjust = upp / ner väljer, vänster / höger ändrar, Esc går tillbaka
 
-status.newer = Gjord av en nyare CraftMiner: uppdatera för att spela den
+status.newer = Gjord av en nyare SynthMiner: uppdatera för att spela den
 status.older = Äldre sparformat: den här versionen kan inte uppdatera det än
 status.needs_name = En värld behöver ett namn
 status.renamed = Namnet ändrat

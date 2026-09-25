@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the time of day (see daytime.h)
+//  SynthMiner  --  the time of day (see daytime.h)
 // =====================================================================
 
 #include "game/daytime.h"
@@ -7,7 +7,7 @@
 #include <math.h>
 #include <stddef.h>
 
-#define DAY_ARGB    0xFF8EC4F0u  // the world's daytime sky (CM_SKY_ARGB)
+#define DAY_ARGB    0xFF8EC4F0u  // the world's daytime sky (SM_SKY_ARGB)
 #define NIGHT_ARGB  0xFF0C1430u
 #define SUNSET_SKY  0xFFF2A878u
 #define SUNSET_FOG  0xFFE89468u

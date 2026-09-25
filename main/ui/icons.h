@@ -1,9 +1,9 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  key-cap icons
+//  SynthMiner  --  key-cap icons
 // ---------------------------------------------------------------------
 //  Ported from tanmatsu-synthracer-grace, main/icons.h. Changes here are
-//  CraftMiner's; synthracer stays the origin to diff against.
+//  SynthMiner's; synthracer stays the origin to diff against.
 // =====================================================================
 
 #include <stdbool.h>

@@ -1,8 +1,8 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  region files
+//  SynthMiner  --  region files
 // ---------------------------------------------------------------------
-//  Chunks are stored 8 x 8 to a file, `r.<rx>.<rz>.cmr`. Per-chunk
+//  Chunks are stored 8 x 8 to a file, `r.<rx>.<rz>.smr`. Per-chunk
 //  files would lose twice on FAT and a slow SD card: a directory scan
 //  on every open, and a whole cluster wasted per file (32 KiB clusters
 //  against a chunk that RLEs to 1-3 KiB). A region amortises a whole
@@ -42,10 +42,13 @@
 
 #define REGION_DIM   8
 #define REGION_CHUNKS (REGION_DIM * REGION_DIM)
-// "CMR" + the MAJOR version digit. Like level.cmw's, it moves only when
+// "SMR" + the MAJOR version digit. Like level.smw's, it moves only when
 // the layout changes wholesale; a mismatched major is refused, not
 // guessed at. REGION_VERSION below is the minor revision within it.
-#define REGION_MAGIC   "CMR1"
+#define REGION_MAGIC   "SMR1"
+// And what CraftMiner wrote (D-91): read, never written. A region that
+// is compacted or rewritten comes back under the new name by itself.
+#define REGION_MAGIC_WAS "CMR1"
 #define REGION_VERSION 1
 
 // World chunk coordinate -> region coordinate / index within it.
@@ -59,7 +62,7 @@ static inline int region_local(int32_t c) {
     return (int)(c & (REGION_DIM - 1));
 }
 
-// Build "<dir>/r.<rx>.<rz>.cmr". False if it would not fit.
+// Build "<dir>/r.<rx>.<rz>.smr". False if it would not fit.
 bool region_path(char* out, size_t cap, char const* dir, int32_t rx, int32_t rz);
 
 // Read one chunk. `c` must already carry cx/cz and have its planes.

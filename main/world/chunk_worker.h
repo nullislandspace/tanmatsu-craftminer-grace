@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the background chunk task (core 1)
+//  SynthMiner  --  the background chunk task (core 1)
 // ---------------------------------------------------------------------
 //  Core 0 runs the game and draws it; core 1 does the work that would
 //  otherwise land in a frame: generating terrain, meshing it, and the

@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  Fred
+//  SynthMiner  --  Fred
 // ---------------------------------------------------------------------
 //  The player's figure: seen whole in third person, and as his right arm
 //  and whatever it holds in first person. Posed as a pure function of a
@@ -12,7 +12,7 @@
 //  Here he holds what the player's hotbar holds -- any of three tools in
 //  two materials, a block in its own textures, or an item -- and he is
 //  lit by the cell he stands in, so he goes dark at night and warm by a
-//  torch like everything else. Changes are CraftMiner's; the showreel
+//  torch like everything else. Changes are SynthMiner's; the showreel
 //  stays the origin to diff against.
 // =====================================================================
 

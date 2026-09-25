@@ -1,9 +1,9 @@
-# CraftMiner -- Čeština
+# SynthMiner -- Čeština
 #
 # Tento překlad vytvořila umělá inteligence a čeká na někoho, kdo jazyk
 # opravdu umí. Víte to lépe? Opravte řádek a spusťte
 # `python3 tools/make_lang.py`. Jde to i bez nástrojů -- soubor
-# /sd/craftminer/lang/cs.txt na kartě se stejnými řádky má přednost před
+# /sd/synthminer/lang/cs.txt na kartě se stejnými řádky má přednost před
 # tím, co je zabudované (i18n.h).
 #
 # Klíče jsou v lang/en.txt. Tamní zástupné symboly % se musí objevit i tady;
@@ -104,7 +104,7 @@ common.back = Zpět
 hint.list = nahoru / dolů vybírá, Enter potvrzuje, Esc se vrací
 hint.adjust = nahoru / dolů vybírá, vlevo / vpravo mění, Esc se vrací
 
-status.newer = Vytvořeno novějším CraftMinerem: aktualizujte, abyste si zahráli
+status.newer = Vytvořeno novějším SynthMinerem: aktualizujte, abyste si zahráli
 status.older = Starší formát uložení: tato verze ho zatím neumí převést
 status.needs_name = Svět potřebuje název
 status.renamed = Přejmenováno

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  what is drawn over the world (see hud.h)
+//  SynthMiner  --  what is drawn over the world (see hud.h)
 // =====================================================================
 
 #include "game/hud.h"
@@ -414,7 +414,7 @@ void hud_inventory(pax_buf_t* fb, player_t const* p) {
     direct_565_dim_rect(s_px, s_rev, 0, 0, (int)DISPLAY_LOG_W, (int)DISPLAY_LOG_H);
     box(fb, gx - 12, gy - 34, gw + 24, gh + 46, 0xFF2A2A32u);
     frame(fb, gx - 12, gy - 34, gw + 24, gh + 46, 2, 0xFF606068u);
-    rendertext_draw(fb, 0xFFFFFFFFu, NULL, 22.0f, (float)(gx - 4), (float)(gy - 30), T(CM_STR_HUD_INVENTORY));
+    rendertext_draw(fb, 0xFFFFFFFFu, NULL, 22.0f, (float)(gx - 4), (float)(gy - 30), T(SM_STR_HUD_INVENTORY));
 
     for (int i = 0; i < INV_SLOTS; i++) {
         // Row 0 of the DRAWING is the storage top; the hotbar is the
@@ -432,7 +432,7 @@ void hud_inventory(pax_buf_t* fb, player_t const* p) {
     // of the display (the user's catch). Centring gives it the whole
     // 800 px, and worldcheck measures it in all 32 languages.
     {
-        char const* const  hint = T(CM_STR_HUD_INVENTORY_HINT);
+        char const* const  hint = T(SM_STR_HUD_INVENTORY_HINT);
         pax_vec2f const    sz   = rendertext_size(NULL, 16.0f, hint);
         rendertext_draw(fb, 0xFFB0B0B8u, NULL, 16.0f, ((float)DISPLAY_LOG_W - sz.x) * 0.5f,
                         (float)(gy + gh + 4), hint);

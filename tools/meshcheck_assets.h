@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the greedy mesher under the mesh check
+//  SynthMiner  --  the greedy mesher under the mesh check
 // ---------------------------------------------------------------------
 //  Included by tools/meshcheck.c. Lifted from the showreel's
 //  tools/meshcheck_assets.h (its voxel half), which is what proves the

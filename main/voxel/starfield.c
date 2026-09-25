@@ -1,7 +1,7 @@
 // =====================================================================
-//  CraftMiner  --  starfield (see starfield.h)
+//  SynthMiner  --  starfield (see starfield.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/common/starfield.c. Changes here are CraftMiner's;
+//  main/common/starfield.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

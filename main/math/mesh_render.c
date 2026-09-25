@@ -1,7 +1,7 @@
 // =====================================================================
 //  Showreel  --  submitting meshes to the scene (see mesh_render.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/mesh_render.c. Changes here are CraftMiner's;
+//  main/mesh_render.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

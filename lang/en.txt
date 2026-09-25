@@ -1,7 +1,7 @@
-# CraftMiner -- English, and the list of every string the UI can show.
+# SynthMiner -- English, and the list of every string the UI can show.
 #
 # THIS FILE DEFINES THE KEYS. `tools/make_lang.py` turns the keys here into
-# the CM_STR_* enum the code uses, so a key that is not here does not exist,
+# the SM_STR_* enum the code uses, so a key that is not here does not exist,
 # and every other language is checked against this one: a key it lacks falls
 # back to the English below, and a key it invents is an error.
 #
@@ -16,7 +16,7 @@
 # placeholder holds is in the comment above its line, and `make check` fails on
 # any translation whose placeholders differ from this file's.
 #
-# NOT translated, on purpose: the name CraftMiner; world names, which the
+# NOT translated, on purpose: the name SynthMiner; world names, which the
 # player types; key names like Esc and Left Shift, which are what is printed
 # on the badge's keys; and every log message, which is for us.
 
@@ -126,7 +126,7 @@ hint.list = up / down to choose, enter to select, esc to go back
 hint.adjust = up / down to choose, left / right to change, esc to go back
 
 # --- What the menus say back to you -----------------------------------------
-status.newer = Made by a newer CraftMiner: update to play it
+status.newer = Made by a newer SynthMiner: update to play it
 status.older = An older save format: this build cannot upgrade it yet
 status.needs_name = A world needs a name
 status.renamed = Renamed

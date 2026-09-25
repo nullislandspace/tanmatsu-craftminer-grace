@@ -1,12 +1,12 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  keybind value rendering
+//  SynthMiner  --  keybind value rendering
 // ---------------------------------------------------------------------
 //  Renders a bound key (scancode) as a key-cap icon (Esc / F1..F6 PNGs
 //  from icons.c) or a text label. The only public entry is the se_ui
 //  SE_MENU_VAL_CUSTOM value drawer for the Controls menu's keybind rows.
 //  Ported from tanmatsu-synthracer-grace, main/keybind_ui.h. Changes
-//  here are CraftMiner's; synthracer stays the origin to diff against.
+//  here are SynthMiner's; synthracer stays the origin to diff against.
 // =====================================================================
 
 #include "pax_gfx.h"  // pax_buf_t, pax_col_t

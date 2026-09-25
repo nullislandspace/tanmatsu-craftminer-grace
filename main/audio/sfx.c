@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the sound effects, one row each
+//  SynthMiner  --  the sound effects, one row each
 //  See sfx.h for why this is a table and not a file per noise.
 // =====================================================================
 
@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static char const TAG[] = "cm_sfx";
+static char const TAG[] = "sm_sfx";
 
 // --- What a sound is --------------------------------------------------
 

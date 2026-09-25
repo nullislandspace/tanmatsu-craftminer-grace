@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the background chunk task (see chunk_worker.h)
+//  SynthMiner  --  the background chunk task (see chunk_worker.h)
 // =====================================================================
 
 #include "world/chunk_worker.h"
@@ -10,7 +10,7 @@
 #include "world/worldgen.h"
 #include "world/worldstore.h"
 
-#ifndef CM_HOST
+#ifndef SM_HOST
 #include "esp_log.h"
 #include "esp_timer.h"
 #include "freertos/FreeRTOS.h"
@@ -78,7 +78,7 @@ static int      s_loaded_total, s_meshed_total;
 // is behind), or nothing asked for in the first place.
 static int      s_saved_total, s_refused_total, s_applied_total, s_asked_total;
 
-#ifndef CM_HOST
+#ifndef SM_HOST
 static QueueHandle_t s_jobs;
 static QueueHandle_t s_done;
 static TaskHandle_t  s_task;
@@ -107,11 +107,11 @@ static bool do_load(int32_t cx, int32_t cz) {
     if (r < 0) return false;
 
     // Not on the card: this is the first time anyone has been here.
-#ifndef CM_HOST
+#ifndef SM_HOST
     int64_t const t0 = esp_timer_get_time();
 #endif
     worldgen_chunk(c, s_seed, s_farlands_x);
-#ifndef CM_HOST
+#ifndef SM_HOST
     int const kind = farlands_chunk_is(cx, s_farlands_x) ? 1 : 0;
     s_gen_us[kind] += esp_timer_get_time() - t0;
     s_gen_n[kind]++;
@@ -233,7 +233,7 @@ static bool submit(job_t const* j) {
         apply(&r);
         return true;
     }
-#ifndef CM_HOST
+#ifndef SM_HOST
     if (xQueueSend(s_jobs, j, 0) != pdTRUE) {
         s_refused_total++;
         return false;
@@ -285,7 +285,7 @@ bool chunk_worker_request_save(int32_t cx, int32_t cz) {
 
 int chunk_worker_collect(int max_results) {
     if (s_sync) return 0;  // already applied, inline
-#ifndef CM_HOST
+#ifndef SM_HOST
     int      n = 0;
     result_t r;
     while (n < max_results && xQueueReceive(s_done, &r, 0) == pdTRUE) {
@@ -302,14 +302,14 @@ int chunk_worker_collect(int max_results) {
 }
 
 bool chunk_worker_idle(void) {
-#ifndef CM_HOST
+#ifndef SM_HOST
     if (!s_sync) return s_in_flight == 0;
 #endif
     return true;
 }
 
 void chunk_worker_stats(int* queued, int* loaded_total, int* meshed_total) {
-#ifndef CM_HOST
+#ifndef SM_HOST
     if (queued != NULL) *queued = s_sync ? 0 : s_in_flight;
 #else
     if (queued != NULL) *queued = 0;
@@ -320,7 +320,7 @@ void chunk_worker_stats(int* queued, int* loaded_total, int* meshed_total) {
 
 void chunk_worker_flow(chunk_worker_flow_t* f) {
     if (f == NULL) return;
-#ifndef CM_HOST
+#ifndef SM_HOST
     f->in_flight = s_sync ? 0 : s_in_flight;
     f->capacity  = QUEUE_DEPTH;
 #else
@@ -337,7 +337,7 @@ void chunk_worker_flow(chunk_worker_flow_t* f) {
 
 // --- Lifecycle --------------------------------------------------------
 
-#ifndef CM_HOST
+#ifndef SM_HOST
 static void worker_main(void* arg) {
     (void)arg;
     job_t j;
@@ -357,11 +357,11 @@ static void worker_main(void* arg) {
 bool chunk_worker_start(uint32_t seed) {
     s_seed = seed;
     if (s_scratch == NULL) {
-        s_scratch = cm_alloc(chunkmesh_scratch_bytes());
+        s_scratch = sm_alloc(chunkmesh_scratch_bytes());
         if (s_scratch == NULL) return false;
     }
 
-#ifndef CM_HOST
+#ifndef SM_HOST
     if (s_running) return true;
     s_jobs = xQueueCreate(QUEUE_DEPTH, sizeof(job_t));
     s_done = xQueueCreate(QUEUE_DEPTH, sizeof(result_t));
@@ -379,7 +379,7 @@ bool chunk_worker_start(uint32_t seed) {
 }
 
 void chunk_worker_stop(void) {
-#ifndef CM_HOST
+#ifndef SM_HOST
     if (s_task != NULL) {
         vTaskDelete(s_task);
         s_task = NULL;
@@ -394,7 +394,7 @@ void chunk_worker_stop(void) {
     }
     s_in_flight = 0;
 #endif
-    cm_free(s_scratch);
+    sm_free(s_scratch);
     s_scratch = NULL;
     s_running = false;
     s_sync    = true;
@@ -406,7 +406,7 @@ void chunk_worker_set_world(uint32_t seed, int32_t farlands_x) {
 }
 
 void chunk_worker_set_synchronous(bool on) {
-#ifndef CM_HOST
+#ifndef SM_HOST
     if (!on && !s_running) return;  // no task to be asynchronous with
     if (on) {
         // Drain first: a result arriving after the switch would be

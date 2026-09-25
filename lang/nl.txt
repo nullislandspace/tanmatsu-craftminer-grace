@@ -1,8 +1,8 @@
-# CraftMiner -- Nederlands
+# SynthMiner -- Nederlands
 #
 # Deze vertaling komt van een AI en wacht op iemand die de taal echt spreekt.
 # Weet je het beter: pas de regel aan en draai `python3 tools/make_lang.py`.
-# Zonder gereedschap kan het ook -- een bestand /sd/craftminer/lang/nl.txt op
+# Zonder gereedschap kan het ook -- een bestand /sd/synthminer/lang/nl.txt op
 # de kaart met dezelfde regels gaat voor op wat ingebakken is (i18n.h).
 #
 # De sleutels staan in lang/en.txt. De %-plaatshouders daar moeten hier terug
@@ -98,7 +98,7 @@ common.back = Terug
 hint.list = omhoog / omlaag kiest, Enter bevestigt, Esc terug
 hint.adjust = omhoog / omlaag kiest, links / rechts wijzigt, Esc terug
 
-status.newer = Gemaakt door een nieuwere CraftMiner: werk bij om te spelen
+status.newer = Gemaakt door een nieuwere SynthMiner: werk bij om te spelen
 status.older = Een ouder opslagformaat: deze versie kan het nog niet bijwerken
 status.needs_name = Een wereld heeft een naam nodig
 status.renamed = Hernoemd

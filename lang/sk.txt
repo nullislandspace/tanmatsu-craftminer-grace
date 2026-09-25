@@ -1,9 +1,9 @@
-# CraftMiner -- Slovenčina
+# SynthMiner -- Slovenčina
 #
 # Tento preklad vytvorila umelá inteligencia a čaká na niekoho, kto jazyk
 # naozaj ovláda. Viete to lepšie? Opravte riadok a spustite
 # `python3 tools/make_lang.py`. Dá sa to aj bez nástrojov -- súbor
-# /sd/craftminer/lang/sk.txt na karte s rovnakými riadkami má prednosť pred
+# /sd/synthminer/lang/sk.txt na karte s rovnakými riadkami má prednosť pred
 # zabudovaným textom (i18n.h).
 #
 # Kľúče sú v lang/en.txt. Tamojšie zástupné symboly % sa musia objaviť aj tu;
@@ -104,7 +104,7 @@ common.back = Späť
 hint.list = hore / dole vyberá, Enter potvrdzuje, Esc sa vracia
 hint.adjust = hore / dole vyberá, vľavo / vpravo mení, Esc sa vracia
 
-status.newer = Vytvorené novším CraftMinerom: aktualizujte, aby ste si zahrali
+status.newer = Vytvorené novším SynthMinerom: aktualizujte, aby ste si zahrali
 status.older = Starší formát uloženia: táto verzia ho zatiaľ nevie previesť
 status.needs_name = Svet potrebuje názov
 status.renamed = Premenované

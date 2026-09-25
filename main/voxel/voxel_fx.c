@@ -1,7 +1,7 @@
 // =====================================================================
-//  CraftMiner  --  mining and building effects (see voxel_fx.h)
+//  SynthMiner  --  mining and building effects (see voxel_fx.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/craftminer/voxel/voxel_fx.c. Changes here are CraftMiner's;
+//  main/craftminer/voxel/voxel_fx.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 
@@ -36,7 +36,7 @@ void voxel_fx_init(void) {
     mesh_init(&s_pop);
     s_pop.name = "fx_pop";
     voxel_build_cube(&s_pop, 0.5f);
-    s_flame = texcache_get("craftminer/torch_flame.png");
+    s_flame = texcache_get("synthminer/torch_flame.png");
 }
 
 void voxel_fx_shutdown(void) {

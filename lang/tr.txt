@@ -1,9 +1,9 @@
-# CraftMiner -- Türkçe
+# SynthMiner -- Türkçe
 #
 # Bu çeviriyi bir yapay zekâ yaptı ve dili gerçekten bilen birini bekliyor.
 # Daha iyisini biliyorsanız: satırı düzeltin ve
 # `python3 tools/make_lang.py` komutunu çalıştırın. Araçsız da olur --
-# karttaki /sd/craftminer/lang/tr.txt dosyası, aynı satırlarla, gömülü metnin
+# karttaki /sd/synthminer/lang/tr.txt dosyası, aynı satırlarla, gömülü metnin
 # önüne geçer (i18n.h).
 #
 # Anahtarlar lang/en.txt dosyasında. Oradaki % yer tutucuları burada da
@@ -104,7 +104,7 @@ common.back = Geri
 hint.list = yukarı / aşağı seçer, Enter onaylar, Esc geri döner
 hint.adjust = yukarı / aşağı seçer, sol / sağ değiştirir, Esc geri döner
 
-status.newer = Daha yeni bir CraftMiner ile yapılmış: oynamak için güncelleyin
+status.newer = Daha yeni bir SynthMiner ile yapılmış: oynamak için güncelleyin
 status.older = Eski kayıt biçimi: bu sürüm onu henüz dönüştüremiyor
 status.needs_name = Bir dünyanın adı olmalı
 status.renamed = Yeniden adlandırıldı

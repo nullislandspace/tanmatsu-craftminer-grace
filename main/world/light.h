@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  light
+//  SynthMiner  --  light
 // ---------------------------------------------------------------------
 //  Every cell carries a light byte (chunk_t.lt): SKY light in the high
 //  nibble, BLOCK light -- torches -- in the low one, each 0..15. It is

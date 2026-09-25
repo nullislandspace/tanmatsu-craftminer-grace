@@ -1,9 +1,9 @@
-# CraftMiner -- Magyar
+# SynthMiner -- Magyar
 #
 # Ezt a fordítást mesterséges intelligencia készítette, és arra vár, aki a
 # nyelvet valóban beszéli. Ha jobban tudod: javítsd a sort, és futtasd a
 # `python3 tools/make_lang.py` parancsot. Eszközök nélkül is megy -- a kártyán
-# lévő /sd/craftminer/lang/hu.txt fájl ugyanezekkel a sorokkal megelőzi a
+# lévő /sd/synthminer/lang/hu.txt fájl ugyanezekkel a sorokkal megelőzi a
 # beépített szöveget (i18n.h).
 #
 # A kulcsok a lang/en.txt fájlban vannak. Az ottani %-helyőrzőknek itt is meg
@@ -104,7 +104,7 @@ common.back = Vissza
 hint.list = fel / le választ, az Enter megerősít, az Esc visszalép
 hint.adjust = fel / le választ, balra / jobbra módosít, az Esc visszalép
 
-status.newer = Újabb CraftMiner készítette: frissíts, hogy játszhass vele
+status.newer = Újabb SynthMiner készítette: frissíts, hogy játszhass vele
 status.older = Régebbi mentési formátum: ez a változat még nem tudja átalakítani
 status.needs_name = A világnak név kell
 status.renamed = Átnevezve

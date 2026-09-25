@@ -4,7 +4,7 @@ BADGELINKPORT ?= $(PORT)
 SHELL := /usr/bin/env bash
 
 # App installation settings
-APP_SLUG_NAME ?= at.cavac.craftminer
+APP_SLUG_NAME ?= at.cavac.synthminer
 # The SD card, not internal flash: metadata.json says external_only,
 # so a launcher install goes here too.
 APP_INSTALL_BASE_PATH ?= /sd/apps/
@@ -33,7 +33,7 @@ TEXTURES := $(patsubst textures/%,%,$(wildcard textures/*.png))
 # The music: Standard MIDI files of out-of-copyright pieces, all of them
 # in the public domain and all of them small (assets/music/MUSIC.md says
 # where each came from). They install beside the textures, and a player
-# may add their own to /sd/craftminer/music without touching these.
+# may add their own to /sd/synthminer/music without touching these.
 MUSIC := $(patsubst assets/music/%,%,$(wildcard assets/music/*.mid))
 
 MAKEFLAGS += --silent
@@ -61,7 +61,7 @@ symcheck:
 # ---------------------------------------------------------------------
 # Host checks: no badge, seconds to run, and `build` depends on them so
 # a broken invariant stops the build that broke it
-# (claudeplans/craftminer.md, Part H).
+# (claudeplans/synthminer.md, Part H).
 #
 # The engine's compile-time settings are read straight out of
 # CMakeLists.txt rather than written down twice -- a host check that
@@ -71,7 +71,7 @@ symcheck:
 HOSTCC      ?= cc
 ENGINE_DEFS := $(shell sed -n 's/^add_compile_definitions(\(SE_[A-Z_]*=[0-9]*\))/-D\1/p' CMakeLists.txt)
 HOSTCFLAGS  := -O1 -Wall -Wextra -Werror=implicit-function-declaration \
-               -DCM_HOST -Imain -Itools -Isynthengine3D/include \
+               -DSM_HOST -Imain -Itools -Isynthengine3D/include \
                -Isynthengine3D/src/internal $(ENGINE_DEFS)
 
 PURE_SRCS       := main/math/xform.c main/math/mesh.c main/voxel/voxel_mesh.c \

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the simulation clock (see tick.h)
+//  SynthMiner  --  the simulation clock (see tick.h)
 // =====================================================================
 
 #include "game/tick.h"

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  chunks and the resident world (see chunk.h)
+//  SynthMiner  --  chunks and the resident world (see chunk.h)
 // =====================================================================
 
 #include "world/chunk.h"
@@ -35,15 +35,15 @@ bool chunk_store_init(void) {
     if (s_slab != NULL) return true;
 
     s_slab_bytes = SLOT_BYTES * (size_t)CH_SLOT_COUNT;
-    s_slab       = cm_calloc(s_slab_bytes, 1);
+    s_slab       = sm_calloc(s_slab_bytes, 1);
     // The mesh headers go to PSRAM too. They are only headers -- the
     // vertices and triangles each mesh_t points at are allocated by
     // mesh.c as they are built -- but 256 slots x 12 of them is far too
     // much to carry in a static array, which is where chunk_t lives.
-    s_meshes     = cm_calloc((size_t)CH_SLOT_COUNT * CH_MESH_N, sizeof(mesh_t));
+    s_meshes     = sm_calloc((size_t)CH_SLOT_COUNT * CH_MESH_N, sizeof(mesh_t));
     if (s_slab == NULL || s_meshes == NULL) {
-        cm_free(s_slab);
-        cm_free(s_meshes);
+        sm_free(s_slab);
+        sm_free(s_meshes);
         s_slab       = NULL;
         s_meshes     = NULL;
         s_slab_bytes = 0;
@@ -65,8 +65,8 @@ bool chunk_store_init(void) {
     // furnace's record is only ever wanted while its chunk is in one of
     // these slots (world/blockent.h).
     if (!blockent_init()) {
-        cm_free(s_slab);
-        cm_free(s_meshes);
+        sm_free(s_slab);
+        sm_free(s_meshes);
         s_slab       = NULL;
         s_meshes     = NULL;
         s_slab_bytes = 0;
@@ -78,8 +78,8 @@ bool chunk_store_init(void) {
 void chunk_store_shutdown(void) {
     blockent_shutdown();
     for (int i = 0; i < CH_SLOT_COUNT; i++) free_slot_meshes(&s_slots[i]);
-    cm_free(s_slab);
-    cm_free(s_meshes);
+    sm_free(s_slab);
+    sm_free(s_meshes);
     s_slab       = NULL;
     s_meshes     = NULL;
     s_slab_bytes = 0;

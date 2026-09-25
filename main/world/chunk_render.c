@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  drawing the streamed world (see chunk_render.h)
+//  SynthMiner  --  drawing the streamed world (see chunk_render.h)
 // ---------------------------------------------------------------------
 //  The distance ladder, the frustum test and the fog tint are the
 //  showreel's, whose numbers were measured on this hardware (F-03,
@@ -72,7 +72,7 @@ static mesh_mat_t s_tex_mats[VM_COUNT];
 static uint32_t   s_mean[VM_COUNT];
 static bool       s_ready;
 static bool       s_textured = true;
-static cm_view_t  s_view;
+static sm_view_t  s_view;
 static int32_t    s_origin_x, s_origin_z;
 static int        s_drawn, s_sections, s_resident, s_missing;
 static int        s_evicted_total;  // chunks dropped from the resident set, since boot
@@ -102,16 +102,16 @@ _Static_assert(VIEW_NEAR_LOAD < VIEW_NEAR_EVICT, "near view has no residency hys
 _Static_assert(VIEW_MED_LOAD < VIEW_MED_EVICT, "medium view has no residency hysteresis");
 _Static_assert(VIEW_FAR_LOAD < VIEW_FAR_EVICT, "far view has no residency hysteresis");
 
-cm_view_t cm_view_preset(int level) {
+sm_view_t sm_view_preset(int level) {
     switch (level) {
         case 0:
-            return (cm_view_t){8.0f,  14.0f, 24.0f, 40.0f, 18.0f, 44.0f, CM_SKY_ARGB,
+            return (sm_view_t){8.0f,  14.0f, 24.0f, 40.0f, 18.0f, 44.0f, SM_SKY_ARGB,
                                VIEW_NEAR_LOAD, VIEW_NEAR_EVICT};
         case 2:
-            return (cm_view_t){12.0f, 20.0f, 40.0f, 72.0f, 30.0f, 78.0f, CM_SKY_ARGB,
+            return (sm_view_t){12.0f, 20.0f, 40.0f, 72.0f, 30.0f, 78.0f, SM_SKY_ARGB,
                                VIEW_FAR_LOAD, VIEW_FAR_EVICT};
         default:
-            return (cm_view_t){12.0f, 20.0f, 32.0f, 56.0f, 24.0f, 60.0f, CM_SKY_ARGB,
+            return (sm_view_t){12.0f, 20.0f, 32.0f, 56.0f, 24.0f, 60.0f, SM_SKY_ARGB,
                                VIEW_MED_LOAD, VIEW_MED_EVICT};
     }
 }
@@ -122,7 +122,7 @@ bool chunk_render_init(void) {
         s_tex_mats[m]           = (mesh_mat_t){tex, MAT_FILES[m].argb, 0};
         s_mean[m]               = tex != NULL ? tex->mean_argb : MAT_FILES[m].argb;
     }
-    s_view  = cm_view_preset(1);
+    s_view  = sm_view_preset(1);
     s_ready = true;
     return true;
 }
@@ -150,7 +150,7 @@ void chunk_render_set_fog(uint32_t argb) {
     s_fog_override = argb;
 }
 
-void chunk_render_set_view(cm_view_t const* v) {
+void chunk_render_set_view(sm_view_t const* v) {
     if (v == NULL) return;
     s_view = *v;
     // The ring cannot hold a bigger radius than this, and exceeding it
@@ -162,7 +162,7 @@ void chunk_render_set_view(cm_view_t const* v) {
     if (s_view.load_radius >= s_view.evict_radius) s_view.load_radius = s_view.evict_radius - 1;
     if (s_view.load_radius < 1) s_view.load_radius = 1;
 }
-cm_view_t const* chunk_render_view(void) {
+sm_view_t const* chunk_render_view(void) {
     return &s_view;
 }
 void chunk_render_set_textured(bool on) {

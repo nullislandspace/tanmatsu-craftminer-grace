@@ -1,9 +1,9 @@
-# CraftMiner -- Deutsch
+# SynthMiner -- Deutsch
 #
 # Diese Übersetzung stammt von einer KI und wartet darauf, dass jemand sie
 # liest, der die Sprache wirklich spricht. Wer etwas besser weiß: Zeile
 # ändern, `python3 tools/make_lang.py` laufen lassen, fertig. Ohne Werkzeug
-# geht es auch -- eine Datei /sd/craftminer/lang/de.txt auf der Karte mit
+# geht es auch -- eine Datei /sd/synthminer/lang/de.txt auf der Karte mit
 # denselben Zeilen sticht die eingebaute Fassung (i18n.h).
 #
 # Die Schlüssel stehen in lang/en.txt. Was dort an %-Platzhaltern steht, muss
@@ -99,7 +99,7 @@ common.back = Zurück
 hint.list = hoch / runter wählen, Enter bestätigt, Esc zurück
 hint.adjust = hoch / runter wählen, links / rechts ändert, Esc zurück
 
-status.newer = Von einem neueren CraftMiner: zum Spielen bitte aktualisieren
+status.newer = Von einem neueren SynthMiner: zum Spielen bitte aktualisieren
 status.older = Ein älteres Speicherformat: diese Fassung kann es noch nicht aktualisieren
 status.needs_name = Eine Welt braucht einen Namen
 status.renamed = Umbenannt

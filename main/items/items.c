@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the item registry (see items.h)
+//  SynthMiner  --  the item registry (see items.h)
 // =====================================================================
 
 #include "items/items.h"
@@ -8,25 +8,25 @@
 
 // The items that are not blocks. Indexed by id - BLK_COUNT.
 static item_def_t const ITEMS[ITEM_COUNT - BLK_COUNT] = {
-    [ITEM_COAL - BLK_COUNT]  = {"coal", CM_STR_ITEM_COAL, ITEM_STACK_MAX, TOOL_NONE, 0, 0, 1600, 0xFF2A2A2Eu},
-    [ITEM_STICK - BLK_COUNT] = {"stick", CM_STR_ITEM_STICK, ITEM_STACK_MAX, TOOL_NONE, 0, 0, 100, 0xFF9A7040u},
+    [ITEM_COAL - BLK_COUNT]  = {"coal", SM_STR_ITEM_COAL, ITEM_STACK_MAX, TOOL_NONE, 0, 0, 1600, 0xFF2A2A2Eu},
+    [ITEM_STICK - BLK_COUNT] = {"stick", SM_STR_ITEM_STICK, ITEM_STACK_MAX, TOOL_NONE, 0, 0, 100, 0xFF9A7040u},
 
     // Tools. Durability is uses, not ticks: a wooden pickaxe is 60
     // blocks of stone, a stone one 130 -- enough that running out is a
     // thing that happens without being the thing that happens.
-    [ITEM_PICK_WOOD - BLK_COUNT]    = {"pickaxe_wood", CM_STR_ITEM_PICKAXE_WOOD, 1, TOOL_PICK, 1, 60, 200, 0xFFB08040u},
-    [ITEM_PICK_STONE - BLK_COUNT]   = {"pickaxe_stone", CM_STR_ITEM_PICKAXE_STONE, 1, TOOL_PICK, 2, 130, 0, 0xFF9098A0u},
-    [ITEM_AXE_WOOD - BLK_COUNT]     = {"axe_wood", CM_STR_ITEM_AXE_WOOD, 1, TOOL_AXE, 1, 60, 200, 0xFFC08848u},
-    [ITEM_AXE_STONE - BLK_COUNT]    = {"axe_stone", CM_STR_ITEM_AXE_STONE, 1, TOOL_AXE, 2, 130, 0, 0xFFA0A8B0u},
-    [ITEM_SHOVEL_WOOD - BLK_COUNT]  = {"shovel_wood", CM_STR_ITEM_SHOVEL_WOOD, 1, TOOL_SHOVEL, 1, 60, 200, 0xFFA07838u},
-    [ITEM_SHOVEL_STONE - BLK_COUNT] = {"shovel_stone", CM_STR_ITEM_SHOVEL_STONE, 1, TOOL_SHOVEL, 2, 130, 0, 0xFF888F98u},
+    [ITEM_PICK_WOOD - BLK_COUNT]    = {"pickaxe_wood", SM_STR_ITEM_PICKAXE_WOOD, 1, TOOL_PICK, 1, 60, 200, 0xFFB08040u},
+    [ITEM_PICK_STONE - BLK_COUNT]   = {"pickaxe_stone", SM_STR_ITEM_PICKAXE_STONE, 1, TOOL_PICK, 2, 130, 0, 0xFF9098A0u},
+    [ITEM_AXE_WOOD - BLK_COUNT]     = {"axe_wood", SM_STR_ITEM_AXE_WOOD, 1, TOOL_AXE, 1, 60, 200, 0xFFC08848u},
+    [ITEM_AXE_STONE - BLK_COUNT]    = {"axe_stone", SM_STR_ITEM_AXE_STONE, 1, TOOL_AXE, 2, 130, 0, 0xFFA0A8B0u},
+    [ITEM_SHOVEL_WOOD - BLK_COUNT]  = {"shovel_wood", SM_STR_ITEM_SHOVEL_WOOD, 1, TOOL_SHOVEL, 1, 60, 200, 0xFFA07838u},
+    [ITEM_SHOVEL_STONE - BLK_COUNT] = {"shovel_stone", SM_STR_ITEM_SHOVEL_STONE, 1, TOOL_SHOVEL, 2, 130, 0, 0xFF888F98u},
 
     // Iron: smelted from the ore, and the only tier that opens iron
     // ore itself. 250 uses, as in Minecraft, and iron does not burn.
-    [ITEM_IRON_INGOT - BLK_COUNT]  = {"iron_ingot", CM_STR_ITEM_IRON_INGOT, ITEM_STACK_MAX, TOOL_NONE, 0, 0, 0, 0xFFD8D8DEu},
-    [ITEM_PICK_IRON - BLK_COUNT]   = {"pickaxe_iron", CM_STR_ITEM_PICKAXE_IRON, 1, TOOL_PICK, 3, 250, 0, 0xFFDEDEE4u},
-    [ITEM_AXE_IRON - BLK_COUNT]    = {"axe_iron", CM_STR_ITEM_AXE_IRON, 1, TOOL_AXE, 3, 250, 0, 0xFFDEDEE4u},
-    [ITEM_SHOVEL_IRON - BLK_COUNT] = {"shovel_iron", CM_STR_ITEM_SHOVEL_IRON, 1, TOOL_SHOVEL, 3, 250, 0, 0xFFDEDEE4u},
+    [ITEM_IRON_INGOT - BLK_COUNT]  = {"iron_ingot", SM_STR_ITEM_IRON_INGOT, ITEM_STACK_MAX, TOOL_NONE, 0, 0, 0, 0xFFD8D8DEu},
+    [ITEM_PICK_IRON - BLK_COUNT]   = {"pickaxe_iron", SM_STR_ITEM_PICKAXE_IRON, 1, TOOL_PICK, 3, 250, 0, 0xFFDEDEE4u},
+    [ITEM_AXE_IRON - BLK_COUNT]    = {"axe_iron", SM_STR_ITEM_AXE_IRON, 1, TOOL_AXE, 3, 250, 0, 0xFFDEDEE4u},
+    [ITEM_SHOVEL_IRON - BLK_COUNT] = {"shovel_iron", SM_STR_ITEM_SHOVEL_IRON, 1, TOOL_SHOVEL, 3, 250, 0, 0xFFDEDEE4u},
 };
 
 // A flat colour standing in for the block's texture in the inventory.
@@ -57,29 +57,29 @@ static uint32_t const BLOCK_ARGB[BLK_COUNT] = {
 // for the same reason BLOCK_ARGB is here: the block registry describes
 // how a block behaves, and how it is spelled in 32 languages is the
 // item layer's business.
-static cm_str_t const BLOCK_LABEL[BLK_COUNT] = {
-    [BLK_GRASS] = CM_STR_ITEM_GRASS,         [BLK_DIRT] = CM_STR_ITEM_DIRT,
-    [BLK_STONE] = CM_STR_ITEM_STONE,         [BLK_COBBLE] = CM_STR_ITEM_COBBLESTONE,
-    [BLK_SAND] = CM_STR_ITEM_SAND,           [BLK_WATER] = CM_STR_ITEM_WATER,
-    [BLK_LOG] = CM_STR_ITEM_LOG,             [BLK_PLANKS] = CM_STR_ITEM_PLANKS,
-    [BLK_LEAVES] = CM_STR_ITEM_LEAVES,       [BLK_COAL_ORE] = CM_STR_ITEM_COAL_ORE,
-    [BLK_GLASS] = CM_STR_ITEM_GLASS,         [BLK_TORCH] = CM_STR_ITEM_TORCH,
-    [BLK_FLOWER_RED] = CM_STR_ITEM_FLOWER_RED,
-    [BLK_FLOWER_YELLOW] = CM_STR_ITEM_FLOWER_YELLOW,
-    [BLK_TALL_GRASS] = CM_STR_ITEM_TALL_GRASS,
-    [BLK_BEDROCK] = CM_STR_ITEM_BEDROCK,     [BLK_GRAVEL] = CM_STR_ITEM_GRAVEL,
-    [BLK_SIGN] = CM_STR_ITEM_SIGN,
-    [BLK_CRAFTING_TABLE] = CM_STR_ITEM_CRAFTING_TABLE,
-    [BLK_FURNACE] = CM_STR_ITEM_FURNACE,
-    [BLK_IRON_ORE] = CM_STR_ITEM_IRON_ORE,
-    [BLK_CHEST] = CM_STR_ITEM_CHEST,
-    [BLK_TRASH] = CM_STR_ITEM_TRASH_CHEST,
-    [BLK_BENCH] = CM_STR_ITEM_DISASSEMBLY_BENCH,
-    [BLK_BIRCH_LOG] = CM_STR_ITEM_BIRCH_LOG,
-    [BLK_BIRCH_LEAVES] = CM_STR_ITEM_BIRCH_LEAVES,
-    [BLK_CACTUS] = CM_STR_ITEM_CACTUS,
-    [BLK_SNOW] = CM_STR_ITEM_SNOW,
-    [BLK_SANDSTONE] = CM_STR_ITEM_SANDSTONE,
+static sm_str_t const BLOCK_LABEL[BLK_COUNT] = {
+    [BLK_GRASS] = SM_STR_ITEM_GRASS,         [BLK_DIRT] = SM_STR_ITEM_DIRT,
+    [BLK_STONE] = SM_STR_ITEM_STONE,         [BLK_COBBLE] = SM_STR_ITEM_COBBLESTONE,
+    [BLK_SAND] = SM_STR_ITEM_SAND,           [BLK_WATER] = SM_STR_ITEM_WATER,
+    [BLK_LOG] = SM_STR_ITEM_LOG,             [BLK_PLANKS] = SM_STR_ITEM_PLANKS,
+    [BLK_LEAVES] = SM_STR_ITEM_LEAVES,       [BLK_COAL_ORE] = SM_STR_ITEM_COAL_ORE,
+    [BLK_GLASS] = SM_STR_ITEM_GLASS,         [BLK_TORCH] = SM_STR_ITEM_TORCH,
+    [BLK_FLOWER_RED] = SM_STR_ITEM_FLOWER_RED,
+    [BLK_FLOWER_YELLOW] = SM_STR_ITEM_FLOWER_YELLOW,
+    [BLK_TALL_GRASS] = SM_STR_ITEM_TALL_GRASS,
+    [BLK_BEDROCK] = SM_STR_ITEM_BEDROCK,     [BLK_GRAVEL] = SM_STR_ITEM_GRAVEL,
+    [BLK_SIGN] = SM_STR_ITEM_SIGN,
+    [BLK_CRAFTING_TABLE] = SM_STR_ITEM_CRAFTING_TABLE,
+    [BLK_FURNACE] = SM_STR_ITEM_FURNACE,
+    [BLK_IRON_ORE] = SM_STR_ITEM_IRON_ORE,
+    [BLK_CHEST] = SM_STR_ITEM_CHEST,
+    [BLK_TRASH] = SM_STR_ITEM_TRASH_CHEST,
+    [BLK_BENCH] = SM_STR_ITEM_DISASSEMBLY_BENCH,
+    [BLK_BIRCH_LOG] = SM_STR_ITEM_BIRCH_LOG,
+    [BLK_BIRCH_LEAVES] = SM_STR_ITEM_BIRCH_LEAVES,
+    [BLK_CACTUS] = SM_STR_ITEM_CACTUS,
+    [BLK_SNOW] = SM_STR_ITEM_SNOW,
+    [BLK_SANDSTONE] = SM_STR_ITEM_SANDSTONE,
     // Air and the barrier are never in anybody's hands and have none.
 };
 

@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  a Standard MIDI File sequencer
+//  SynthMiner  --  a Standard MIDI File sequencer
 // ---------------------------------------------------------------------
 //  PORTED from ../tanmatsu-tadoom/main/midi_player.c (Doom's music
 //  player, GPL-2.0 like the rest of that tree), which already reads

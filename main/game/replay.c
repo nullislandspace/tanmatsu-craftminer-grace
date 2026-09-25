@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  recording and replaying play (see replay.h)
+//  SynthMiner  --  recording and replaying play (see replay.h)
 // =====================================================================
 
 #include "game/replay.h"
@@ -10,7 +10,8 @@
 #include "common/psram.h"
 #include "items/items.h"
 
-#define REPLAY_MAGIC   "CMRP"
+#define REPLAY_MAGIC   "SMRP"
+#define REPLAY_MAGIC_WAS "CMRP"  // CraftMiner's, read but never written (D-91)
 // 2: the inventory by item NAME, not number. Item numbers follow the
 // last block id (items.h), so they move every time a block is added;
 // names never do (D-74). A version-1 file is refused.
@@ -27,7 +28,7 @@ static bool           s_rec, s_play;
 static replay_start_t s_start;
 
 static bool buffer(void) {
-    if (s_ticks == NULL) s_ticks = cm_alloc((size_t)REPLAY_MAX_TICKS * sizeof(rtick_t));
+    if (s_ticks == NULL) s_ticks = sm_alloc((size_t)REPLAY_MAX_TICKS * sizeof(rtick_t));
     return s_ticks != NULL;
 }
 
@@ -115,7 +116,8 @@ bool replay_load(char const* path, replay_start_t* start) {
     if (f == NULL) return false;
     char     magic[4];
     uint32_t version = 0, n = 0;
-    bool     ok = get(f, magic, 4) && memcmp(magic, REPLAY_MAGIC, 4) == 0 && get(f, &version, 4) &&
+    bool     ok = get(f, magic, 4) &&
+              (memcmp(magic, REPLAY_MAGIC, 4) == 0 || memcmp(magic, REPLAY_MAGIC_WAS, 4) == 0) && get(f, &version, 4) &&
               version == REPLAY_VERSION && get(f, &n, 4) && n <= REPLAY_MAX_TICKS && read_start(f, &s_start);
     for (uint32_t i = 0; ok && i < n; i++) {
         ok = get(f, &s_ticks[i].mask, 4) && get(f, &s_ticks[i].yaw, 4) && get(f, &s_ticks[i].pitch, 4);

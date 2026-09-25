@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the cheat console
+//  SynthMiner  --  the cheat console
 // ---------------------------------------------------------------------
 //  Type part of an item's name, pick it, get a stack of it. Opened with
 //  the backtick key, which is where a console goes and which nothing

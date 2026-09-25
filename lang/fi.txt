@@ -1,9 +1,9 @@
-# CraftMiner -- Suomi
+# SynthMiner -- Suomi
 #
 # Tämän käännöksen teki tekoäly, ja se odottaa jotakuta, joka oikeasti puhuu
 # kieltä. Jos tiedät paremmin: korjaa rivi ja aja
 # `python3 tools/make_lang.py`. Onnistuu myös ilman työkaluja -- kortilla
-# oleva tiedosto /sd/craftminer/lang/fi.txt samoine riveineen menee
+# oleva tiedosto /sd/synthminer/lang/fi.txt samoine riveineen menee
 # sisäänrakennetun edelle (i18n.h).
 #
 # Avaimet ovat tiedostossa lang/en.txt. Sen %-paikanpitäjien on oltava
@@ -104,7 +104,7 @@ common.back = Takaisin
 hint.list = ylös / alas valitsee, Enter vahvistaa, Esc palaa
 hint.adjust = ylös / alas valitsee, vasen / oikea muuttaa, Esc palaa
 
-status.newer = Tehty uudemmalla CraftMinerilla: päivitä pelataksesi
+status.newer = Tehty uudemmalla SynthMinerilla: päivitä pelataksesi
 status.older = Vanha tallennusmuoto: tämä versio ei osaa vielä päivittää sitä
 status.needs_name = Maailma tarvitsee nimen
 status.renamed = Nimetty uudelleen

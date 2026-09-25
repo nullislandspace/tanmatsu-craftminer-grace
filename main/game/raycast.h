@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  what the crosshair is pointing at
+//  SynthMiner  --  what the crosshair is pointing at
 // ---------------------------------------------------------------------
 //  A ray walked through the block grid, cell by cell, in the order it
 //  actually crosses them (Amanatides and Woo): step to whichever axis

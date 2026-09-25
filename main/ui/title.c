@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the title, written in blocks (see title.h)
+//  SynthMiner  --  the title, written in blocks (see title.h)
 // =====================================================================
 
 #include "ui/title.h"
@@ -27,7 +27,7 @@
 // The letters' bottom row. Clear of the tallest TREE, not merely the
 // tallest ground: terrain reaches y41 and a tree on it another six, so
 // anything below y47 gets a canopy in front of it. The first version
-// sat at 44 and "Craft" spent the whole title behind an oak.
+// sat at 44 and the first word spent the whole title behind an oak.
 #define TITLE_Y    56
 #define TITLE_Z    24   // the plane they stand in
 #define TITLE_DEEP 2    // blocks thick, so they read as solid from an angle
@@ -41,21 +41,31 @@ typedef struct {
     char const* rows[GLYPH_H];
 } glyph_t;
 
-// The showreel's font, unchanged: a '#' is a block.
+// The showreel's font, with three letters it never had. It carried the
+// nine distinct letters of "CraftMiner"; "SynthMiner" needs nine of its
+// own, and S, y and h had to be drawn in its style to match -- capitals
+// five columns wide over all seven rows, x-height letters four wide
+// over the bottom five, ascenders and descenders reaching out of that
+// band by two. A '#' is a block.
+//
+// THE TWO WORDS COME OUT THE SAME WIDTH, 48 blocks, which is not luck
+// so much as arithmetic that was worth checking: the camera below is
+// framed on that number (see the path), and a wider word would have
+// walked off the edges of the screen.
 static glyph_t const FONT[] = {
-    {'C', {".###.", "#...#", "#....", "#....", "#....", "#...#", ".###."}},
-    {'r', {"....", "....", "#.##", "##..", "#...", "#...", "#..."}},
-    {'a', {"....", "....", ".##.", "...#", ".###", "#..#", ".###"}},
-    {'f', {"..##", ".#..", "####", ".#..", ".#..", ".#..", ".#.."}},
+    {'S', {".###.", "#...#", "#....", ".###.", "....#", "#...#", ".###."}},
+    {'y', {"....", "....", "#..#", "#..#", ".###", "...#", ".##."}},
+    {'n', {"....", "....", "###.", "#..#", "#..#", "#..#", "#..#"}},
     {'t', {".#..", ".#..", "###.", ".#..", ".#..", ".#.#", "..#."}},
+    {'h', {"#...", "#...", "###.", "#..#", "#..#", "#..#", "#..#"}},
     {'M', {"#...#", "##.##", "#.#.#", "#.#.#", "#...#", "#...#", "#...#"}},
     {'i', {"#", ".", "#", "#", "#", "#", "#"}},
-    {'n', {"....", "....", "###.", "#..#", "#..#", "#..#", "#..#"}},
     {'e', {"....", "....", ".##.", "#..#", "####", "#...", ".###"}},
+    {'r', {"....", "....", "#.##", "##..", "#...", "#...", "#..."}},
 };
 
-static char const TEXT[] = "CraftMiner";
-#define SPLIT 5  // "Craft" in grass | "Miner" in cobblestone
+static char const TEXT[] = "SynthMiner";
+#define SPLIT 5  // "Synth" in grass | "Miner" in cobblestone
 
 // One block of the title and when it appears.
 typedef struct {
@@ -214,7 +224,7 @@ void title_stream_at(double t, double* wx, double* wz) {
     if (wz != NULL) *wz = v.wz;
 }
 
-cm_view_t title_view(void) {
+sm_view_t title_view(void) {
     // The title's own view, not one of the player's presets. The
     // letters stand 52 blocks off, and the near preset would have them
     // flat-shaded and six tenths of the way into the fog -- grey, where
@@ -235,14 +245,14 @@ cm_view_t title_view(void) {
     // 56 blocks of terrain behind letters that stand 44 away is enough
     // scenery, and it fits with room. `scene_drop_stats()` says so
     // rather than the picture having to.
-    return (cm_view_t){
+    return (sm_view_t){
         .fancy_dist   = 20.0f,
         .tex_dist     = 52.0f,
         .coarse_dist  = 44.0f,
         .draw_dist    = 56.0f,
         .fog0         = 44.0f,
         .fog1         = 64.0f,
-        .fog_argb     = CM_SKY_ARGB,
+        .fog_argb     = SM_SKY_ARGB,
         .load_radius  = 4,
         .evict_radius = 5,
     };

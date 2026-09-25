@@ -1,10 +1,10 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the crafting book
+//  SynthMiner  --  the crafting book
 // ---------------------------------------------------------------------
 //  Not a 3x3 grid. The badge has a keyboard and no pointer, so crafting
 //  is a SEARCHABLE LIST of recipes the player has discovered (the
-//  user's call, 2026-09-23; claudeplans/craftminer.md, Part C):
+//  user's call, 2026-09-23; claudeplans/synthminer.md, Part C):
 //
 //      * it starts empty and fills as materials are picked up
 //      * every letter typed narrows it

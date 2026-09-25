@@ -7,7 +7,7 @@
 //  and the marauders can both use plate_gunmetal.png without two copies.
 //  Everything is unloaded together by texcache_shutdown().
 //  Lifted from tanmatsu-showreel-grace,
-//  main/common/texcache.h. Changes here are CraftMiner's;
+//  main/common/texcache.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

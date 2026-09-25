@@ -107,7 +107,7 @@ list(APPEND APP_SOURCES
     main/testkit/screenshot.c
     main/testkit/showtime.c
 )
-add_compile_definitions(SCREENSHOT_DIR="/sd/craftminer/test")
+add_compile_definitions(SCREENSHOT_DIR="/sd/synthminer/test")
 
 # Build identity for the debug console's READY records: the git commit
 # (marked -dirty when there are uncommitted changes) and the build time.
@@ -144,7 +144,7 @@ target_compile_options(app_obj PRIVATE
     # code size is the one resource that is not scarce, and the inner
     # loops here are real: the greedy mesher, the per-triangle submit,
     # the chunk streamer. Measured on the engine, the same switch was
-    # worth 12% of the rasterise (claudeplans/craftminer.md, F-39).
+    # worth 12% of the rasterise (claudeplans/synthminer.md, F-39).
     -O2 -fPIC
     -ffunction-sections -fdata-sections -fno-common
     -D__thread=
@@ -186,7 +186,7 @@ set(ENGINE_DEPS "")
 #       facing a forest will pass the 1024 default, and an overflow drops
 #       geometry SILENTLY. 2048 costs about 70 KB of PSRAM and nothing
 #       per frame. Flat triangles stay on the 4096 default. (D-09)
-#   SE_BINDINGS_MAX  the default 16 is below the ~20 actions CraftMiner
+#   SE_BINDINGS_MAX  the default 16 is below the ~20 actions SynthMiner
 #       declares, and se_bindings_init() CLAMPS rather than complaining,
 #       so the last actions would simply never fire. (F-11)
 # The near clip plane, down from the engine's default 0.5.
@@ -209,7 +209,7 @@ add_compile_definitions(RENDER_NEAR_CLIP_Z=0.1f)
 # nearby terrain vanished, and you saw "through the ground" at a step.
 #   flat 6144      240 KB, in PSRAM since the depth plane took its
 #                  internal SRAM (below); peak seen 4897 (far view)
-#   lines 256      CraftMiner draws a dozen (the block outline); the
+#   lines 256      SynthMiner draws a dozen (the block outline); the
 #                  default 4096 was 112 KB of internal SRAM for nothing
 #   textured 4096  in PSRAM (it never fitted internal), 272 KB
 add_compile_definitions(SE_SCENE_TRI_CAP=6144)

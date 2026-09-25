@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the simulation clock
+//  SynthMiner  --  the simulation clock
 // ---------------------------------------------------------------------
 //  The world simulates at a fixed 20 Hz and the frame interpolates
 //  between the last two ticks (D-02). Minecraft's rate, and the one

@@ -1,9 +1,9 @@
-# CraftMiner -- Dansk
+# SynthMiner -- Dansk
 #
 # Denne oversættelse er lavet af en AI og venter på nogen, der rent faktisk
 # taler sproget. Ved du det bedre: ret linjen og kør
 # `python3 tools/make_lang.py`. Det kan også gøres uden værktøj -- en fil
-# /sd/craftminer/lang/da.txt på kortet, med de samme linjer, går forud for
+# /sd/synthminer/lang/da.txt på kortet, med de samme linjer, går forud for
 # det indbyggede (i18n.h).
 #
 # Nøglerne står i lang/en.txt. %-pladsholderne derfra skal med her; de må
@@ -104,7 +104,7 @@ common.back = Tilbage
 hint.list = op / ned vælger, Enter bekræfter, Esc går tilbage
 hint.adjust = op / ned vælger, venstre / højre ændrer, Esc går tilbage
 
-status.newer = Lavet af en nyere CraftMiner: opdater for at spille den
+status.newer = Lavet af en nyere SynthMiner: opdater for at spille den
 status.older = Ældre gemmeformat: denne version kan ikke opdatere det endnu
 status.needs_name = En verden skal have et navn
 status.renamed = Omdøbt

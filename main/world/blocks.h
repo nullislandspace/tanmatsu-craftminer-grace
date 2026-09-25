@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the block registry
+//  SynthMiner  --  the block registry
 // ---------------------------------------------------------------------
 //  ONE table describes every block: how it meshes, how it looks, how
 //  long it takes to break, what it drops, and how it behaves. The mesher
@@ -10,7 +10,7 @@
 //  Adding a block is: one row here, one BLK_ id below, one 16x16 PNG
 //  (plus its VM_ material and its row in MAT_FILES), one metadata.json
 //  line. Nothing else. That is the whole extendability contract
-//  (claudeplans/craftminer.md, Part L).
+//  (claudeplans/synthminer.md, Part L).
 //
 //  Pure: no engine, no RTOS, no allocation. tools/worldcheck.c compiles
 //  this as-is.

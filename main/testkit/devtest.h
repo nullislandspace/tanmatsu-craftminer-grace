@@ -100,7 +100,7 @@ bool devtest_running(void);
 // hashes the result.
 //
 // An app with background work has to be told, because "reproducible"
-// is not something it can arrange after the fact: CraftMiner switches
+// is not something it can arrange after the fact: SynthMiner switches
 // its chunk worker to synchronous while this is true, so that the
 // chunks a frame needs exist by the time it draws instead of arriving
 // a second later. Without it every shot is a picture of empty sky.
@@ -117,12 +117,12 @@ void devtest_after_render(pax_buf_t* fb, int64_t rast_us);
 void devtest_period(float fps, float frame_ms);
 
 // The content's own check failed -- a scene that tests something rather
-// than just drawing it (CraftMiner's `savecheck`). Emits a FAIL record
+// than just drawing it (SynthMiner's `savecheck`). Emits a FAIL record
 // and makes the running test end "bad".
 void devtest_content_failed(char const* why);
 
 // The content finished what it was asked to do, before the clock ran
-// out -- CraftMiner's `bench_gen`, which generates a world and has
+// out -- SynthMiner's `bench_gen`, which generates a world and has
 // nothing to do afterwards. Ends the running test "ok".
 void devtest_content_done(void);
 

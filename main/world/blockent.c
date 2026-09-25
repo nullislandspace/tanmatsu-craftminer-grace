@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  blocks that remember more than a byte (see blockent.h)
+//  SynthMiner  --  blocks that remember more than a byte (see blockent.h)
 // =====================================================================
 
 #include "world/blockent.h"
@@ -36,13 +36,13 @@ static uint8_t kind_by_name(char const* s) {
 
 bool blockent_init(void) {
     if (s_pool != NULL) return true;
-    s_pool = (blockent_t*)cm_calloc(BE_MAX, sizeof(blockent_t));
+    s_pool = (blockent_t*)sm_calloc(BE_MAX, sizeof(blockent_t));
     return s_pool != NULL;
 }
 
 void blockent_shutdown(void) {
     if (s_pool == NULL) return;
-    cm_free(s_pool);
+    sm_free(s_pool);
     s_pool = NULL;
 }
 

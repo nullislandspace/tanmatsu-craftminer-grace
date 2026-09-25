@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  what is drawn over the world
+//  SynthMiner  --  what is drawn over the world
 // ---------------------------------------------------------------------
 //  Two things, and both exist for the same reason: without them you
 //  cannot tell what you are about to hit.
@@ -55,7 +55,7 @@ void hud_mine_progress(pax_buf_t* fb, float progress);
 void hud_dropped_items(void);
 
 // A few lines of text at the top left, with a shadow so they read over
-// sky and ground alike: the position overlay (CM_INFO).
+// sky and ground alike: the position overlay (SM_INFO).
 void hud_text_lines(pax_buf_t* fb, char const* const* lines, int n);
 
 // A grid of inventory slots, drawn the way the Tab screen draws them.

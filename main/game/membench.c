@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  what the memory actually costs (see membench.h)
+//  SynthMiner  --  what the memory actually costs (see membench.h)
 // =====================================================================
 
 #include "game/membench.h"

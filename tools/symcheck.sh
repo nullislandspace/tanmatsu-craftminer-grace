@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  CraftMiner  --  every symbol we call, the loader can resolve
+#  SynthMiner  --  every symbol we call, the loader can resolve
 # ---------------------------------------------------------------------
 #  An ELF app for graceloader links against NOTHING: every libc and IDF
 #  function it calls is resolved at LOAD time from the loader's export

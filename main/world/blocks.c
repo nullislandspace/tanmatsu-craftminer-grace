@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the block table (see blocks.h)
+//  SynthMiner  --  the block table (see blocks.h)
 // ---------------------------------------------------------------------
 //  Hardness is in 20 Hz ticks, bare-handed. Rough scale: 5 = instant
 //  (a flower), 20 = one second (dirt), 150 = seven seconds (stone by

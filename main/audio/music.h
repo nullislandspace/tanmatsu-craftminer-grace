@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the music, and the long silences between it
+//  SynthMiner  --  the music, and the long silences between it
 // ---------------------------------------------------------------------
 //  Music here works the way it did in the Minecraft betas this game is
 //  modelled on: a piece starts, it ends, and then there is nothing for
@@ -23,7 +23,7 @@
 //  either is in the pool:
 //
 //    <install>/music/      what the game ships with
-//    /sd/craftminer/music/ whatever the player has put there
+//    /sd/synthminer/music/ whatever the player has put there
 //
 //  So a player can add their own pieces, or delete ours, without a
 //  toolchain -- the same arrangement the translations use.
@@ -38,7 +38,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-// Scan for pieces and install the music source. Called by cm_audio_init;
+// Scan for pieces and install the music source. Called by sm_audio_init;
 // harmless if there are none, in which case the game is simply quiet.
 void music_init(void);
 

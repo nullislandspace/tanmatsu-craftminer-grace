@@ -1,11 +1,11 @@
-# CraftMiner -- Vlaams
+# SynthMiner -- Vlaams
 #
 # Deze vertaling komt van een AI en wacht op iemand die de taal echt spreekt.
 # Ze vertrekt van het Nederlands (lang/nl.txt) en wijkt af waar het Vlaamse
 # woord anders is; staat een regel hier niet, dan geldt gewoon het Engels uit
 # lang/en.txt -- dus wie een verschil ziet, zet die ene regel hieronder.
 # Pas aan en draai `python3 tools/make_lang.py`, of zet een bestand
-# /sd/craftminer/lang/nl-BE.txt op de kaart zonder gereedschap (i18n.h).
+# /sd/synthminer/lang/nl-BE.txt op de kaart zonder gereedschap (i18n.h).
 
 menu.play = Spelen
 menu.settings = Instellingen
@@ -97,7 +97,7 @@ common.back = Terug
 hint.list = omhoog / omlaag kiest, Enter bevestigt, Esc terug
 hint.adjust = omhoog / omlaag kiest, links / rechts wijzigt, Esc terug
 
-status.newer = Gemaakt door een nieuwere CraftMiner: werk bij om te spelen
+status.newer = Gemaakt door een nieuwere SynthMiner: werk bij om te spelen
 status.older = Een ouder opslagformaat: deze versie kan het nog niet bijwerken
 status.needs_name = Een wereld heeft een naam nodig
 status.renamed = Hernoemd

@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  packing a chunk into bytes (see chunk_codec.h)
+//  SynthMiner  --  packing a chunk into bytes (see chunk_codec.h)
 // ---------------------------------------------------------------------
 //  Payload layout, little-endian throughout:
 //

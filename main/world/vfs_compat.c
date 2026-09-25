@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the file operations graceloader does not export
+//  SynthMiner  --  the file operations graceloader does not export
 //                  (see vfs_compat.h)
 // =====================================================================
 
@@ -12,11 +12,11 @@
 
 // mkdir is exported on the badge and exists on the host; only its
 // header differs.
-#ifndef CM_HOST
+#ifndef SM_HOST
 #include <sys/types.h>
 #endif
 
-bool cm_mkdir_p(char const* path) {
+bool sm_mkdir_p(char const* path) {
     if (path == NULL || *path == '\0') return false;
 
     char buf[192];
@@ -38,14 +38,14 @@ bool cm_mkdir_p(char const* path) {
     return stat(buf, &st) == 0;
 }
 
-#ifdef CM_HOST
+#ifdef SM_HOST
 
 // ---- Host: plain stdio and dirent -----------------------------------
 
 #include <dirent.h>
 #include <stdlib.h>
 
-bool cm_remove(char const* path) {
+bool sm_remove(char const* path) {
     if (remove(path) == 0) return true;
     // Already gone counts as success, to match the badge's f_unlink
     // returning FR_NO_FILE.
@@ -53,18 +53,18 @@ bool cm_remove(char const* path) {
     return stat(path, &st) != 0;
 }
 
-bool cm_rename(char const* from, char const* to) {
+bool sm_rename(char const* from, char const* to) {
     return rename(from, to) == 0;
 }
 
-struct cm_dir {
+struct sm_dir {
     DIR* d;
 };
 
-cm_dir_t* cm_dir_open(char const* path) {
+sm_dir_t* sm_dir_open(char const* path) {
     DIR* d = opendir(path);
     if (d == NULL) return NULL;
-    cm_dir_t* h = malloc(sizeof(*h));
+    sm_dir_t* h = malloc(sizeof(*h));
     if (h == NULL) {
         closedir(d);
         return NULL;
@@ -73,7 +73,7 @@ cm_dir_t* cm_dir_open(char const* path) {
     return h;
 }
 
-char const* cm_dir_next(cm_dir_t* h, bool* is_dir) {
+char const* sm_dir_next(sm_dir_t* h, bool* is_dir) {
     if (h == NULL) return NULL;
     struct dirent* e;
     while ((e = readdir(h->d)) != NULL) {
@@ -84,7 +84,7 @@ char const* cm_dir_next(cm_dir_t* h, bool* is_dir) {
     return NULL;
 }
 
-void cm_dir_close(cm_dir_t* h) {
+void sm_dir_close(sm_dir_t* h) {
     if (h == NULL) return;
     closedir(h->d);
     free(h);
@@ -119,7 +119,7 @@ static void fat_candidate(char* out, size_t cap, char const* vfs, int which) {
 
 #define FAT_TRIES 4
 
-bool cm_remove(char const* path) {
+bool sm_remove(char const* path) {
     char cand[160];
     for (int i = 0; i < FAT_TRIES; i++) {
         fat_candidate(cand, sizeof(cand), path, i);
@@ -129,7 +129,7 @@ bool cm_remove(char const* path) {
     return false;
 }
 
-bool cm_rename(char const* from, char const* to) {
+bool sm_rename(char const* from, char const* to) {
     char a[160], b[160];
     for (int i = 0; i < FAT_TRIES; i++) {
         fat_candidate(a, sizeof(a), from, i);
@@ -143,13 +143,13 @@ bool cm_rename(char const* from, char const* to) {
     return false;
 }
 
-struct cm_dir {
+struct sm_dir {
     FF_DIR  d;
     FILINFO info;
 };
 
-cm_dir_t* cm_dir_open(char const* path) {
-    cm_dir_t* h = heap_caps_malloc(sizeof(*h), MALLOC_CAP_SPIRAM);
+sm_dir_t* sm_dir_open(char const* path) {
+    sm_dir_t* h = heap_caps_malloc(sizeof(*h), MALLOC_CAP_SPIRAM);
     if (h == NULL) return NULL;
     char cand[160];
     for (int i = 0; i < FAT_TRIES; i++) {
@@ -160,7 +160,7 @@ cm_dir_t* cm_dir_open(char const* path) {
     return NULL;
 }
 
-char const* cm_dir_next(cm_dir_t* h, bool* is_dir) {
+char const* sm_dir_next(sm_dir_t* h, bool* is_dir) {
     if (h == NULL) return NULL;
     while (f_readdir(&h->d, &h->info) == FR_OK && h->info.fname[0] != '\0') {
         if (is_dir != NULL) *is_dir = (h->info.fattrib & AM_DIR) != 0;
@@ -169,7 +169,7 @@ char const* cm_dir_next(cm_dir_t* h, bool* is_dir) {
     return NULL;
 }
 
-void cm_dir_close(cm_dir_t* h) {
+void sm_dir_close(sm_dir_t* h) {
     if (h == NULL) return;
     f_closedir(&h->d);
     heap_caps_free(h);

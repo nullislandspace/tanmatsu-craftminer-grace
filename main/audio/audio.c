@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  starting the speaker, and the sounds that need state
+//  SynthMiner  --  starting the speaker, and the sounds that need state
 //  See audio.h.
 // =====================================================================
 
@@ -15,7 +15,7 @@
 
 #include <math.h>
 
-static char const TAG[] = "cm_audio";
+static char const TAG[] = "sm_audio";
 
 static bool s_up = false;
 
@@ -33,7 +33,7 @@ static bool   s_have_last = false;
 static float  s_fall_speed = 0.0f;  // the last airborne vy, kept for the landing
 static bool   s_was_wet = false;    // in the water last tick, for the splash on entry
 
-bool cm_audio_init(void) {
+bool sm_audio_init(void) {
     if (s_up) return true;
     esp_err_t const err = audio_mixer_init();
     if (err != ESP_OK) {
@@ -61,7 +61,7 @@ bool cm_audio_init(void) {
     return true;
 }
 
-void cm_audio_shutdown(void) {
+void sm_audio_shutdown(void) {
     if (!s_up) return;
     audio_mixer_keep_awake(false);
     // The mixer FIRST: audio_mixer_shutdown() is synchronous and parks
@@ -72,12 +72,12 @@ void cm_audio_shutdown(void) {
     s_up = false;
 }
 
-void cm_audio_frame(float dt) {
+void sm_audio_frame(float dt) {
     if (!s_up) return;
     music_frame(dt);
 }
 
-void cm_audio_leave_world(void) {
+void sm_audio_leave_world(void) {
     s_step_accum = 0.0f;
     s_have_last  = false;
     s_fall_speed = 0.0f;
@@ -104,7 +104,7 @@ static uint8_t body_block(player_t const* p) {
     return world_block(bx, by, bz);
 }
 
-void cm_audio_player_tick(player_t const* p) {
+void sm_audio_player_tick(player_t const* p) {
     if (!s_up || p == NULL) return;
 
     // Hitting the water. The same edge as a landing, and the same

@@ -26,14 +26,14 @@ under an explicit licence, and **every one of them is Mutopia's "Public
 Domain" licence** — not Creative Commons. That was a deliberate choice
 when the set was picked: Mutopia also carries a great deal of CC BY-SA
 material, including the Gnossiennes, and share-alike would have put
-conditions on anyone redistributing CraftMiner. Public domain puts none.
+conditions on anyone redistributing SynthMiner. Public domain puts none.
 
 So: these files may be copied, changed, and shipped by anyone, and
 nothing in this directory places any obligation on the rest of the game.
 
 ## Adding your own
 
-Drop any `.mid` file into `/sd/craftminer/music/` on the badge and it
+Drop any `.mid` file into `/sd/synthminer/music/` on the badge and it
 joins the pool; a file there with the same name as one of ours replaces
 it. Nothing needs rebuilding, and nothing here needs deleting first. The
 game reads both directories at startup.

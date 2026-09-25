@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  the music scheduler. See music.h.
+//  SynthMiner  --  the music scheduler. See music.h.
 // =====================================================================
 
 #include "audio/music.h"
@@ -21,7 +21,7 @@
 #include <stdio.h>
 #include <string.h>
 
-static char const TAG[] = "cm_music";
+static char const TAG[] = "sm_music";
 
 // --- How long the silences are ----------------------------------------
 //
@@ -167,13 +167,13 @@ static bool has_mid_ext(char const* name) {
 
 static void scan_dir(int which, char const* path) {
     snprintf(s_dir_path[which], sizeof(s_dir_path[which]), "%s", path);
-    cm_dir_t* d = cm_dir_open(path);
+    sm_dir_t* d = sm_dir_open(path);
     if (d == NULL) return;
 
     int found = 0;
     char const* name;
     bool        is_dir;
-    while (s_n_tracks < MUSIC_MAX_TRACKS && (name = cm_dir_next(d, &is_dir)) != NULL) {
+    while (s_n_tracks < MUSIC_MAX_TRACKS && (name = sm_dir_next(d, &is_dir)) != NULL) {
         if (is_dir || !has_mid_ext(name)) continue;
         if (strlen(name) >= MUSIC_NAME_MAX) continue;
         // A piece the player has put in their own directory REPLACES the
@@ -194,7 +194,7 @@ static void scan_dir(int which, char const* path) {
         s_n_tracks++;
         found++;
     }
-    cm_dir_close(d);
+    sm_dir_close(d);
     ESP_LOGI(TAG, "%s: %d piece%s", path, found, found == 1 ? "" : "s");
 }
 
@@ -208,7 +208,7 @@ void music_init(void) {
     scan_dir(0, shipped);
 
     char own[160];
-    snprintf(own, sizeof(own), "%s/music", CM_DATA_DIR);
+    snprintf(own, sizeof(own), "%s/music", SM_DATA_DIR);
     scan_dir(1, own);
 
     if (s_n_tracks == 0) {
@@ -333,7 +333,7 @@ void music_skip(void) {
 
 void music_stop(void) {
     if (!s_started) return;
-    // ORDER MATTERS, and the caller has already got it right: cm_audio_
+    // ORDER MATTERS, and the caller has already got it right: sm_audio_
     // shutdown() parks the mixer task BEFORE calling this. Freeing the
     // file while the mixer might still be rendering out of it is a
     // use-after-free on the audio task, which is the one place it would

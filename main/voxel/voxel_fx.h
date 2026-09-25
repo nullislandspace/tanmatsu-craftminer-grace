@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  mining and building effects
+//  SynthMiner  --  mining and building effects
 // ---------------------------------------------------------------------
 //  Everything a scene draws on and round the blocks it changes, each a
 //  pure function of the time since its event:
@@ -18,7 +18,7 @@
 //  Coordinates are block cells (voxel_world.h); a cell's cube is
 //  [x, x+1] x [y, y+1] x [z, z+1].
 //  Lifted from tanmatsu-showreel-grace,
-//  main/craftminer/voxel/voxel_fx.h. Changes here are CraftMiner's;
+//  main/craftminer/voxel/voxel_fx.h. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 

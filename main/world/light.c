@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  light (see light.h)
+//  SynthMiner  --  light (see light.h)
 // =====================================================================
 
 #include "world/light.h"
@@ -117,15 +117,15 @@ static lctx_t* ctx_local(void) {
 }
 
 static bool ctx_alloc(lctx_t* k) {
-    k->add.n    = cm_alloc(QCAP * sizeof(node_t));
-    k->rem.n    = cm_alloc(QCAP * sizeof(node_t));
+    k->add.n    = sm_alloc(QCAP * sizeof(node_t));
+    k->rem.n    = sm_alloc(QCAP * sizeof(node_t));
     k->add.head = k->add.tail = k->rem.head = k->rem.tail = 0;
     return k->add.n != NULL && k->rem.n != NULL;
 }
 
 static void ctx_free(lctx_t* k) {
-    cm_free(k->add.n);
-    cm_free(k->rem.n);
+    sm_free(k->add.n);
+    sm_free(k->rem.n);
     k->add.n = k->rem.n = NULL;
 }
 

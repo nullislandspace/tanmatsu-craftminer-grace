@@ -1,7 +1,7 @@
 // =====================================================================
 //  Showreel asset  --  shared texture cache (see texcache.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/common/texcache.c. Changes here are CraftMiner's;
+//  main/common/texcache.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 
@@ -21,7 +21,7 @@ static char const TAG[] = "texcache";
 // The rasteriser reads one texel per pixel it draws, and those reads
 // land wherever the triangle happens to map -- not in the neat runs the
 // framebuffer gets -- so they are exactly the access pattern a cache
-// handles worst. CraftMiner's textures are 16x16 RGB565: **512 bytes
+// handles worst. SynthMiner's textures are 16x16 RGB565: **512 bytes
 // each, about 9 KiB for all eighteen**, against 160 KiB of internal
 // SRAM free after boot. It is the cheapest thing in the program to put
 // somewhere fast.

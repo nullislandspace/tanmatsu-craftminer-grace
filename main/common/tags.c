@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  named, typed, skippable fields (see tags.h)
+//  SynthMiner  --  named, typed, skippable fields (see tags.h)
 // =====================================================================
 
 #include "common/tags.h"

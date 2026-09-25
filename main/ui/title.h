@@ -1,9 +1,9 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  the title, written in blocks
+//  SynthMiner  --  the title, written in blocks
 // ---------------------------------------------------------------------
-//  "CraftMiner" standing in the sky over the meadow, in real blocks --
-//  "Craft" in grass, "Miner" in cobblestone -- popping in column by
+//  "SynthMiner" standing in the sky over the meadow, in real blocks --
+//  "Synth" in grass, "Miner" in cobblestone -- popping in column by
 //  column while the camera drifts past below and looks up at them.
 //
 //  The idea and the 7-row block font are the showreel's
@@ -48,7 +48,7 @@ title_view_t title_camera(double t);
 
 // The view the title wants: textures out to the letters and the fog
 // pushed past them, so the word reads as blocks rather than as grey.
-cm_view_t title_view(void);
+sm_view_t title_view(void);
 
 // Where the camera is, for the chunk streamer.
 void title_stream_at(double t, double* wx, double* wz);

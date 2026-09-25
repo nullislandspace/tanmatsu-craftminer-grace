@@ -1,5 +1,5 @@
 // =====================================================================
-//  CraftMiner  --  what the crosshair is pointing at (see raycast.h)
+//  SynthMiner  --  what the crosshair is pointing at (see raycast.h)
 // =====================================================================
 
 #include "game/raycast.h"

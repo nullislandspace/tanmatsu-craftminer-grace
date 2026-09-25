@@ -1,6 +1,6 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  Fred's meshes (engine-free)
+//  SynthMiner  --  Fred's meshes (engine-free)
 // ---------------------------------------------------------------------
 //  Fred, the player's figure: a yellow hard hat with a lamp, a big
 //  brown moustache, a red shirt, blue overalls, brown boots -- and a
@@ -18,7 +18,7 @@
 //  on -x). About 2 blocks tall; fred.c scales it to 0.9.
 //  Ported from tanmatsu-showreel-grace,
 //  main/craftminer/assets/miner_mesh.h, where he was "the miner".
-//  Changes here are CraftMiner's; the showreel stays the origin to diff
+//  Changes here are SynthMiner's; the showreel stays the origin to diff
 //  against.
 // =====================================================================
 
@@ -61,7 +61,7 @@ void fred_build_arm(mesh_t* m);
 void fred_build_fp_arm(mesh_t* m);
 void fred_build_leg(mesh_t* m);
 void fred_build_pick(mesh_t* m);
-// CraftMiner has three tools; the showreel's miner only needed the
+// SynthMiner has three tools; the showreel's miner only needed the
 // pickaxe. The same handle, a different head.
 void fred_build_axe(mesh_t* m);
 void fred_build_shovel(mesh_t* m);

@@ -1,7 +1,7 @@
 // =====================================================================
 //  Showreel  --  static meshes and procedural builders (see mesh.h)
 //  Lifted from tanmatsu-showreel-grace,
-//  main/mesh.c. Changes here are CraftMiner's;
+//  main/mesh.c. Changes here are SynthMiner's;
 //  the showreel stays the origin to diff against.
 // =====================================================================
 
@@ -12,8 +12,8 @@
 #include "common/psram.h"
 // Mesh data is read once per frame, sequentially: PSRAM on the badge,
 // plain malloc on the host (common/psram.h).
-#define MESH_REALLOC(p, n) cm_realloc((p), (n))
-#define MESH_FREE(p)       cm_free(p)
+#define MESH_REALLOC(p, n) sm_realloc((p), (n))
+#define MESH_FREE(p)       sm_free(p)
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846

@@ -1,13 +1,13 @@
 #pragma once
 // =====================================================================
-//  CraftMiner  --  terrain generation
+//  SynthMiner  --  terrain generation
 // ---------------------------------------------------------------------
 //  A chunk's terrain is a pure function of (seed, cx, cz). Nothing here
 //  reads another chunk, reads the clock, or draws from anything but a
 //  seeded hash -- so a world is reproducible from its seed for ever,
 //  and the order chunks happen to be generated in cannot change what
 //  they contain. That is determinism rule 3
-//  (claudeplans/craftminer.md, Part T), and it is what the host check
+//  (claudeplans/synthminer.md, Part T), and it is what the host check
 //  `worldgen: cross-chunk equivalence` exists to defend.
 //
 //  DECORATIONS SPAN CHUNKS. A tree rooted near a chunk's edge has
