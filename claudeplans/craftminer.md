@@ -94,6 +94,7 @@ main/
     horizon.{c,h}         LIFTED, not yet built
   world/
 *   blocks.{c,h}          BLOCK REGISTRY                                 (pure)
+*   blockent.{c,h}        BLOCK ENTITIES: furnace, chest and trash slots (pure)
 *   worldgen.{c,h}        pure (seed, cx, cz) -> id/state planes         (pure)
 *   farlands.{c,h}        Beta 1.7.3's density generator, overflowed     (pure)
 *   datadir.{c,h}         /sd/craftminer, and moving old data into it (D-80) (pure)
@@ -119,13 +120,15 @@ main/
 *   hud.{c,h}             crosshair, block outline, hotbar, bars
 *   flycam.{c,h}          the debug camera, on F
 *   membench.{c,h}        what the memory costs, at boot (F-40)
+*   furnace.{c,h}         smelting: the lazy clock, fuel, the cook timer (pure)
+*   benchpath.h           the benchmark flight's seed and path (step 41) (pure)
     entity.{c,h}          the general pool; item_entity is its first case
     mob_*.c animal_*.c    one file per creature
   items/
 *   items.{c,h}           ITEM REGISTRY; ids below BLK_COUNT are blocks  (pure)
 *   inventory.{c,h}       slots, hotbar, stacking, the Tab grid          (pure)
 *   item_entity.{c,h}     dropped items: pool, tick, despawn             (pure)
-    recipes.{c,h}         RECIPE TABLE + resolver                        (pure)
+*   recipes.{c,h}         RECIPE TABLE + resolver, and the auto-planner  (pure)
   fred/
 *   fred.{c,h}            PORTED showreel miner: the player's figure and arm
 *   fred_mesh.{c,h}       his meshes, plus an axe and a shovel
@@ -136,6 +139,7 @@ main/
 *   midi_seq.{c,h}        Standard MIDI File sequencer, PORTED from tadoom  (pure)
 *   midi_synth.{c,h}      a voice pool over se_voice.h; GM families -> six shapes
   i18n/
+*   fold.{c,h}            UTF-8 -> QWERTY, so the box searches 32 languages (pure)
 *   i18n.{c,h}            T(id), the language, and a printf that reorders    (pure)
 *   strings_gen.{c,h}     GENERATED from lang/*.txt by tools/make_lang.py
   ui/
@@ -145,6 +149,12 @@ main/
 *   keybind_ui.{c,h}      PORTED from synthracer: a binding as a key cap or label
 *   icons.{c,h}           PORTED from synthracer: the launcher's key-cap PNGs
 *   settings.{c,h}        settings.txt on the SD card: language, graphics, audio, gyro, bindings (D-67)
+*   craft_ui.{c,h}        the recipe book: filter, have/missing, auto-craft
+*   furnace_ui.{c,h}      the three slots, and the lazy clock's catch-up
+*   chest_ui.{c,h}        two grids side by side; the trashcan is the same screen
+*   bench_ui.{c,h}        the disassembly bench
+*   amount_ui.{c,h}       how many to move: slider and typed number
+*   cheat_ui.{c,h}        any item in the game, English only (test aid)
 * testkit/                wired into CMakeLists; PROF_HUD added (F-46)
 assets/
 * music/*.mid             the soundtrack, public domain (assets/music/MUSIC.md)
@@ -153,6 +163,10 @@ tools/
 * worldcheck.c            host test of every pure module
 * get_music.py            fetch/verify the soundtrack; refuses anything not PD
 * symcheck.sh             every symbol we call, the loader can resolve (F-74)
+* make_fold.py           the fold table, from every character in every lang file
+* ids.txt                every block id and item name ever shipped (D-74)
+* testrun.py             the device test harness
+* recover.py             after a crash or a hang
   scenecheck.c            host budget test via synthengine3D/host/se_host_stub.c
 * meshcheck.c             LIFTED + the sectioning check (D-34)
 * hostpurity.sh           the pure set really is pure
@@ -166,7 +180,15 @@ Two departures from the plan above, both deliberate: `hud.{c,h}` and
 one file that only the player uses and a directory holding one file is a
 directory you forget to look in. They move the day a second file joins them.
 
-### The three registries (the extendability contract)
+### The registries (the extendability contract)
+
+**There are four**, not the three this section was written for: blocks,
+items and recipes, and since the biomes round (step 33) `biome_def_t` in
+`world/worldgen.h`, which is a registry by the same contract -- a place is
+a row (surface and filler block, soil depth, tree and plant chances, the
+three height numbers, which log and leaf it grows, what stands in its
+columns, what caps it above a height). Adding a biome is a row; adding a
+second desert plant or a third tree is a column already there.
 
 ```c
 /* main/world/blocks.h */
@@ -179,8 +201,10 @@ typedef struct {
     uint16_t drop_item;      /* ITEM_NONE drops nothing */
     uint8_t  drop_min, drop_max;
     uint8_t  flags;          /* BF_SOLID|BF_OPAQUE|BF_FELLABLE|BF_CROP|BF_GRAVITY|BF_REPLACEABLE */
-    uint8_t  light;          /* emitted light 0..15 (reserved) */
+    uint8_t  light;          /* emitted light 0..15 (world/light.h) */
     uint8_t  growth_max;     /* BF_CROP: highest growth stage */
+    uint8_t  sound;          /* block_sound_t: what it sounds like (audio/sfx.h) */
+    uint8_t  flags2;         /* BF2_* -- the first byte ran out */
 } block_def_t;
 extern block_def_t const BLOCKS[BLK_COUNT];
 ```
@@ -628,9 +652,9 @@ terrain-hugging one does not.
   `voxel_render.c` already builds for its fog path. 3-4x cheaper fill.
 - **Render scale**: `scene_set_render_scale(2)` default; Full offered, labelled slow.
 - `scene_set_options({.frustum_cull = true, .depth_order = true})` always.
-- **Stay on `SE_RENDER_ZBUFFER`.** Raycast was 2.5-5x slower on voxels, and
-  has since been removed from the engine (D-88). `SE_RENDER_BANDED` is being
-  measured against it (G6).
+- **Stay on `SE_RENDER_ZBUFFER`.** It is now the only built-in: raycast was
+  2.5-5x slower on voxels and was removed (D-88), and banded rendering was
+  built, measured over the bench flight and removed as well (D-90, G6).
 - `SE_SCENE_TRI_CAP` stays 4096; **`SE_SCENE_TEXTURED_TRI_CAP` -> 2048**
   (~70 KiB PSRAM, no per-frame cost). The showreel peaked at 1785 textured with a
   showreel camera; a player facing a forest will pass 1024. `scenecheck` guards it.
@@ -773,12 +797,71 @@ first.
 7. **Band width.** If banding wins, try `SE_SCENE_BAND_W` 16 and 64: narrower
    sets up spanning triangles more often, wider costs SRAM.
 
-**The decision rule (D-89):** if banded is faster at full resolution and not
-slower at quarter resolution here, and not slower in synthracer and the
-showreel, it becomes the default and the z-buffer rasteriser is removed. If
-it loses, it is removed. Either way one renderer is left. Should banded win,
-`SE_SCENE_DEPTH16_INTERNAL` (188 KB of internal SRAM) is no longer needed
-either, and that SRAM goes to (d).
+**The decision rule (D-89) said:** if banded is faster at full resolution and
+not slower at quarter resolution here, it becomes the default and the
+z-buffer rasteriser is removed; if it loses, it is removed. Either way one
+renderer is left.
+
+### G6 — what the measurements said, and what was decided (2026-09-25)
+
+**None of the runs above were the ones that decided it**, because the scene
+they were to be run on could not measure a renderer at all: `flight` opens a
+SCRATCH world, so it generates its terrain from noise on every run (F-91).
+Steps 4-7 were run on a new persisted bench world instead (step 41,
+`game/benchpath.h`): one fixed path, seed 1030, 240 blocks due +z from the
+origin, forty seconds at the flight's own 6 blocks a second, crossing all
+five biomes with 23 blocks of relief and no step bigger than one block.
+
+| | fps | rast mean | rast max | frame max |
+|---|---|---|---|---|
+| Quarter res, z-buffer | **20.16** | **27.59 ms** | 76.30 | 117.28 |
+| Quarter res, banded (32-wide) | 18.13 | 29.72 ms | 75.35 | 117.88 |
+| Quarter res, z-buffer, no SRAM depth plane | 16.21 | 40.11 ms | 117.26 | 157.57 |
+| Full res, z-buffer | 5.70 | 148.18 ms | 410.05 | 453.44 |
+| Full res, banded | **8.08** | **92.06 ms** | 242.88 | 289.17 |
+
+**Banded is 1.61x faster at full resolution and 8% slower at quarter.** Full
+resolution is unplayable either way -- 5.70 fps against 8.08 -- so the only
+number that decides anything is the quarter-resolution one, and there banded
+loses. The split is exactly what (c) predicted: at quarter resolution
+`SE_SCENE_DEPTH16_INTERNAL` already puts the depth test in SRAM, which is the
+larger half of what banding buys, so what is left is the colour writes
+against the cost of setting a triangle up once per band it spans.
+
+**Band width could not rescue it (test 7).** `SE_SCENE_BAND_W=64` needs two
+60 KB contiguous blocks of internal SRAM; the largest free block is 37-38 KB
+**with or without the 188 KB depth plane freed**, so the renderer logged its
+fallback and drew as the z-buffer -- twice, and the second run is only in the
+table above because the fallback is what produced the "no SRAM depth plane"
+row. 32 columns is the widest this hardware allows, so the 2.13 ms gap is not
+tunable. Test 6's warning earned its place: **both** fallback runs looked
+like "no faster", and only the `sram` line and the log said why.
+
+That same row is the other half of the argument: the 188 KB depth plane is
+worth 27.59 ms against 40.11 ms to the z-buffer, a 31% saving. Sixty KB of
+band buffers is a far worse use of the same scarce SRAM, and internal SRAM is
+what everything else here will want next.
+
+**Test 4 (same image) could not be run, and that is our fault, not the
+renderer's (F-92).** The `shots` hashes of `bench` and `bench_banded`
+differed at all five moments -- but so did two runs of `bench` against each
+other, and the triangle counts handed to the rasteriser differed between
+runs, so the two renderers were never asked to draw the same thing. The
+engine's own host check (1000 random scenes, and it catches a deliberately
+broken copy) remains the only evidence on pixel equality, and it is good
+evidence; our device harness simply cannot confirm it yet.
+
+**Decided (D-90): the banded renderer is removed.** It won where nobody
+plays, lost where everybody does, could not be tuned, and cost 60 KB. Engine
+2.2 was never released, so no version was spent on it: it was added,
+measured and removed inside one unreleased version. **What stays** is the
+raster target -- the raster passes draw through one struct instead of the
+frame-level buffers -- because that is what (d) would need, and it costs
+nothing to keep.
+
+**(d) is therefore not happening** on the back of banding. If the second core
+is ever used for pixels it needs a different way in; the notes below are kept
+for whoever looks at that.
 
 **(d) Bands on both cores -- designed, not built (step 40).** Only if (c)
 wins. The single-core version was written for it: every raster pass draws
@@ -900,7 +983,12 @@ and 64):
 - **Per chunk, not per column.** A chunk is either ordinary or Far Lands
   (the edge is chunk-aligned), so `worldgen_chunk` picks one generator;
   trees from the ordinary side may still lean over the edge.
-- **Left out of the port** (for now): biomes -- every column is grass over
+- **Left out of the port** (for now): **ore, and therefore veins** -- the
+  ordinary generator grew veins and cave mouths in step 32 and `farlands.c`
+  was not touched, so there is not one block of coal or iron west of the
+  edge and the Far Lands are mineable for stone alone. Beta's own decoration
+  pass would have placed them, and porting that is where they come from;
+  biomes -- every column is grass over
   dirt, and the temperature and humidity the density reads are constants,
   which in the Far Lands only touch the height falloff the overflow drowns;
   ice; and Beta's decoration pass -- its caves, ores, lakes, trees and
@@ -1306,9 +1394,10 @@ reason Minecraft chose the other rule.
 | 28 | **Water you can see into, and swim in** (D-86) | done | 2026-09-23, the user: water was an opaque cube, so putting your eyes under it broke the picture, and there was no swimming. Their rule, and it is the whole of it: **do not draw the sides or the bottom of a water block, and draw its top only when the block above is air.** That became `K_LIQUID`. Two things follow that the rule does not say out loud and the picture needs: a liquid must stop HIDING its neighbours, or the lake bed is never meshed and the surface is a lid over nothing; and the surface needs a second, downward-facing copy, emitted by the air cell above it, because an axis-aligned face is visible only from the side its normal points at -- which is exactly why it vanished as the eye went under. `water.png` became a cut-out checkerboard (the engine's one-bit alpha, the leaves' mechanism) so you see through the surface both ways. Swimming is buoyancy in `player.c`: jump rises, sneak dives, and the numbers come from `phys_gravity`'s recurrence rather than from feel. meshcheck pins the rule per material and per direction, and caught a real bug on the way -- the extra slice let a border cell act as an owner and doubled every face at a section seam. **And the blue.** The user's read of it was right and mine was wrong: the renderer already touches the brightness of every pixel, so the tint belongs there. `se_scene_set_tint()` scales the red and green of every triangle by one factor and the blue by another; the sky and the fog go to a dark blue and the sun, moon, clouds and stars are not drawn from under the surface. |
 | 36 | **Page flipping on the display's own buffers** (D-87) | done, device test todo | 2026-09-24, the user's call after looking at another engine's numbers. Engine 2.2: three driver framebuffers, present = select for the next refresh, no copy; the flip also writes back and drops the frame from the cache (F-89). Needs **graceloader 2.6.0** (`graceloader_display_register_callbacks`, IRAM trampolines chaining the BSP's callback, `esp_lcd_dpi_panel_get_frame_buffer` exported). Engine `4ac29d8`, graceloader `89fb785`, template `0c62ac4`, CraftMiner `cee4e24`. G6 tests 1-3 outstanding. |
 | 37 | **The raycast renderer removed from the engine** (D-88) | done | 2026-09-24, the user's call. Engine `929f12d`; synthracer's debug key R went with it (`7e7e139`). Recorded under 2.2 as a deliberate exception to MAJOR. |
-| 38 | **`SE_RENDER_BANDED`: the z-buffer, band by band in internal SRAM** (D-89) | in progress | 2026-09-24: implemented single-core in the engine, `_banded` / `_fullres` scene suffixes here. Host check: identical to the z-buffer in 1000 random scenes, and it catches a deliberately broken copy (F-90). Engine `39ec8b4`. G6 tests 4-7 outstanding. |
-| 39 | **Measure, and keep one renderer** | todo | G6's tests and decision rule. Also: move the host equivalence check out of the scratchpad into the repo (a `renderercheck` beside `meshcheck`), so `make check` guards it. |
-| 40 | **Bands on both cores** | todo (only if 38 wins) | G6 (d). |
+| 38 | **`SE_RENDER_BANDED`: the z-buffer, band by band in internal SRAM** (D-89) | done, then removed (D-90) | 2026-09-24 built (engine `39ec8b4`), 2026-09-25 measured and taken out again. Host check: identical to the z-buffer in 1000 random scenes, and it catches a deliberately broken copy (F-90). On the badge, over the bench flight: 1.61x faster at full resolution, **8% slower at quarter**, and `SE_SCENE_BAND_W=64` does not fit in internal SRAM at all (largest free block 37-38 KB against the two 60 KB it needs), so the gap is not tunable. Removed from the engine with `SE_SCENE_BAND_W`, and `_banded` with it here; `SE_RENDER_BUILTIN_COUNT` back to 1. The raster target stays. Numbers and reasoning in G6. |
+| 39 | **Measure, and keep one renderer** | done | 2026-09-25. The z-buffer is kept; see G6 for the five measurements and D-90 for the decision. Two things the round taught that outlast it: the scene a renderer is measured on has to be able to measure one (F-91, step 41), and `PROF_BLIT` / `PROF_VSYNC` had never been fed, so the present was hiding in the residual (F-88) -- both fixed. **Still owed:** a `renderercheck` beside `meshcheck` was not written, because with one renderer left there is nothing to compare; if a second is ever added it comes back with it. |
+| 40 | **Bands on both cores** | dropped | 38 lost, and this was conditional on it. G6 (d) keeps the design notes: the raster target that would have carried it survives, so a later attempt does not start from nothing. |
+| 41 | **A world worth measuring on** | done | 2026-09-25, out of F-91 and the user's call: *"a persisted, pre-generated test world seems the best option... Clear a flight path so you don't get blocked... The world should be separate from the worlds i can manage through savegames and also be based on a fixed seed."* `game/benchpath.h` holds the seed, the path and `bench_path_at()`, and `tools/worldcheck.c`'s `check_bench_path` asserts the path against the generator that is compiled in, so a worldgen change that moves this terrain fails the build. **The path was chosen by search, not by eye**: 4000 seeds x 8 headings, keeping only those whose ground never steps more than two blocks, then the busiest -- seed 1030 due +z crosses ALL FIVE biomes in 240 blocks with 23 blocks of relief and a worst step of ONE, so nothing had to be carved and the ground-following camera can never be buried. The world lives at `<base>/bench/`, OUTSIDE `worlds/`, which is the whole of how it stays invisible: `worldstore_list()` scans `worlds/`, so the world-select screen cannot show it, open it or delete it, and the slug is reserved so a player-named world cannot collide. A bench world whose seed does not match is deleted and generated again rather than measured. `bench_gen` walks the path in 8-block stops waiting for `missing == 0` at each (generated chunks are already `CF_EDITED`, so eviction writes them; 49 chunks, ~45 s, once); `bench` and `bench_fullres` fly it off the card in 735 ms of loading and 40 s of flight, view distance forced to near so two runs compare. The perf clock and accumulators restart when the world is resident (`devtest_perf_restart`), so the card is not averaged into the rasteriser. |
 
 ---
 
@@ -2447,6 +2536,15 @@ reason Minecraft chose the other rule.
   (D-87): a double-buffered flip must wait for the refresh that frees the
   other buffer, half a refresh on average, ~8 ms of a 60-90 ms frame.
 
+  **Fixed 2026-09-25**, and it had to be before anything could be compared:
+  `frame_stats()` now reads `se_present_stats()` once a frame and feeds both
+  through `prof_add()`. The present runs after `on_render` returns, so this
+  charges the PREVIOUS frame's present to this one -- over a reporting
+  period, the same number. Measured on the badge: **blit 0.32-0.50 ms,
+  vsync 0.00-0.02 ms**, so the flip is cheap and the triple buffer really
+  does mean a game below the refresh rate never waits. Both had read 0.0
+  since block 2, and the present had been hiding in the residual.
+
 - **F-89** 2026-09-24, while building the banded renderer: **the engine's
   cache argument for the framebuffer was luck, and banding would have broken
   it.** `docs/ppa.md` held that a framebuffer needs no invalidate because
@@ -2471,6 +2569,42 @@ reason Minecraft chose the other rule.
   spans were made one band too narrow failed 25 runs of 40, so it does see
   a mistake of that kind. The harness is in the session scratchpad, not the
   repo (step 39).
+- **F-91** 2026-09-25, trying to run G6's tests and getting nonsense: **the
+  scene the renderers were to be compared on could not measure a renderer.**
+  `flight` opens a SCRATCH world (`worldstore_open_scratch`) -- no directory,
+  nothing on disk -- so every chunk is generated from noise on every run. The
+  first `perf scene=flight_fullres` reported **23.84 fps** over 20 seconds,
+  which was eleven seconds of loading screen at ~1 fps (counted: the loading
+  path calls `devtest_after_render` like any frame) followed by nine seconds
+  of empty sky. `world: 0 chunks / 0 sections drawn`, `0 of 1008 meshes
+  built`, `refused 1272`/s with the mesh queue pinned at 49/48, for the whole
+  run. I called that a meshing regression; **the user said it first and was
+  right**: *"instead of purely testing the render performance, you also have
+  to generate a new world on the fly for every test?"* Nothing was broken.
+  The camera outran a generator that had to invent everything, forever, and
+  the streamer never caught up. Worse for the purpose: that generator
+  saturates the PSRAM bus on core 1 for the whole measurement window -- the
+  exact resource banding exists to relieve -- so the comparison would have
+  been of the generator. Fixed by step 41: a persisted world, pre-generated
+  once, streamed off the card (`0 missing`, `refused 0`, queue 0-6 of 48, and
+  735 ms to load instead of eleven seconds to generate).
+- **F-92** 2026-09-25, running G6 test 4: **the `shots` hashes cannot compare
+  two renderers, because the scene does not reproduce itself.** `bench` and
+  `bench_banded` differed at all five moments -- and so did two runs of
+  `bench` against each other (three different hashes at t=20 and t=24 across
+  three runs). The SHOT records show two separate faults. **The geometry
+  differs**: at t=16 one run submitted 1028 flat triangles and another 926;
+  at t=20, 1158 textured against 637. The renderers were never handed the
+  same scene, so the pixels could not agree. That is F-45 again -- `shots`
+  SETS the clock rather than running it, so a camera that jumps 96 blocks
+  between moments finds a world that has not settled, and `LOAD_GATE_ALL`
+  runs once at startup and never again. **And shading differs**: at t=0 and
+  t=34 all three runs agree exactly on triangle counts and the hashes still
+  split 1-2, so something in sky or time state carries across a launch. The
+  control run is what exposed both; without it the inequality would have
+  been read as a bug in the banded renderer. What it would take: settle the
+  world at each shot moment, and pin the sky. Not done -- with one renderer
+  left there is nothing to compare (step 39).
 
 ### Decisions (D-n), each with date and who decided
 
@@ -3144,6 +3278,28 @@ reason Minecraft chose the other rule.
   second core only if the single-core numbers justify it, and then below the
   chunk worker's priority.
 
+- **D-90** 2026-09-25, **the user**, once the numbers were in: **the banded
+  renderer is removed.** *"Let's give up on the banded renderer. It doesn't
+  seem to help a lot, but robs us of a lot of the remaining SRAM that we
+  might need for other things in the future."* The measurements are in G6:
+  1.61x faster at full resolution, 8% slower at quarter, and full resolution
+  is unplayable either way (5.70 fps against 8.08), so the only number that
+  decides anything is the quarter one. D-89's own rule reached the same
+  answer, but the user reached it first and for the better reason -- **the
+  60 KB is the cost, not the 8%**. Internal SRAM is the scarcest thing on
+  this badge: the largest free block is 37-38 KB, which is also why
+  `SE_SCENE_BAND_W=64` could not be allocated and the gap could not be tuned
+  away. The same 188 KB that `SE_SCENE_DEPTH16_INTERNAL` holds is worth
+  27.59 ms against 40.11 to the z-buffer, a 31% saving, and that is a far
+  better use of it.
+
+  Engine 2.2 has never been released, so **no version was spent on it**: the
+  renderer was added, measured and removed inside one unreleased version, and
+  removing a public symbol is recorded in the CHANGELOG as a deliberate
+  exception exactly as the raycaster's was (D-88). The user's call on that
+  too: *"No need to bump the engine version, this is still an unreleased
+  engine."* The raster target stays, being what a second core would need.
+
 ## Verification
 
 - **Host:** `make check` = `worldcheck` + `scenecheck` + `meshcheck` +
@@ -3151,8 +3307,10 @@ reason Minecraft chose the other rule.
 - **Device:** `make cycle TEST="perf scene=flyover secs=20"` for the frame rate
   and phase split; `make testrefs` / `make testcompare` with
   `TEST="shots scene=replay_walk ms=..."` for framebuffer-hash regressions.
-  Renderer comparisons: the same scene with and without `_banded` (and
-  `_fullres`), whose shot hashes must be equal (G6).
+  Renderer or generator work is measured on the **bench flight**, never on
+  `flight`: `perf scene=bench` (and `bench_fullres`) over a persisted,
+  pre-generated world, made once with `perf scene=bench_gen` (step 41,
+  F-91). Note that `shots` cannot yet compare two renderings of it (F-92).
 - **Build hygiene:** `make build` clean with no new warnings, `make verify`
   (every undefined symbol exists in fakelib), `make format`.
 - **By hand:** the user plays step 5 and gives feedback before step 8 starts.
@@ -3203,6 +3361,52 @@ Not done in this round, and still owed from block 5: entities in the save
 creating a world (5.5). F-52 (the palette is rewritten on every save while
 untouched chunks keep their old ids) must be fixed before any block id moves.
 
+### Where it stands after crafting and the world it happens in (2026-09-23)
+
+The largest single day of the project: sixteen commits here and five in the
+engine. Crafting became a **searchable recipe book** rather than a grid,
+because the badge has a keyboard and no pointer (Part C), and the search box
+folds 32 alphabets onto one QWERTY so `kirka` finds Кирка. Behind it: block
+entities at last written into the chunk section reserved for them since Part
+W, and on top of that a furnace, chests, a trashcan that empties itself and a
+bench that takes things apart. Iron needs a stone pickaxe and a furnace;
+tools come in three tiers and the wrong one is now genuinely slow. You start
+with nothing.
+
+The world caught up the same day: water you can swim in and see through,
+ore in **veins** with caves that reach daylight, and five **biomes** with
+blended terrain -- plains, forest, rare birch woods, sand flats with cactus
+and sandstone, and mountains with bare rock and snow on top. The generator's
+constants were swept rather than guessed, and their numbers are in the step
+notes.
+
+### Where it stands after the renderer round (2026-09-25)
+
+Three engine changes (G6) and one of them undone again. The present now
+**flips pages** instead of copying 768 KB a frame, on three of the display
+driver's own buffers (D-87, needs graceloader 2.6.0). The **raycast**
+renderer went (D-88), never having won anything. **Banded rendering** was
+built, measured and removed inside the same unreleased 2.2 (D-89, D-90): it
+is 1.61x faster at full resolution, which is unplayable either way, and 8%
+slower at quarter, which is where the game runs -- and its band buffers
+cannot be widened past 32 columns because internal SRAM has no 60 KB block
+free. One rasteriser is left, which was always the point.
+
+Two things the round leaves behind that outlast the renderer it was about.
+**The present is finally on the record** (F-88): `blit` and `vsync` had read
+0.0 since block 2 because nothing fed them, so every comparison before this
+was missing a phase. And **a scene worth measuring on** (step 41, F-91): the
+debug flight generated its world from noise on every run, so it measured the
+generator, not the renderer. There is now a persisted bench world outside
+`worlds/`, at a seed and along a path chosen by host search to cross all
+five biomes in forty seconds without a step the camera could fly into, and
+`make check` fails if a worldgen change ever moves it.
+
+Still owed from it: `shots` cannot yet compare two renderings of the same
+moment (F-92) -- the world has not settled when the clock jumps, and
+something in the sky state carries across a launch. With one renderer left
+there is nothing to compare, so it waits for a reason to exist.
+
 ## Critical files
 
 - **Lifted from `../tanmatsu-showreel-grace`:** `main/craftminer/voxel/*`,
@@ -3242,8 +3446,11 @@ untouched chunks keep their old ids) must be fixed before any block id moves.
     display driver's three buffers, on graceloader 2.6.0's refresh
     callback, and drops the frame from the cache (D-87, F-89).
   * `src/se_scene.c`, `include/se_scene.h`: the raycast renderer removed
-    (D-88); `SE_RENDER_BANDED` and the raster target it draws through
-    (D-89); `include/se_config.h`: `SE_SCENE_BAND_W`.
+    (D-88), and `SE_RENDER_BANDED` added (D-89) and removed again (D-90)
+    within the same unreleased 2.2, `SE_SCENE_BAND_W` with it. What
+    survives of it is the **raster target**: the raster passes write
+    through one struct rather than the frame-level buffers, kept because
+    it is what a second core would need. `SE_RENDER_BUILTIN_COUNT` is 1.
   * `CMakeLists.txt`: built `-O2`, not `-Os` (F-39).
   * `src/se_scene.c`: `ceil_i` / `floor_i` instead of the libm calls in the
     column scans, and per-pass pixel and span counters.

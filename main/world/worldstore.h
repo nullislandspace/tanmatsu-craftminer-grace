@@ -199,6 +199,28 @@ bool worldstore_open(char const* slug, world_meta_t* meta, player_state_t* playe
 // every edited chunk in the ring forever.
 bool worldstore_open_scratch(uint32_t seed, world_meta_t* meta, player_state_t* player);
 
+// --- The benchmark world ----------------------------------------------
+//
+// A persisted world for the renderer measurements, and deliberately NOT
+// one of the player's. It lives BESIDE `worlds/` rather than inside it:
+// worldstore_list() scans that one directory for anything with a
+// level.cmw, so a world outside it cannot appear in the world-select
+// screen, cannot be opened by accident and cannot be deleted from
+// there.
+//
+//      <base>/bench/level.cmw
+//      <base>/bench/region/...
+//
+// Fixed seed, fixed path, so it can be thrown away and remade exactly
+// (main.c, the `bench` scenes). `fresh` says the terrain still has to
+// be generated: either it was not there, or it was made for a
+// different seed and has been discarded -- a world whose terrain this
+// build would not generate is worse than no world, because every
+// measurement taken on it would be of something nobody can reproduce.
+#define CM_BENCH_SLUG "bench"
+
+bool worldstore_open_bench(uint32_t seed, world_meta_t* meta, player_state_t* player, bool* fresh);
+
 // Write level.cmw for the open world. Chunks are saved separately, as
 // they are evicted (see world_chunk_save). `items` may be NULL: none.
 bool worldstore_save(world_meta_t const* meta, player_state_t const* player, world_items_t const* items);

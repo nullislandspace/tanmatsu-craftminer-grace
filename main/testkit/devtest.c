@@ -106,6 +106,20 @@ void devtest_content_failed(char const* why) {
     report_emitf("FAIL", "{\"t\":\"fail\",\"why\":\"%s\"}", why ? why : "");
 }
 
+void devtest_perf_restart(void) {
+    if (s_test != T_PERF) return;
+    s_acc_n         = 0;
+    s_last_frame_us = 0;
+    if (s_cfg->stats_restart) s_cfg->stats_restart();
+}
+
+static void end_test(char const* status);
+
+void devtest_content_done(void) {
+    if (s_test == T_IDLE) return;
+    end_test("ok");
+}
+
 static void end_test(char const* status) {
     if (s_content_bad && strcmp(status, "ok") == 0) status = "bad";
     report_emitf("END", "{\"t\":\"end\",\"status\":\"%s\",\"scene\":\"%s\"}", status, s_scene);

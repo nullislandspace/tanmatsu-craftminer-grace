@@ -44,6 +44,7 @@
 #include "game/physics.h"
 #include "game/raycast.h"
 #include "game/interact.h"
+#include "game/benchpath.h"
 #include "game/player.h"
 #include "game/replay.h"
 #include "items/inventory.h"
@@ -3010,6 +3011,73 @@ static void check_furnace(void) {
 //  would look wrong.
 // ---------------------------------------------------------------------
 
+// The benchmark flight's path, asserted against the generator that is
+// actually compiled in. The path was chosen by a search over seeds and
+// headings (game/benchpath.h); a later change to worldgen moves the
+// terrain under it, and this is what says so at build time instead of
+// leaving a benchmark quietly flying over somewhere flat.
+static void check_bench_path(void) {
+    printf("bench flight: the path the renderer measurements fly\n");
+
+    int  seen[BIOME_COUNT];
+    memset(seen, 0, sizeof(seen));
+    int   hmin = 9999, hmax = -9999, worst = 0, prev = -1;
+    long  steps = 0;
+    double rough = 0.0;
+
+    // Every block along it, not a sample: a one-block spike is exactly
+    // what would bury the camera, and sampling is how you miss it.
+    for (int i = 0; i <= (int)BENCH_DIST; i++) {
+        double const t = (double)i / BENCH_SPEED;
+        double       wx, wz;
+        float        yaw;
+        bench_path_at(t, &wx, &wz, &yaw);
+        int32_t const x = (int32_t)floor(wx), z = (int32_t)floor(wz);
+        int const     h = worldgen_height(x, z, BENCH_SEED);
+        uint8_t const b = worldgen_biome(x, z, BENCH_SEED);
+
+        CHECK(b < BIOME_COUNT, "bench path leaves the biome table at %d,%d (%u)", x, z, b);
+        CHECK(h > 0 && h < CH_H, "bench path has no ground at %d,%d (h %d)", x, z, h);
+        if (b < BIOME_COUNT) seen[b]++;
+        if (h < hmin) hmin = h;
+        if (h > hmax) hmax = h;
+        if (prev >= 0) {
+            int const dh = h - prev < 0 ? prev - h : h - prev;
+            if (dh > worst) worst = dh;
+            rough += (double)dh;
+            steps++;
+        }
+        prev = h;
+    }
+    rough /= (double)steps;
+
+    int crossed = 0;
+    for (int b = 0; b < BIOME_COUNT; b++) {
+        if (seen[b] > 0) crossed++;
+        printf("  %-12s %4d of %d blocks\n", BIOMES[b].name, seen[b], (int)BENCH_DIST + 1);
+    }
+    printf("  ground %d..%d (%d blocks), mean |dh| %.2f, worst step %d, %d biomes in %.0f s\n", hmin, hmax,
+           hmax - hmin, rough, worst, crossed, BENCH_SECS);
+
+    // The three properties the search selected for. Each one is a way
+    // the benchmark stops being worth running.
+    CHECK(crossed == BIOME_COUNT, "bench path crosses %d of %d biomes -- it is meant to show every one", crossed,
+          BIOME_COUNT);
+    CHECK(worst <= 2, "bench path steps %d blocks somewhere -- the camera would fly into it", worst);
+    CHECK(hmax - hmin >= 12, "bench path is %d blocks of relief -- too flat to measure anything on",
+          hmax - hmin);
+
+    // It must also stay out of the Far Lands, which have their own
+    // generator and no ore at all.
+    CHECK(!farlands_chunk_is(0, FARLANDS_X_DEFAULT), "the bench path starts inside the Far Lands");
+
+    // How much of the card the pre-generated world will take, so a
+    // change to the view distance cannot quietly make it enormous.
+    int const chunks_long = (int)(BENCH_DIST / CH_D) + 1;
+    printf("  pre-generates roughly %d chunks (%d along the path, 11 wide at the near view)\n",
+           chunks_long * 11, chunks_long);
+}
+
 static void check_biomes(void) {
     printf("biomes: three places, and they differ\n");
 
@@ -4397,6 +4465,7 @@ int main(void) {
     chunk_store_shutdown();
     check_worldgen();
     check_biomes();
+    check_bench_path();
     check_ores();
     check_farlands();
     check_codec();

@@ -29,6 +29,7 @@
 #include "esp_timer.h"
 #include "game/daytime.h"
 #include "fred/fred.h"
+#include "game/benchpath.h"
 #include "game/flycam.h"
 #include "game/raycast.h"
 #include "game/hud.h"
@@ -225,10 +226,27 @@ static bool  s_force_left;
 // Test-only overrides for the replay scenes (see content_select).
 static int  s_force_view = -1;
 static bool s_force_noclouds, s_force_nolight;
-// ... and for comparing the engine's renderers on the same walk:
-// `_banded` draws with SE_RENDER_BANDED, `_fullres` at full resolution
-// whatever the half-resolution setting says.
-static bool s_force_banded, s_force_fullres;
+// ... and `_fullres`, which renders at full resolution for the run
+// whatever the half-resolution setting says. It outlived its sibling
+// `_banded`: the banded renderer was measured against the z-buffer over
+// the bench flight and removed (G6, D-89), so there is only one
+// renderer to select now.
+static bool s_force_fullres;
+
+// --- The benchmark flight (game/benchpath.h) --------------------------
+//
+// `bench_gen` generates the world and writes it; `bench` and its
+// suffixes fly the same path over what is on the card. The measurement
+// starts only once the world is resident, so the frames spent waiting
+// are not averaged into it (F-91).
+static bool   s_bench_scene;   // flying the bench path
+static bool   s_bench_gen;     // ... to generate it, not to measure
+static double s_bench_gen_d;   // how far along the path the cursor is
+static bool   s_bench_settled; // the measurement's clock has been started
+
+// Between stops when generating: half a chunk, so no column is ever
+// outside some stop's view distance and the corridor comes out whole.
+#define BENCH_GEN_STEP 8.0
 
 static int view_setting(void) {
     return s_force_view >= 0 ? s_force_view : settings_view();
@@ -253,6 +271,7 @@ static double s_replay_t0;
 static bool   s_in_replay;
 static bool enter_replay(void);
 static bool run_savecheck(void);
+static bool enter_bench(bool generate);
 static bool enter_flight(void);
 // The title's clock. A test scene can move it ("title_night") to look at
 // the night sky without playing through a day.
@@ -301,6 +320,10 @@ static void fly_pose(double t, double* wx, double* wz, float* yaw) {
         *wx  = (double)FARLANDS_X_DEFAULT + d;  // a scratch world: the default edge
         *wz  = 40.5;
         *yaw = (float)(-M_PI / 2.0);  // forward (sin yaw, cos yaw) = (-1, 0): west
+        return;
+    }
+    if (s_bench_scene) {
+        bench_path_at(t, wx, wz, yaw);
         return;
     }
     double const a = (double)FLY_SPEED * t / (double)FLY_RADIUS;
@@ -449,15 +472,41 @@ static bool content_select(char const* name) {
         s_force_noclouds = strstr(name, "_noclouds") != NULL;
         chunkmesh_set_lighting(strstr(name, "_nolight") == NULL);
         s_force_nolight = strstr(name, "_nolight") != NULL;
-        s_force_banded  = strstr(name, "_banded") != NULL;
+        s_bench_scene = false;
+        s_bench_gen   = false;
         s_force_fullres = strstr(name, "_fullres") != NULL;
         return enter_replay();
+    }
+    // "bench" -- the renderer benchmark over the PERSISTED bench world
+    // (game/benchpath.h). "bench_gen" makes that world and writes it;
+    // it has to be run once before any of the others will start.
+    // `_fullres` renders at full resolution for the run.
+    if (strcmp(name, "bench") == 0 || strncmp(name, "bench_", 6) == 0) {
+        static char scene[48];
+        snprintf(scene, sizeof(scene), "%s", name);
+        s_content        = scene;
+        s_content_t0     = showtime_now();
+        s_time_off       = s_content_t0;
+        s_bench_scene    = true;
+        s_bench_gen      = strcmp(name, "bench_gen") == 0;
+        s_fl_scene       = false;
+        s_flying         = true;
+        s_force_third    = false;
+        s_force_left     = false;
+        // The bench world is measured at ONE view distance whatever
+        // settings.txt says, or two runs are not comparable.
+        s_force_view     = 0;
+        s_force_noclouds = false;
+        s_force_nolight  = false;
+        s_force_fullres  = strstr(name, "_fullres") != NULL;
+        chunkmesh_set_lighting(true);
+        return enter_bench(s_bench_gen);
     }
     // "flight" -- the scripted debug flight (fly_pose) over a scratch world
     // of the old flyover's seed: the scene the frame rates of 2026-09-21
     // were measured on (F-36, F-39), so today's build can be held against
     // them. Near view unless told otherwise; _nolight / _noclouds as for
-    // the replays, and _banded / _fullres.
+    // the replays, and _fullres.
     // "farlands" -- walk up to the Far Lands wall (fly_pose), same options.
     if (strcmp(name, "flight") == 0 || strncmp(name, "flight_", 7) == 0 || strcmp(name, "farlands") == 0 ||
         strncmp(name, "farlands_", 9) == 0) {
@@ -473,7 +522,8 @@ static bool content_select(char const* name) {
         s_force_view     = strstr(name, "_medium") ? 1 : strstr(name, "_far") ? 2 : 0;
         s_force_noclouds = strstr(name, "_noclouds") != NULL;
         s_force_nolight  = strstr(name, "_nolight") != NULL;
-        s_force_banded   = strstr(name, "_banded") != NULL;
+        s_bench_scene = false;
+        s_bench_gen   = false;
         s_force_fullres  = strstr(name, "_fullres") != NULL;
         chunkmesh_set_lighting(!s_force_nolight);
         return enter_flight();
@@ -513,8 +563,10 @@ static bool content_select(char const* name) {
     return false;
 }
 static float content_duration(void) {
-    return -1.0f;
-}  // endless
+    // The bench flight is exactly as long as its path; everything else
+    // runs until the harness stops it.
+    return s_bench_scene && !s_bench_gen ? (float)BENCH_SECS : -1.0f;
+}
 static double content_started(void) {
     return s_content_t0;
 }
@@ -551,6 +603,19 @@ static void frame_stats(void) {
     if (s_last_us != 0) s_window_us += now - s_last_us;
     s_last_us = now;
     s_frames++;
+
+    // The present is the one phase the app cannot wrap in a begin/end
+    // pair: it runs after on_render returns. It reports itself afterwards
+    // instead, so this reads the PREVIOUS frame's present and charges it
+    // to this one -- over a reporting period, the same number. Without it
+    // "blit" and "vsync" print 0.0 and the present hides in the residual,
+    // which is where the page flip's cache write-back would go missing
+    // (F-88); the renderer comparison needs it on the record.
+    int64_t blit_us = 0, vsync_us = 0;
+    se_present_stats(&blit_us, &vsync_us);
+    prof_add(PROF_BLIT, blit_us);
+    prof_add(PROF_VSYNC, vsync_us);
+
     prof_frame();
 
     if (s_window_us < 1000000) return;
@@ -977,6 +1042,52 @@ static bool run_savecheck(void) {
 // fixed "flyover" world was -- for comparing frame rates with the builds
 // that measured on it. The camera is the scripted one (a test is running,
 // and this is not a replay).
+// The benchmark flight (game/benchpath.h). Unlike every other test
+// scene this one opens a PERSISTED world, because the point is to
+// measure the renderer rather than the generator: the terrain is made
+// once by `bench_gen` and streamed off the card thereafter, the way
+// play streams it.
+static bool enter_bench(bool generate) {
+    drain_and_clear();
+    title_end();
+
+    bool fresh = false;
+    if (!worldstore_open_bench(BENCH_SEED, &s_meta, &s_saved, &fresh)) {
+        ESP_LOGE(TAG, "bench: could not open the bench world");
+        return false;
+    }
+    if (fresh && !generate) {
+        // Measuring against terrain that does not exist yet would
+        // generate it during the run, which is the whole thing this
+        // scene was built to stop happening.
+        ESP_LOGE(TAG, "bench: no world on the card -- run `bench_gen` first");
+        return false;
+    }
+    ESP_LOGI(TAG, "bench: world %s (seed %u), %s", fresh ? "created" : "opened", (unsigned)BENCH_SEED,
+             generate ? "generating" : "measuring");
+
+    s_meta.time_of_day = TITLE_TIME;  // a fixed morning: the light is part of the measurement
+    chunk_worker_set_world(s_meta.seed, s_meta.farlands_x);
+    cm_view_t const pv = cm_view_preset(view_setting());
+    chunk_render_set_view(&pv);
+    item_entity_reset();
+    player_reset(&s_player);
+
+    double wx, wz;
+    float  yaw;
+    bench_path_at(0.0, &wx, &wz, &yaw);
+    phys_body_init(&s_player.body, wx, 40.0, wz);
+    s_player_ready  = false;
+    s_in_replay     = false;
+    s_cam_mode      = CAM_PLAYER;
+    s_bench_gen_d   = 0.0;
+    s_bench_settled = false;
+    menu_close();
+    start_loading(wx, wz, APP_PLAY, generate ? "Generating the bench world" : "Loading the bench world",
+                  LOAD_GATE_ALL);
+    return true;
+}
+
 static bool enter_flight(void) {
     drain_and_clear();
     title_end();
@@ -1127,6 +1238,52 @@ static void start_loading(double wx, double wz, app_state_t next, char const* wh
 }
 
 
+// Generating the bench world is a WALK, not a flight: the cursor stops
+// at every point until the whole view distance around it is resident,
+// so the corridor comes out complete rather than however much a moving
+// camera managed to keep up with. Nothing here writes anything --
+// freshly generated chunks are already CF_EDITED (chunk_worker.c), so
+// eviction writes them as the cursor moves on and the terrain saves
+// itself. Returns true while there is still path left to walk.
+static bool bench_gen_step(int resident, int missing) {
+    ESP_LOGI(TAG, "bench: %.0f/%.0f blocks, %d resident (%d missing)", s_bench_gen_d, BENCH_DIST, resident, missing);
+    if (s_bench_gen_d >= BENCH_DIST) return false;
+
+    s_bench_gen_d += BENCH_GEN_STEP;
+    if (s_bench_gen_d > BENCH_DIST) s_bench_gen_d = BENCH_DIST;
+    double wx, wz;
+    bench_path_at(s_bench_gen_d / BENCH_SPEED, &wx, &wz, NULL);
+    start_loading(wx, wz, APP_PLAY, "Generating the bench world", LOAD_GATE_ALL);
+    return true;
+}
+
+// The bench world is up: either it has just been generated, in which
+// case write it and stop, or it is ready to be flown over.
+static void bench_ready(void) {
+    if (s_bench_gen) {
+        // The walk's chunks were written as they were evicted; this
+        // writes what is still resident, and the level file that says
+        // which seed the terrain on the card belongs to.
+        save_world("bench world generated");
+        ESP_LOGI(TAG, "bench: world ready -- %.0f blocks, seed %u. Now run `bench`.", BENCH_DIST,
+                 (unsigned)BENCH_SEED);
+        devtest_content_done();
+        return;
+    }
+    // Loading can run more than once (LOAD_GUARD gives up and lets play
+    // start incomplete). Restarting the clock half way along the path
+    // would be worse than an incomplete world, so it happens once.
+    if (s_bench_settled) return;
+    // THIS is t = 0. Everything before it was the card being read, and
+    // averaging that into a rasteriser measurement is exactly how a
+    // renderer comparison ends up reporting a loading screen (F-91).
+    s_content_t0    = showtime_now();
+    s_time_off      = s_content_t0;
+    s_bench_settled = true;
+    devtest_perf_restart();
+    ESP_LOGI(TAG, "bench: settled -- flying %.0f blocks over %.0f s", BENCH_DIST, BENCH_SECS);
+}
+
 static void loading_step(void) {
     int64_t const t0      = esp_timer_get_time();
     int           missing = 0, resident = 0;
@@ -1156,6 +1313,9 @@ static void loading_step(void) {
     }
     if (!ready && s_load.rounds < LOAD_GUARD) return;
 
+    // Still walking the bench path: stop here, generate, move on.
+    if (s_bench_gen && bench_gen_step(resident, missing)) return;
+
     // Done. Back to streaming on core 1 -- unless a test wants the
     // world to be exactly reproducible (D-59).
     chunk_worker_set_synchronous(devtest_deterministic());
@@ -1175,6 +1335,7 @@ static void loading_step(void) {
         // test called t = 0, so its clock and the replay's agree.
         s_replay_t0 = devtest_running() ? s_content_t0 : showtime_now();
     }
+    if (s_bench_scene) bench_ready();
 }
 
 // The loading screen: what is happening, and how far along it is.
@@ -1849,13 +2010,12 @@ static void on_render(pax_buf_t* fb, void* user) {
     prof_end(PROF_SUBMIT);
 
     prof_begin(PROF_PREPARE);
-    se_render_mode_t const mode = s_force_banded ? SE_RENDER_BANDED : SE_RENDER_ZBUFFER;
-    scene_prepare(mode);
+    scene_prepare(SE_RENDER_ZBUFFER);
     prof_end(PROF_PREPARE);
 
     prof_begin(PROF_RASTER);
     int64_t const t0 = esp_timer_get_time();
-    scene_rasterize(mode);
+    scene_rasterize(SE_RENDER_ZBUFFER);
     int64_t const rast_us = esp_timer_get_time() - t0;
     prof_end(PROF_RASTER);
 

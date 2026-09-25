@@ -62,12 +62,25 @@ static void worlds_dir(char* out, size_t cap) {
     snprintf(out, cap, "%s/worlds", s_base);
 }
 
+// Every world but one lives in `worlds/`. The benchmark world lives
+// beside it, which is the whole of how it stays invisible: the list
+// scans `worlds/`, so a world that is not in there cannot be shown,
+// opened or deleted from the world-select screen (worldstore.h).
+static char const* group_of(char const* slug) {
+    return strcmp(slug, CM_BENCH_SLUG) == 0 ? "" : "worlds/";
+}
+
+// The slug is spoken for, whether or not anything is there yet.
+static bool slug_reserved(char const* slug) {
+    return strcmp(slug, CM_BENCH_SLUG) == 0;
+}
+
 static void world_dir(char* out, size_t cap, char const* slug) {
-    snprintf(out, cap, "%s/worlds/%s", s_base, slug);
+    snprintf(out, cap, "%s/%s%s", s_base, group_of(slug), slug);
 }
 
 static void level_path(char* out, size_t cap, char const* slug) {
-    snprintf(out, cap, "%s/worlds/%s/level.cmw", s_base, slug);
+    snprintf(out, cap, "%s/%s%s/level.cmw", s_base, group_of(slug), slug);
 }
 
 // --- Slugs ------------------------------------------------------------
@@ -105,12 +118,12 @@ static bool slug_exists(char const* slug) {
 }
 
 static void slug_unique(char* slug, size_t cap) {
-    if (!slug_exists(slug)) return;
+    if (!slug_exists(slug) && !slug_reserved(slug)) return;
     char base[CM_WORLD_SLUG_MAX];
     snprintf(base, sizeof(base), "%s", slug);
     for (int n = 2; n < 1000; n++) {
         snprintf(slug, cap, "%.*s%d", (int)(cap - 5), base, n);
-        if (!slug_exists(slug)) return;
+        if (!slug_exists(slug) && !slug_reserved(slug)) return;
     }
 }
 
@@ -630,7 +643,7 @@ int worldstore_list(world_meta_t* out, int max) {
 
 static void open_paths(char const* slug) {
     snprintf(s_open_slug, sizeof(s_open_slug), "%s", slug);
-    snprintf(s_region_dir, sizeof(s_region_dir), "%s/worlds/%s/region", s_base, slug);
+    snprintf(s_region_dir, sizeof(s_region_dir), "%s/%s%s/region", s_base, group_of(slug), slug);
     s_open          = true;
     s_unknown_cells = 0;
 }
@@ -844,6 +857,38 @@ bool worldstore_delete(char const* slug) {
 
     if (s_open && strcmp(s_open_slug, slug) == 0) worldstore_close();
     return !slug_exists(slug);
+}
+
+// --- The benchmark world (worldstore.h) -------------------------------
+
+bool worldstore_open_bench(uint32_t seed, world_meta_t* meta, player_state_t* player, bool* fresh) {
+    if (meta == NULL) return false;
+    worldstore_close();
+    if (fresh != NULL) *fresh = true;
+
+    if (slug_exists(CM_BENCH_SLUG)) {
+        world_meta_t   m;
+        player_state_t p;
+        if (read_level(CM_BENCH_SLUG, &m, &p, true, NULL) && m.seed == seed) {
+            *meta = m;
+            if (player != NULL) *player = p;
+            open_paths(CM_BENCH_SLUG);
+            if (fresh != NULL) *fresh = false;
+            return true;
+        }
+        // Either unreadable, or made for a different seed -- which is
+        // terrain this build would not generate, so every number taken
+        // on it would describe a world nobody can reproduce. Throw it
+        // away and generate again; that is what the fixed seed is for.
+        worldstore_delete(CM_BENCH_SLUG);
+    }
+
+    // A fixed clock as well as a fixed seed: the measurement must not
+    // depend on what time of day it happens to be (shadows, fog, the
+    // sky's colour all cost pixels).
+    if (!create_at(CM_BENCH_SLUG, "(bench)", seed, meta, player)) return false;
+    meta->time_of_day = 1000;  // a morning, as the flight has always been
+    return true;
 }
 
 // --- Chunks -----------------------------------------------------------

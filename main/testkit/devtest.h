@@ -120,3 +120,16 @@ void devtest_period(float fps, float frame_ms);
 // than just drawing it (CraftMiner's `savecheck`). Emits a FAIL record
 // and makes the running test end "bad".
 void devtest_content_failed(char const* why);
+
+// The content finished what it was asked to do, before the clock ran
+// out -- CraftMiner's `bench_gen`, which generates a world and has
+// nothing to do afterwards. Ends the running test "ok".
+void devtest_content_done(void);
+
+// Throw away everything measured so far and begin again, for a scene
+// that has to SETTLE before it means anything. The bench flight waits
+// for its world to be resident off the card; without this the frames
+// spent waiting are averaged into the result, which is how a renderer
+// comparison ends up reporting the loading screen (F-91). The app
+// restarts its own content clock, which elapsed() is measured against.
+void devtest_perf_restart(void);
