@@ -56,6 +56,7 @@
 #include "ui/chest_ui.h"
 #include "ui/craft_ui.h"
 #include "ui/furnace_ui.h"
+#include "nfm/livestream.h"
 #include "ui/menu.h"
 #include "ui/settings.h"
 #include "ui/title.h"
@@ -2137,6 +2138,13 @@ static void on_render(pax_buf_t* fb, void* user) {
         s_shot_wanted = false;
         take_screenshot(fb);
     }
+
+    // And the same frame to OBS, if the player has asked for that
+    // (nfm/livestream.h). HERE, not after the present: this is the last
+    // moment the frame is ours, because the engine flips pages and the
+    // next one is drawn into a different buffer while this is still on
+    // the glass. A no-op, and one compare, when the stream is off.
+    livestream_frame(fb);
 
     devtest_after_render(fb, rast_us);
     frame_stats();

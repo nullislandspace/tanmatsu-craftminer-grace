@@ -113,6 +113,7 @@ display.sub = shared with the launcher and every other app
 display.screen = Screen
 display.keyboard = Keyboard
 display.leds = LEDs
+display.livestream = Livestream to OBS
 
 # --- The pause menu ---------------------------------------------------------
 pause.title = Paused

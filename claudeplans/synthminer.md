@@ -1413,6 +1413,7 @@ reason Minecraft chose the other rule.
 | 40 | **Bands on both cores** | dropped | 38 lost, and this was conditional on it. G6 (d) keeps the design notes: the raster target that would have carried it survives, so a later attempt does not start from nothing. |
 | 41 | **A world worth measuring on** | done | 2026-09-25, out of F-91 and the user's call: *"a persisted, pre-generated test world seems the best option... Clear a flight path so you don't get blocked... The world should be separate from the worlds i can manage through savegames and also be based on a fixed seed."* `game/benchpath.h` holds the seed, the path and `bench_path_at()`, and `tools/worldcheck.c`'s `check_bench_path` asserts the path against the generator that is compiled in, so a worldgen change that moves this terrain fails the build. **The path was chosen by search, not by eye**: 4000 seeds x 8 headings, keeping only those whose ground never steps more than two blocks, then the busiest -- seed 1030 due +z crosses ALL FIVE biomes in 240 blocks with 23 blocks of relief and a worst step of ONE, so nothing had to be carved and the ground-following camera can never be buried. The world lives at `<base>/bench/`, OUTSIDE `worlds/`, which is the whole of how it stays invisible: `worldstore_list()` scans `worlds/`, so the world-select screen cannot show it, open it or delete it, and the slug is reserved so a player-named world cannot collide. A bench world whose seed does not match is deleted and generated again rather than measured. `bench_gen` walks the path in 8-block stops waiting for `missing == 0` at each (generated chunks are already `CF_EDITED`, so eviction writes them; 49 chunks, ~45 s, once); `bench` and `bench_fullres` fly it off the card in 735 ms of loading and 40 s of flight, view distance forced to near so two runs compare. The perf clock and accumulators restart when the world is resident (`devtest_perf_restart`), so the card is not averaged into the rasteriser. |
 | 42 | **CraftMiner becomes SynthMiner** | done | 2026-09-25, the user's call after a Discord discussion (D-91), and done with no badge to hand. 445 references over 84 files, in one scripted pass so the ordering is auditable rather than a chain of hand edits: the showreel's own paths are sentinelled out first (`main/craftminer/...` and `cm_title.c` name files in ANOTHER repository and are not this game's to rename), then identifiers, then extensions and magics, then the name itself, including the declined forms five translations carry -- `CraftMinerom`, `CraftMinerem`, `CraftMinerjem`, `CraftMinerilla`, `CraftMineriga` -- which stay correct because the ending attaches to a stem that was swapped, not to the word. Two things the sweep could not have caught on its own: `-DCM_HOST` in the Makefile, where the `D` is a word character so the boundary guard did not fire, and a `www.cmr.no` in a vendored zlib header that the `.cmr` rule matched and that was reverted. **The title screen keeps its framing by arithmetic, not by luck**: the block font never had S, y or h, and the three were drawn in its style so that "SynthMiner" comes out at exactly 48 blocks, the width "CraftMiner" was and the width the camera path is framed on. Migration and its host check are D-91; the cleanup that follows it, and the appfs finding, are D-92. **Verified end to end on the badge on 2026-09-26**, on a real card with a real world, after three bugs that only hardware could show: the stack (F-93), the half-migrated world that read as an empty slot (D-93), and a directory removal that reported success without removing anything (F-94). The card now holds `/sd/synthminer` and `/sd/apps/at.cavac.synthminer` and nothing of CraftMiner's; the world came through as `level.smw` and 21 `.smr` regions. |
+| 43 | **Livestream the screen into OBS** | done (untested on the badge) | 2026-09-26, the user's ask. Ported from `tanmatsu-nfmtest-grace`, which was built to answer exactly this question: `nfm/{netraw,usbnet,tsmux}.{c,h}` come across **byte-identical**, TinyUSB is vendored beside them (`components/tinyusb`, the loader does not export it), and `nfm/stream.c` is the one that was rewritten -- there the frames came from a test pattern in its own task at a fixed rate, here they come from the game. So the shape changed: **the colour conversion is inline in `on_render`**, because that is the only moment the framebuffer is still (the engine flips pages), and everything after it -- encoder, muxer, USB -- is the stream task's. A frame offered while the encoder is busy is DROPPED, never waited for: a stream that stutters beats a game that does. `nfm/livestream.{c,h}` is the switch, and the Display menu's fourth row is the only way to work it. The encoder came from `upstream/main` (`8add127`, "Sync with graceloader: the hardware H.264 encoder") -- before that merge `fakelib` exported none of `esp_h264_*` and the port could not have linked, let alone loaded. |
 
 ---
 
@@ -3540,6 +3541,36 @@ reason Minecraft chose the other rule.
   Between them these mean **every way the migration can be interrupted is
   safe**: nothing is copied, nothing is deleted, every step is a rename,
   and a world half-way through is a world that still works.
+
+- **D-95** 2026-09-26, **the user**: **the livestream switch is not saved and
+  always starts off.** *"There should be a settings option (not saved, always
+  default 'off' when app starts') to enable/disable livestreaming."*
+
+  The reason is bigger than tidiness, and it is in `usbnet.h`: starting the
+  link **takes the USB-C PHY off the serial console** and hands it to the OTG
+  controller, so while the stream runs there is **no console, no BadgeLink
+  and no log output at all** (that project's F-07). A setting that persisted
+  could therefore lock the badge out of its own development link across a
+  restart, with nothing on screen to say why. Off at every start means the
+  worst case is a power cycle and the ordinary case is the same menu row that
+  turned it on.
+
+  It follows that the row must be reachable **from the badge**, not from a
+  console command, since the console is the thing that goes away. It lives in
+  Settings -> Display, under the brightnesses, and shows what the stream IS
+  rather than what was asked for -- the link can refuse to come up, and then
+  the checkbox goes back by itself.
+
+  It also follows that everything which can fail and be REPORTED has to
+  happen before the link: `stream_prepare()` allocates and opens the encoder
+  first, while there is still a console to complain to, and is torn down
+  again if `usbnet_start()` is the part that fails.
+
+  **No fixed rate, by the user's instruction** -- *"We don't need fixed FPS
+  or anything, just every time the display gets updated, we also send the
+  screen to the livestream."* nfmtest paced its own clock and skipped slots;
+  this offers every frame the game finishes and drops the ones the encoder
+  cannot take.
 
 ## Verification
 

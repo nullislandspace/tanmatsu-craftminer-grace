@@ -5,6 +5,8 @@
 #include "audio/sfx.h"
 #include "ui/menu.h"
 
+#include "nfm/livestream.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -503,6 +505,12 @@ static void update_controls(void) {
 static sm_str_t const VIEW_NAMES[SETTINGS_VIEW_COUNT] = {SM_STR_VIEW_NEAR, SM_STR_VIEW_MEDIUM,
                                                          SM_STR_VIEW_FAR};
 #define GRAPHICS_ROWS 7
+#define DISPLAY_ROWS  5
+
+// The framebuffer the menu was last drawn into. Only the livestream row
+// wants it -- the encoder is sized from it (livestream.h) -- and
+// menu_update() is called without one. Set every frame by menu_draw(), which always runs before a key can be pressed in this screen.
+static pax_buf_t* s_fb;
 
 static menu_cmd_t update_graphics(void) {
     menu_cmd_t cmd = {0};
@@ -579,7 +587,7 @@ static void update_audio(void) {
 
 static void update_display(void) {
     int* cur = &s_cursor[SCR_DISPLAY];
-    nav(cur, 4);
+    nav(cur, DISPLAY_ROWS);
     int const step =
         (s_act & ACT_RIGHT) ? SE_HW_BRIGHTNESS_STEP_PCT : (s_act & ACT_LEFT) ? -SE_HW_BRIGHTNESS_STEP_PCT : 0;
     if (step != 0) {
@@ -590,7 +598,10 @@ static void update_display(void) {
             default: break;
         }
     }
-    if ((s_act & ACT_OK) && *cur == 3) go(SCR_SETTINGS);
+    // The livestream is a toggle, so OK flips it. It is the one row here
+    // that is not saved and does not survive a restart (livestream.h).
+    if ((s_act & ACT_OK) && *cur == 3) livestream_set(!livestream_on(), s_fb);
+    if ((s_act & ACT_OK) && *cur == 4) go(SCR_SETTINGS);
     if (s_act & ACT_BACK) go(SCR_SETTINGS);
 }
 
@@ -740,6 +751,7 @@ static void draw_title_bar(pax_buf_t* fb) {
 }
 
 void menu_draw(pax_buf_t* fb) {
+    s_fb = fb;
     if (fb == NULL) return;
     switch (s_scr) {
         case SCR_TITLE: draw_title_bar(fb); break;
@@ -902,7 +914,7 @@ void menu_draw(pax_buf_t* fb) {
         } break;
 
         case SCR_DISPLAY: {
-            se_menu_row_t const rows[4] = {
+            se_menu_row_t const rows[DISPLAY_ROWS] = {
                 {.label     = T(SM_STR_DISPLAY_SCREEN),
                  .kind      = SE_MENU_VAL_RANGE,
                  .range_pct = se_hw_get_display_brightness()},
@@ -910,9 +922,13 @@ void menu_draw(pax_buf_t* fb) {
                  .kind      = SE_MENU_VAL_RANGE,
                  .range_pct = se_hw_get_keyboard_brightness()},
                 {.label = T(SM_STR_DISPLAY_LEDS), .kind = SE_MENU_VAL_RANGE, .range_pct = se_hw_get_led_brightness()},
+                // Shows what the stream IS, not what was asked for: the
+                // link may refuse to come up, and then the row goes back
+                // to unchecked by itself (livestream.h).
+                {.label = T(SM_STR_DISPLAY_LIVESTREAM), .kind = SE_MENU_VAL_CHECK, .checked = livestream_on()},
                 {.label = T(SM_STR_COMMON_BACK)},
             };
-            draw_list(fb, T(SM_STR_DISPLAY_TITLE), T(SM_STR_DISPLAY_SUB), rows, 4, s_cursor[SCR_DISPLAY],
+            draw_list(fb, T(SM_STR_DISPLAY_TITLE), T(SM_STR_DISPLAY_SUB), rows, DISPLAY_ROWS, s_cursor[SCR_DISPLAY],
                       HINT_ADJUST, 300.0f);
         } break;
 

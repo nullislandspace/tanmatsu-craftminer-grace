@@ -83,6 +83,7 @@ typedef enum {
     SM_STR_DISPLAY_SCREEN,              // display.screen
     SM_STR_DISPLAY_KEYBOARD,            // display.keyboard
     SM_STR_DISPLAY_LEDS,                // display.leds
+    SM_STR_DISPLAY_LIVESTREAM,          // display.livestream
     SM_STR_PAUSE_TITLE,                 // pause.title
     SM_STR_PAUSE_RESUME,                // pause.resume
     SM_STR_PAUSE_SAVE,                  // pause.save
