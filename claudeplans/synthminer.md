@@ -2604,6 +2604,29 @@ reason Minecraft chose the other rule.
   been of the generator. Fixed by step 41: a persisted world, pre-generated
   once, streamed off the card (`0 missing`, `refused 0`, queue 0-6 of 48, and
   735 ms to load instead of eleven seconds to generate).
+- **F-98** 2026-09-26, noticed only when the encoder was made a submodule
+  and the app could not carry it: **`git add -A` had silently flattened the
+  `synthengine3D` submodule into 133 plain files.** `c8e5944` replaced the
+  gitlink with a tree --
+
+      before:  160000 commit f28855c...  synthengine3D
+      after:   040000 tree   22ba661...  synthengine3D
+
+  -- and nothing complained, because a submodule whose `.git` is a *file*
+  (a gitdir pointer, which is what a submodule checkout has) does not trip
+  the "embedded git repository" warning the way a nested `.git` directory
+  does. The symptoms were quiet and easy to misread as normal: engine
+  changes showed up as modified files in BOTH repos, so every engine commit
+  had to be made twice, and the app's history was quietly accumulating a
+  duplicate of the engine's. `.gitmodules` had described `synthengine3D` as
+  a submodule since the project's first commit (`fd9be00`) and the Makefile
+  still said a fresh clone needs `--recursive`, so the intent was never in
+  doubt -- only the index disagreed. Fixed with `git rm -r --cached
+  synthengine3D` then `git add synthengine3D`, which restores the gitlink;
+  `git submodule status --recursive` now walks app -> engine -> pdmp2.
+  **The check that would have caught it is one line**: `git ls-files -s
+  synthengine3D` should print ONE entry at mode 160000, never a list.
+
 - **F-95** 2026-09-26, writing the Layer II encoder and getting a stream no
   decoder would open: **the MPEG audio syncword is TWELVE bits, not eleven.**
   The header is sync(12) ID(1) layer(2) protection(1), which is 16 bits
