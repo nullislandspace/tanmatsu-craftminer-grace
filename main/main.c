@@ -2145,29 +2145,6 @@ static void on_render(pax_buf_t* fb, void* user) {
         take_screenshot(fb);
     }
 
-    // WHILE THE STREAM RUNS, THE SCREEN IS THE ONLY INSTRUMENT LEFT.
-    // Starting it hands the USB-C PHY to the OTG controller, so there is
-    // no console, no BadgeLink and no log (se_stream.h) -- and "OBS shows
-    // nothing" is then indistinguishable between a game that never offers
-    // a frame, an encoder that refuses one, a muxer that emits nothing and
-    // a link that drops every datagram. These counters separate those four
-    // at a glance, and they cost nothing when the stream is off.
-    if (se_stream_running()) {
-        se_stream_stats_t st;
-        char              l1[96], l2[96];
-        se_stream_get_stats(&st);
-        snprintf(l1, sizeof(l1), "LIVE pub %lu drop %lu | enc %lu key %lu err %lu/%lu",
-                 (unsigned long)st.published, (unsigned long)st.dropped, (unsigned long)st.frames,
-                 (unsigned long)st.keyframes, (unsigned long)st.enc_errors, (unsigned long)st.ppa_errors);
-        snprintf(l2, sizeof(l2), "dgram %lu fail %lu | %lu KB | aud %lu drop %lu",
-                 (unsigned long)st.dgrams, (unsigned long)st.dgrams_failed,
-                 (unsigned long)(st.ts_bytes / 1024u), (unsigned long)st.audio_frames,
-                 (unsigned long)st.audio_dropped);
-        pax_draw_rect(fb, 0xC0000000u, 0, 0, 470, 44);
-        rendertext_draw(fb, 0xFF00FF80u, NULL, 18.0f, 4.0f, 2.0f, l1);
-        rendertext_draw(fb, 0xFF00FF80u, NULL, 18.0f, 4.0f, 22.0f, l2);
-    }
-
     // And the same frame to OBS, if the player has asked for that
     // (se_stream.h). HERE, not after the present: this is the last
     // moment the frame is ours, because the engine flips pages and the
