@@ -1413,7 +1413,7 @@ reason Minecraft chose the other rule.
 | 40 | **Bands on both cores** | dropped | 38 lost, and this was conditional on it. G6 (d) keeps the design notes: the raster target that would have carried it survives, so a later attempt does not start from nothing. |
 | 41 | **A world worth measuring on** | done | 2026-09-25, out of F-91 and the user's call: *"a persisted, pre-generated test world seems the best option... Clear a flight path so you don't get blocked... The world should be separate from the worlds i can manage through savegames and also be based on a fixed seed."* `game/benchpath.h` holds the seed, the path and `bench_path_at()`, and `tools/worldcheck.c`'s `check_bench_path` asserts the path against the generator that is compiled in, so a worldgen change that moves this terrain fails the build. **The path was chosen by search, not by eye**: 4000 seeds x 8 headings, keeping only those whose ground never steps more than two blocks, then the busiest -- seed 1030 due +z crosses ALL FIVE biomes in 240 blocks with 23 blocks of relief and a worst step of ONE, so nothing had to be carved and the ground-following camera can never be buried. The world lives at `<base>/bench/`, OUTSIDE `worlds/`, which is the whole of how it stays invisible: `worldstore_list()` scans `worlds/`, so the world-select screen cannot show it, open it or delete it, and the slug is reserved so a player-named world cannot collide. A bench world whose seed does not match is deleted and generated again rather than measured. `bench_gen` walks the path in 8-block stops waiting for `missing == 0` at each (generated chunks are already `CF_EDITED`, so eviction writes them; 49 chunks, ~45 s, once); `bench` and `bench_fullres` fly it off the card in 735 ms of loading and 40 s of flight, view distance forced to near so two runs compare. The perf clock and accumulators restart when the world is resident (`devtest_perf_restart`), so the card is not averaged into the rasteriser. |
 | 42 | **CraftMiner becomes SynthMiner** | done | 2026-09-25, the user's call after a Discord discussion (D-91), and done with no badge to hand. 445 references over 84 files, in one scripted pass so the ordering is auditable rather than a chain of hand edits: the showreel's own paths are sentinelled out first (`main/craftminer/...` and `cm_title.c` name files in ANOTHER repository and are not this game's to rename), then identifiers, then extensions and magics, then the name itself, including the declined forms five translations carry -- `CraftMinerom`, `CraftMinerem`, `CraftMinerjem`, `CraftMinerilla`, `CraftMineriga` -- which stay correct because the ending attaches to a stem that was swapped, not to the word. Two things the sweep could not have caught on its own: `-DCM_HOST` in the Makefile, where the `D` is a word character so the boundary guard did not fire, and a `www.cmr.no` in a vendored zlib header that the `.cmr` rule matched and that was reverted. **The title screen keeps its framing by arithmetic, not by luck**: the block font never had S, y or h, and the three were drawn in its style so that "SynthMiner" comes out at exactly 48 blocks, the width "CraftMiner" was and the width the camera path is framed on. Migration and its host check are D-91; the cleanup that follows it, and the appfs finding, are D-92. **Verified end to end on the badge on 2026-09-26**, on a real card with a real world, after three bugs that only hardware could show: the stack (F-93), the half-migrated world that read as an empty slot (D-93), and a directory removal that reported success without removing anything (F-94). The card now holds `/sd/synthminer` and `/sd/apps/at.cavac.synthminer` and nothing of CraftMiner's; the world came through as `level.smw` and 21 `.smr` regions. |
-| 43 | **Livestream the screen into OBS** | done (untested on the badge), **moved into the engine** | 2026-09-26, the user's ask. Ported from `tanmatsu-nfmtest-grace`, which was built to answer exactly this question: `nfm/{netraw,usbnet,tsmux}.{c,h}` come across **byte-identical**, TinyUSB is vendored beside them (`components/tinyusb`, the loader does not export it), and `nfm/stream.c` is the one that was rewritten -- there the frames came from a test pattern in its own task at a fixed rate, here they come from the game. So the shape changed: **the colour conversion is inline in `on_render`**, because that is the only moment the framebuffer is still (the engine flips pages), and everything after it -- encoder, muxer, USB -- is the stream task's. A frame offered while the encoder is busy is DROPPED, never waited for: a stream that stutters beats a game that does. `nfm/livestream.{c,h}` is the switch, and the Display menu's fourth row is the only way to work it. The encoder came from `upstream/main` (`8add127`, "Sync with graceloader: the hardware H.264 encoder") -- before that merge `fakelib` exported none of `esp_h264_*` and the port could not have linked, let alone loaded. **2026-09-26, the user: "it would also be a good idea to implement all the streaming in the engine, so we can re-use it in other apps."** So all of it moved: `se_stream.h` is engine API now, TinyUSB is vendored under `src/internal/tinyusb` and built only in plain-CMake mode (under the IDF the host has its own), and this app keeps nothing but one call in `on_render` and one menu row. Moving it also made AUDIO the engine's to give rather than the game's to wire: the mixer is already there, so `cfg.audio` needs no tap and no callback from any app. **The switch is the last row of the main Settings menu**, not a Display setting, by the user's correction (D-95). **And `cfg.audio` now carries audio** (engine 2.3): it used to log "no audio in this stream; video only" and degrade, because there was no permissively licensed encoder to put behind it. There is now -- `pdmp2`, written for this, public domain, MPEG-2 LSF Layer II at the mixer's own 22050 so nothing is resampled (D-96). The vendored shine is gone and nothing in the engine is copyleft. Verified on the host at six rate/channel/bitrate combinations and through the muxer into a `.ts` that reads back as `mp2 / 0x0004, 22050 Hz, stereo, 128 kb/s`; **the two findings that cost the most are F-95 (the syncword is 12 bits) and F-96 (the analysis window is not a design choice)**. Still untested on the badge, and awkward to test: turning the stream on takes the USB-C PHY off the console, so there is no log to watch it with. |
+| 43 | **Livestream the screen into OBS** | done (untested on the badge), **moved into the engine** | 2026-09-26, the user's ask. Ported from `tanmatsu-nfmtest-grace`, which was built to answer exactly this question: `nfm/{netraw,usbnet,tsmux}.{c,h}` come across **byte-identical**, TinyUSB is vendored beside them (`components/tinyusb`, the loader does not export it), and `nfm/stream.c` is the one that was rewritten -- there the frames came from a test pattern in its own task at a fixed rate, here they come from the game. So the shape changed: **the colour conversion is inline in `on_render`**, because that is the only moment the framebuffer is still (the engine flips pages), and everything after it -- encoder, muxer, USB -- is the stream task's. A frame offered while the encoder is busy is DROPPED, never waited for: a stream that stutters beats a game that does. `nfm/livestream.{c,h}` is the switch, and the Display menu's fourth row is the only way to work it. The encoder came from `upstream/main` (`8add127`, "Sync with graceloader: the hardware H.264 encoder") -- before that merge `fakelib` exported none of `esp_h264_*` and the port could not have linked, let alone loaded. **2026-09-26, the user: "it would also be a good idea to implement all the streaming in the engine, so we can re-use it in other apps."** So all of it moved: `se_stream.h` is engine API now, TinyUSB is vendored under `src/internal/tinyusb` and built only in plain-CMake mode (under the IDF the host has its own), and this app keeps nothing but one call in `on_render` and one menu row. Moving it also made AUDIO the engine's to give rather than the game's to wire: the mixer is already there, so `cfg.audio` needs no tap and no callback from any app. **The switch is the last row of the main Settings menu**, not a Display setting, by the user's correction (D-95). **And `cfg.audio` now carries audio** (engine 2.3): it used to log "no audio in this stream; video only" and degrade, because there was no permissively licensed encoder to put behind it. There is now -- `pdmp2`, written for this, public domain, MPEG-2 LSF Layer II at the mixer's own 22050 so nothing is resampled (D-96). The vendored shine is gone and nothing in the engine is copyleft. Verified on the host at six rate/channel/bitrate combinations and through the muxer into a `.ts` that reads back as `mp2 / 0x0004, 22050 Hz, stereo, 128 kb/s`; **the two findings that cost the most are F-95 (the syncword is 12 bits) and F-96 (the analysis window is not a design choice)**. **Tested on the badge on 2026-09-26, and it works: picture and sound in OBS.** Getting there took three bugs the host could not have shown, all of them in the transport rather than the codec: the parameter sets were too rare for a receiver to join reliably (F-99), quitting the app mid-stream wedged the badge's USB (F-100), and the video and audio clocks ran at different rates so the sound fell steadily further behind (F-101). **Diagnosing any of it needed an instrument, because the console is what the stream takes away**: the counters now drawn on screen while streaming, and the same figures logged by `se_stream_stop()` at the first moment there is anywhere to print them. `pub`/`enc`/`key`/`dgram`/`fail`/`aud` separate "the game never offered a frame" from "the encoder refused it" from "the muxer emitted nothing" from "the link took nothing" at a glance. Still open: a possible constant audio/video offset, untested, with the ring backlog the prime suspect (F-101). |
 
 ---
 
@@ -2604,6 +2604,79 @@ reason Minecraft chose the other rule.
   been of the generator. Fixed by step 41: a persisted world, pre-generated
   once, streamed off the card (`0 missing`, `refused 0`, queue 0-6 of 48, and
   735 ms to load instead of eleven seconds to generate).
+- **F-99** 2026-09-26, with the stream reaching OBS and OBS showing nothing:
+  **the H.264 parameter sets were sent too rarely to join.** The encoder
+  puts SPS and PPS in front of every keyframe, so about once a second at
+  `gop` 20 -- and over UDP there is no connection, no handshake and no way
+  to ask for a replay, so whether a receiver ever decodes depends on where
+  in the GOP it happened to open its socket. It does not fail loudly: the
+  transport stream parses, the program is found, the stream is correctly
+  identified as H.264, and then it is `unspecified size` and
+  `non-existing PPS 0 referenced` for ever.
+
+  **The trap underneath it is that two receivers disagree.** `ffplay`
+  waits for a keyframe and plays the same stream perfectly. OBS opens its
+  media source with `analyzeduration 0` and decides what the stream
+  contains from the first packets it happens to see. So the first verdict
+  was "works in ffplay, not in OBS", which reads like an OBS problem and
+  is not one -- **"it works in one player" is not evidence that a stream
+  is correct.** The user's own observation is what broke it open: *"it's
+  very sporadic, even in ffplay. It sometimes works when i join mid
+  stream, sometimes not."* Sporadic, not broken, was the whole clue --
+  parameter sets that were missing entirely could never have worked.
+
+  Measured rather than argued, on the host: mux a real H.264 stream
+  through `tsmux`, truncate it at every packet boundary in turn (which is
+  what joining a live UDP stream late amounts to) and ask ffprobe with
+  OBS's settings whether it can find the video size. **50.2% of offsets
+  before, 94.9% after**, the residual being only the last packets of a
+  finite file where there is not enough left to probe. That 50% is exactly
+  the coin flip that was reported. Fixed in `tsmux` by caching the
+  parameter sets and putting them in front of EVERY access unit: forty
+  bytes a frame, 8 kbit/s against a 3 Mbit/s stream, and a stream any
+  receiver can join at any instant.
+
+- **F-100** 2026-09-26, when `make install` could not reach the badge:
+  **quitting an app while it was streaming left the USB-C PHY with the OTG
+  controller, and the badge unreachable by console AND BadgeLink.**
+  `se_stream_stop()` was only ever called from the menu row that turned
+  the stream on, so returning from the run loop -- which is what "quit to
+  the launcher" does -- never gave the port back. The launcher then runs
+  perfectly and cannot be talked to by either channel, with nothing on
+  screen to say why, and only a power cycle clears it. Fixed in
+  `se_run()`, not in the game: the stream is the ENGINE's resource, the
+  engine started it, and a game should not have to remember. (F-01's PHY
+  swap is the mechanism; this is the missing counterpart to it.)
+
+- **F-101** 2026-09-26, out of **the user**: *"audio seems quite a bit
+  delayed (multiple seconds)"* -- **the stream carried two clocks running
+  at different rates.** The audio PTS counted SAMPLES, which is real time
+  by construction. The video PTS was `s_seq * 90000 / fps_hint`: a count
+  of encoded frames scaled by the rate the encoder was *configured* for.
+  But `fps_hint` is a hint, the game renders at whatever it manages, and a
+  frame offered while the encoder is busy is dropped without advancing
+  `s_seq` at all -- so that clock ran at (actual rate / 20) of real time,
+  typically well under half. With the PCR riding the video PID, the
+  audio's timestamps pull steadily ahead of the stream clock and a player
+  holds them back to match: the sound arrives late by an amount that
+  **grows**, reaching seconds within a minute.
+
+  The old comment is the finding in miniature -- *"the game's rate varies;
+  the player only needs a clock that advances evenly"*. True of a stream
+  carrying video alone, and wrong the moment there is a second stream that
+  has to agree with it. Fixed by making the video PTS real elapsed
+  microseconds, **stamped when the frame is captured** rather than when the
+  encoder gets to it, which can be tens of milliseconds later. Confirmed
+  on the badge: the offset stops growing.
+
+  Still open: a possible CONSTANT audio/video offset, untested. If there is
+  one, the likely cause is known -- the audio ring can hold up to
+  `RING_FRAMES` x 1152 samples, about 418 ms, accumulated while USB
+  enumerates, and the first frame taken out of it is that stale while being
+  stamped as current. Clearing the ring when the stream task starts is the
+  fix; it was deliberately NOT done at the same time as the clock fix, so
+  that one change could be attributed.
+
 - **F-98** 2026-09-26, noticed only when the encoder was made a submodule
   and the app could not carry it: **`git add -A` had silently flattened the
   `synthengine3D` submodule into 133 plain files.** `c8e5944` replaced the
