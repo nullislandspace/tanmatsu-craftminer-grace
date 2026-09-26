@@ -796,7 +796,26 @@ static void on_init(void* user) {
     // has only ever existed with the data already split out, so that
     // directory has never held a player's anything.
     {
-        char      report[1024];
+        // Static, not on the stack: the main task has 8.5 KB and this
+        // is the deepest chain in start-up (F-93).
+        static char report[512];
+
+        // SAY SO, IF THERE IS ANYTHING TO SAY. The migration moves a
+        // card's worth of files and the screen would otherwise hold the
+        // engine's splash throughout, which is indistinguishable from a
+        // hang -- and was one, the first time it ran (F-93). se_splash_ex
+        // blocks for its animation and then LEAVES ITS LAST FRAME on the
+        // display, so the message stays up for as long as the work takes:
+        // nothing else presents until this block is done.
+        //
+        // Only when one of the old directories is actually there, so an
+        // ordinary start does not pay a second of splash to be told that
+        // nothing happened (D-94).
+        if (datadir_exists(SM_DATA_DIR_WAS) || datadir_exists(SM_INSTALL_WAS)) {
+            ESP_LOGI(TAG, "migrating this card from CraftMiner");
+            se_splash_ex("SynthMiner", "Moving your worlds over...", 1.0f);
+        }
+
         int const made = datadir_adopt(SM_DATA_DIR_WAS, SM_DATA_DIR, DD_DATA, report, sizeof(report));
         if (made < 0) ESP_LOGE(TAG, "could not create %s", SM_DATA_DIR);
         log_lines("data", report);

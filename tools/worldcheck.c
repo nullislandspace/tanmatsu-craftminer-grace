@@ -1517,6 +1517,34 @@ static bool dd_write(char const* path, char const* text) {
     return true;
 }
 
+// Delete a directory tree. The rename test builds a whole card and has
+// to start from nothing: a hand-written list of files to remove is a
+// list somebody forgets to extend, and a leftover directory makes the
+// NEXT run's adoption refuse to merge -- which looks like a migration
+// bug and is not one.
+static void dd_rmtree(char const* path) {
+    // Bounded so the compiler can see that the recursion below cannot
+    // grow a path without limit; the test's own paths are ~60 bytes.
+    if (path == NULL || strlen(path) > 180) return;
+    char      names[64][96];
+    int       n = 0;
+    sm_dir_t* d = sm_dir_open(path);
+    if (d != NULL) {
+        char const* name;
+        while (n < 64 && (name = sm_dir_next(d, NULL)) != NULL) {
+            if (strlen(name) < sizeof(names[0])) snprintf(names[n++], sizeof(names[0]), "%s", name);
+        }
+        sm_dir_close(d);
+    }
+    for (int i = 0; i < n; i++) {
+        char child[288];
+        if (snprintf(child, sizeof(child), "%s/%s", path, names[i]) >= (int)sizeof(child)) continue;
+        dd_rmtree(child);
+        sm_remove(child);
+    }
+    sm_remove(path);
+}
+
 static bool dd_reads(char const* path, char const* text) {
     char  buf[64] = {0};
     FILE* f       = fopen(path, "rb");
@@ -1594,21 +1622,10 @@ static void check_rename(void) {
     char const* const WAS = "build/host/ddtest/craftminer";
     char const* const NOW = "build/host/ddtest/renamed";
 
-    // A clean slate.
-    char const* const JUNK[] = {
-        "build/host/ddtest/renamed/worlds/slot1/region/r.0.0.smr", "build/host/ddtest/renamed/worlds/slot1/region/r.-1.2.smr",
-        "build/host/ddtest/renamed/worlds/slot1/level.smw",        "build/host/ddtest/renamed/worlds/slot2/level.smw",
-        "build/host/ddtest/renamed/bench/region/r.0.0.smr",        "build/host/ddtest/renamed/bench/level.smw",
-        "build/host/ddtest/renamed/replays/last.smr",              "build/host/ddtest/renamed/settings.txt",
-    };
-    for (size_t i = 0; i < sizeof(JUNK) / sizeof(JUNK[0]); i++) remove(JUNK[i]);
-    char const* const DIRS[] = {
-        "build/host/ddtest/renamed/worlds/slot1/region", "build/host/ddtest/renamed/worlds/slot1",
-        "build/host/ddtest/renamed/worlds/slot2",        "build/host/ddtest/renamed/worlds",
-        "build/host/ddtest/renamed/bench/region",        "build/host/ddtest/renamed/bench",
-        "build/host/ddtest/renamed/replays",             "build/host/ddtest/renamed",
-    };
-    for (size_t i = 0; i < sizeof(DIRS) / sizeof(DIRS[0]); i++) remove(DIRS[i]);
+    // A clean slate, all of it.
+    dd_rmtree(NOW);
+    dd_rmtree(WAS);
+    dd_rmtree("build/host/ddtest/apps/at.cavac.craftminer");
 
     // The card, exactly as the old name left it.
     CHECK(sm_mkdir_p("build/host/ddtest/craftminer/worlds/slot1/region"), "could not make slot 1");
@@ -1708,6 +1725,40 @@ static void check_rename(void) {
     CHECK(dgone >= 1, "the emptied data directory was not removed");
     CHECK(!dd_exists("build/host/ddtest/craftminer"), "the old data directory is still there");
     printf("  %s", report);
+
+    // AN INTERRUPTED MIGRATION MUST NOT LOOK LIKE AN EMPTY SLOT (F-93).
+    // Regions are renamed before the level file, so a migration that
+    // stops half way leaves `level.cmw` behind -- which this build does
+    // not look for, so the slot reads DAMAGED and nothing may be built
+    // over it. The dangerous shape is the other way round: a world that
+    // OPENS with no terrain would generate fresh ground over the
+    // player's and save it under the new names.
+    {
+        world_meta_t peek;
+        CHECK(worldstore_init(NOW), "worldstore_init on the migrated directory failed");
+        char dir[256], path[288];
+        snprintf(dir, sizeof(dir), "%s/worlds/slot5/region", NOW);
+        CHECK(sm_mkdir_p(dir), "could not make a half-migrated world");
+        snprintf(path, sizeof(path), "%s/worlds/slot5/region/r.0.0.smr", NOW);
+        dd_write(path, "SMR1 terrain that was renamed");
+        snprintf(path, sizeof(path), "%s/worlds/slot5/level.cmw", NOW);
+        dd_write(path, "CMW1 a level file the rename had not reached");
+        CHECK(worldstore_slot_state(4, &peek) == SLOT_DAMAGED,
+              "a half-migrated world does not read as damaged");
+        world_meta_t   m2;
+        player_state_t p2;
+        CHECK(!worldstore_create_in(4, "Over it", 1u, &m2, &p2), "a world was created over a half-migrated one");
+        snprintf(path, sizeof(path), "%s/worlds/slot5/level.cmw", NOW);
+        CHECK(dd_exists(path), "the half-migrated level file was destroyed");
+
+        // And the next start finishes it, which is the self-healing half.
+        int const finished = datadir_rename_saves(NOW, report, sizeof(report));
+        CHECK(finished == 1, "the next start renamed %d files, expected 1 (the level)", finished);
+        snprintf(path, sizeof(path), "%s/worlds/slot5/level.smw", NOW);
+        CHECK(dd_exists(path), "the level file was not renamed on the next start");
+        printf("  an interrupted world read as damaged, then healed on the next start\n");
+        worldstore_delete("slot5");
+    }
 
     // Started again with both already gone: quiet, and not a refusal.
     CHECK(datadir_retire(WAS, NOW, DD_DATA, report, sizeof(report)) == 0, "retiring a directory that is gone complained");

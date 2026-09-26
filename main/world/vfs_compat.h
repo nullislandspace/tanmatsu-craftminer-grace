@@ -27,9 +27,20 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-// Delete a file. True if it is gone afterwards (including if it was
+// Delete a FILE. True if it is gone afterwards (including if it was
 // never there).
 bool sm_remove(char const* path);
+
+// Delete an EMPTY DIRECTORY. True if it is gone afterwards.
+//
+// A SEPARATE CALL because f_unlink will not do it (F-94): it answers
+// FR_DENIED for a directory, and sm_remove then works its way down the
+// candidate spellings until one of them says FR_NO_FILE -- which it
+// used to read as "already gone" and report success for, leaving the
+// directory exactly where it was and saying it had not. POSIX `rmdir`
+// IS exported by graceloader, like `mkdir` and `stat` and unlike
+// `remove`, so this needs none of that machinery.
+bool sm_rmdir(char const* path);
 
 // Rename / move a file. True on success.
 bool sm_rename(char const* from, char const* to);

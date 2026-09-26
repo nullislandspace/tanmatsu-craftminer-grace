@@ -1412,7 +1412,7 @@ reason Minecraft chose the other rule.
 | 39 | **Measure, and keep one renderer** | done | 2026-09-25. The z-buffer is kept; see G6 for the five measurements and D-90 for the decision. Two things the round taught that outlast it: the scene a renderer is measured on has to be able to measure one (F-91, step 41), and `PROF_BLIT` / `PROF_VSYNC` had never been fed, so the present was hiding in the residual (F-88) -- both fixed. **Still owed:** a `renderercheck` beside `meshcheck` was not written, because with one renderer left there is nothing to compare; if a second is ever added it comes back with it. |
 | 40 | **Bands on both cores** | dropped | 38 lost, and this was conditional on it. G6 (d) keeps the design notes: the raster target that would have carried it survives, so a later attempt does not start from nothing. |
 | 41 | **A world worth measuring on** | done | 2026-09-25, out of F-91 and the user's call: *"a persisted, pre-generated test world seems the best option... Clear a flight path so you don't get blocked... The world should be separate from the worlds i can manage through savegames and also be based on a fixed seed."* `game/benchpath.h` holds the seed, the path and `bench_path_at()`, and `tools/worldcheck.c`'s `check_bench_path` asserts the path against the generator that is compiled in, so a worldgen change that moves this terrain fails the build. **The path was chosen by search, not by eye**: 4000 seeds x 8 headings, keeping only those whose ground never steps more than two blocks, then the busiest -- seed 1030 due +z crosses ALL FIVE biomes in 240 blocks with 23 blocks of relief and a worst step of ONE, so nothing had to be carved and the ground-following camera can never be buried. The world lives at `<base>/bench/`, OUTSIDE `worlds/`, which is the whole of how it stays invisible: `worldstore_list()` scans `worlds/`, so the world-select screen cannot show it, open it or delete it, and the slug is reserved so a player-named world cannot collide. A bench world whose seed does not match is deleted and generated again rather than measured. `bench_gen` walks the path in 8-block stops waiting for `missing == 0` at each (generated chunks are already `CF_EDITED`, so eviction writes them; 49 chunks, ~45 s, once); `bench` and `bench_fullres` fly it off the card in 735 ms of loading and 40 s of flight, view distance forced to near so two runs compare. The perf clock and accumulators restart when the world is resident (`devtest_perf_restart`), so the card is not averaged into the rasteriser. |
-| 42 | **CraftMiner becomes SynthMiner** | done | 2026-09-25, the user's call after a Discord discussion (D-91), and done with no badge to hand. 445 references over 84 files, in one scripted pass so the ordering is auditable rather than a chain of hand edits: the showreel's own paths are sentinelled out first (`main/craftminer/...` and `cm_title.c` name files in ANOTHER repository and are not this game's to rename), then identifiers, then extensions and magics, then the name itself, including the declined forms five translations carry -- `CraftMinerom`, `CraftMinerem`, `CraftMinerjem`, `CraftMinerilla`, `CraftMineriga` -- which stay correct because the ending attaches to a stem that was swapped, not to the word. Two things the sweep could not have caught on its own: `-DCM_HOST` in the Makefile, where the `D` is a word character so the boundary guard did not fire, and a `www.cmr.no` in a vendored zlib header that the `.cmr` rule matched and that was reverted. **The title screen keeps its framing by arithmetic, not by luck**: the block font never had S, y or h, and the three were drawn in its style so that "SynthMiner" comes out at exactly 48 blocks, the width "CraftMiner" was and the width the camera path is framed on. Migration and its host check are D-91; the cleanup that follows it, and the appfs finding, are D-92. |
+| 42 | **CraftMiner becomes SynthMiner** | done | 2026-09-25, the user's call after a Discord discussion (D-91), and done with no badge to hand. 445 references over 84 files, in one scripted pass so the ordering is auditable rather than a chain of hand edits: the showreel's own paths are sentinelled out first (`main/craftminer/...` and `cm_title.c` name files in ANOTHER repository and are not this game's to rename), then identifiers, then extensions and magics, then the name itself, including the declined forms five translations carry -- `CraftMinerom`, `CraftMinerem`, `CraftMinerjem`, `CraftMinerilla`, `CraftMineriga` -- which stay correct because the ending attaches to a stem that was swapped, not to the word. Two things the sweep could not have caught on its own: `-DCM_HOST` in the Makefile, where the `D` is a word character so the boundary guard did not fire, and a `www.cmr.no` in a vendored zlib header that the `.cmr` rule matched and that was reverted. **The title screen keeps its framing by arithmetic, not by luck**: the block font never had S, y or h, and the three were drawn in its style so that "SynthMiner" comes out at exactly 48 blocks, the width "CraftMiner" was and the width the camera path is framed on. Migration and its host check are D-91; the cleanup that follows it, and the appfs finding, are D-92. **Verified end to end on the badge on 2026-09-26**, on a real card with a real world, after three bugs that only hardware could show: the stack (F-93), the half-migrated world that read as an empty slot (D-93), and a directory removal that reported success without removing anything (F-94). The card now holds `/sd/synthminer` and `/sd/apps/at.cavac.synthminer` and nothing of CraftMiner's; the world came through as `level.smw` and 21 `.smr` regions. |
 
 ---
 
@@ -2603,6 +2603,71 @@ reason Minecraft chose the other rule.
   been of the generator. Fixed by step 41: a persisted world, pre-generated
   once, streamed off the card (`0 missing`, `refused 0`, queue 0-6 of 48, and
   735 ms to load instead of eleven seconds to generate).
+- **F-94** 2026-09-26, with the card migrated but the old directories still
+  on it: **`sm_remove` cannot delete a directory, and said it had.** The log
+  read `retire: could not remove /sd/craftminer (1 entries went)` -- one
+  entry, meaning `wipe` found nothing to do and `sm_remove` had returned
+  TRUE for a directory that was still there afterwards.
+
+  ```c
+  FRESULT const r = f_unlink(cand);
+  if (r == FR_OK || r == FR_NO_FILE) return true;   // <- the bug
+  ```
+
+  `f_unlink` will not take a directory; it answers `FR_DENIED`. The loop
+  then walks on to the next candidate spelling (`vfs_compat.c` tries four,
+  because a VFS path is not a FatFs path), and a spelling that names the
+  wrong volume answers `FR_NO_FILE` -- which this read as "already gone"
+  and reported as success. **`sm_rename` has the same loop and accepts
+  `FR_OK` alone, which is exactly why every rename in the migration worked
+  and every directory removal did not.**
+
+  Fixed two ways. `sm_remove` now counts only `FR_OK`, and asks `stat`
+  rather than `f_unlink` whether the thing is gone. And directories get
+  their own call, `sm_rmdir`, built on POSIX `rmdir` -- which graceloader
+  DOES export, like `mkdir` and `stat` and unlike `remove`, so it needs
+  none of the candidate machinery.
+
+  **This was not the migration's bug.** `worldstore_delete` has ended with
+  `sm_remove(region); sm_remove(dir);` since save slots arrived, so deleting
+  a world has been leaving its empty directory on the card ever since, and
+  reporting success -- invisible, because `worldstore_delete` returns
+  `!slug_exists(slug)`, which only asks whether the level FILE is gone. Both
+  call sites now use `sm_rmdir`.
+
+- **F-93** 2026-09-26, the first time the migration ever ran on a card: **it
+  blew the main task's stack.** The app crashed straight after the splash --
+  `Guru Meditation Error: Core 0 panic'ed (Stack protection fault)`, task
+  "main", bounds `0x4ff277b8`-`0x4ff299b0` (**8.5 KB**), stack pointer
+  `0x4ff27790`, *below* the lower bound. The backtrace pointed at
+  `heap_caps_malloc`, which is only where the guard happened to notice; the
+  log placed it exactly, between `miner_face.png` and `settings:`, which is
+  where `on_init` runs the migration.
+
+  The chain: `on_init` (`char report[1024]`) -> `datadir_rename_saves`
+  (`slugs[32][24]` plus four 512-byte paths, ~2.9 KB) -> `rename_world`
+  (three more, 1.5 KB) -> `rename_batch` (`names[24][64]` plus two more,
+  ~2.6 KB). **Over 8 KB before `datadir_retire` even starts**, and `wipe()`
+  then recursed up to eight deep with another 2 KB a level. The comment on
+  `DD_PATH` had said the 512 bytes were there "so that `join` never has to
+  refuse, not because it might" -- generosity written into the one routine
+  that runs on the smallest stack in the program.
+
+  Fixed: `DD_PATH` 160 (the longest path this really builds is 82),
+  `DD_NAME` 64, `BATCH` 12, `RETIRE_DEPTH` 5, and every name array moved
+  into statics -- which for this app are in PSRAM, since kbelf loads app.so
+  there, so they cost no internal SRAM at all. +6656 bytes of bss, and the
+  deepest chain is now under 1.7 KB.
+
+  **No host check could have caught this**: worldcheck runs on a PC with an
+  8 MB stack, so the same code passes there and always will. The lesson is
+  about where the code runs, not about what it computes.
+
+  What it left on the card is the good news, and only by luck: adoption had
+  finished, `level.cmw` had become `level.smw`, and all 21 region files were
+  still `.cmr`. Nothing was lost -- but that exact state is what D-93 is
+  about.
+
 - **F-92** 2026-09-25, running G6 test 4: **the `shots` hashes cannot compare
   two renderers, because the scene does not reproduce itself.** `bench` and
   `bench_banded` differed at all five moments -- and so did two runs of
@@ -3427,6 +3492,55 @@ reason Minecraft chose the other rule.
   afterwards, and only once that world is gone does the directory go, shipped
   files and all.
 
+- **D-93** 2026-09-26, out of F-93's crash and **the user's priority**: *"I'm
+  not so worried about my test world getting lost, i'm worried that the
+  users worlds are getting lost."* **A world is used under whatever names it
+  has.**
+
+  F-93 left a world half-renamed, and looking at that state closely showed
+  the migration had a far worse bug in it than the stack overflow. Every
+  "is there a world in this slot?" in `worldstore.c` is `level_path()` plus
+  `fopen`, and `level_path` built `level.smw` and nothing else. So a
+  half-migrated world:
+
+  - read as **`SLOT_EMPTY`**, not damaged -- the menu would offer the slot
+    as free;
+  - and `worldstore_create_in` would then **create a world straight over
+    it**, because its refusal is `slug_exists()`, which is the same path
+    plus the same `fopen`.
+
+  The plan's earlier claim that "create_in refuses any slot whose directory
+  exists" was simply **wrong**, and the host check written to prove it is
+  what proved the opposite. The same hole existed one level down: even with
+  the level file found, `region_path` built `.smr` only, so an un-migrated
+  world would open with **no terrain at all**, generate fresh ground over
+  the player's, and save it beside the real regions under the new names.
+  That is how somebody loses a year of building.
+
+  So both now resolve to whichever name is actually there:
+
+  - `level_path()` tries `level.smw`, falls back to `level.cmw`, and the
+    world is then read **and written** under that name until the rename
+    reaches it. Nothing is ever orphaned, because reads and writes always
+    agree.
+  - `open_paths()` scans the region directory ONCE per open; a single
+    `.cmr` sets `region_set_ext(REGION_EXT_WAS)` and that world's terrain
+    keeps its own names too. One directory scan per world opened, and no
+    per-chunk cost at all -- which is why this is a module-wide setting in
+    `region.c` rather than an argument threaded through five functions:
+    exactly one world is open at a time, for the same reason worldstore
+    keeps one region directory.
+
+  **And the rename order was reversed.** It did the level file first and
+  the regions after, which is the dangerous way round: the dangerous shape
+  is a world that OPENS and is wrong, not one that refuses. Regions now go
+  first and the level file last, so an interruption leaves a world still
+  called `level.cmw` -- found, readable, and finished on the next start.
+
+  Between them these mean **every way the migration can be interrupted is
+  safe**: nothing is copied, nothing is deleted, every step is a rename,
+  and a world half-way through is a world that still works.
+
 ## Verification
 
 - **Host:** `make check` = `worldcheck` + `scenecheck` + `meshcheck` +
@@ -3553,19 +3667,38 @@ lose, so most of the work is the losing cases -- adopting the old data
 directory, renaming the saved files on every start until it sticks, and
 reading both magics for ever.
 
-**What has NOT been tested, and cannot be until the badge is back:**
+**Then it was run on the badge, and it crashed** (2026-09-26). Not the
+rename -- the migration, on the stack (F-93), and looking at the wreckage
+turned up the much worse bug underneath it (D-93): a half-migrated world
+read as an EMPTY SLOT and could be built over. Both are fixed, and the
+second one is the reason this round was worth doing on real hardware
+rather than shipping on green host checks.
 
-- that the launcher shows *SynthMiner* and runs it from the new slug
-- that `/sd/craftminer` is actually adopted on a real card, over FatFs
-  rather than the host's stdio -- `sm_rename` goes through `f_rename`, and
-  the host check exercises the logic, not that path
-- that the two old directories are actually DELETED on a real card:
-  `sm_remove` goes through `f_unlink`, which removes an empty directory,
-  but that is FatFs's behaviour and not something the host check proves
-- that the launcher stops listing CraftMiner once its directory is gone
-- that a real world, saved by CraftMiner, opens and plays
-- that the title screen's three new letters look right in blocks rather
-  than merely correct on paper
+What the crash also showed is that `make install` had broken for a reason
+that had nothing to do with any of this: the directory rename left
+`badgelink/tools/.venv` pointing at its old absolute path, so BadgeLink
+could not start at all. A virtualenv does not survive being moved.
+
+**It is done, and it was done on the badge.** A real card, carrying a real
+world in slot 1, went from CraftMiner to SynthMiner: `/sd/craftminer`
+adopted, `level.cmw` and 21 `r.*.cmr` renamed, and both
+`/sd/craftminer` and `/sd/apps/at.cavac.craftminer` deleted -- which is
+also what took CraftMiner off the launcher. The player's message shows
+while it happens.
+
+Every one of the three bugs in the way was invisible to `make check`:
+
+| | what the host could not see |
+|---|---|
+| F-93 | worldcheck runs with an 8 MB stack; the badge's main task has 8.5 KB |
+| D-93 | the host never half-migrates, so it never opens a world under two names |
+| F-94 | the host's `remove()` takes a directory; FatFs's `f_unlink` does not |
+
+Each was found by running it, and the second was found only by reading the
+wreckage of the first. **The host checks were green the whole time.**
+
+Still untested: that the title screen's three new letters look right in
+blocks rather than merely correct on paper.
 
 **The player has to do nothing by hand** (D-92). The first start adopts both
 old directories, renames the saved files, and then deletes

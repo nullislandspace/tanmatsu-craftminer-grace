@@ -88,6 +88,11 @@ int datadir_adopt(char const* old_base, char const* new_base, datadir_set_t set,
 // two generations of names for ever.
 int datadir_rename_saves(char const* base, char* report, size_t report_len);
 
+// Is `path` there at all? Two of these decide whether the player is
+// TOLD a migration is happening: a start with nothing to migrate must
+// not pay a second of splash for it (D-94).
+bool datadir_exists(char const* path);
+
 // --- Getting rid of the old one ---------------------------------------
 //
 // Delete `dir` and everything under it: the card should not keep two

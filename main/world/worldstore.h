@@ -51,6 +51,8 @@
 // absorb -- never for a new field, which tags and NBT handle by
 // themselves. A file whose major does not match is refused rather than
 // guessed at, so a future upgrader has something definite to act on.
+#define SM_LEVEL_FILE     "level.smw"
+#define SM_LEVEL_FILE_WAS "level.cmw"  // CraftMiner's (D-93)
 #define SM_LEVEL_MAGIC  "SMW"
 // What this game wrote when it was called CraftMiner (D-91). The reader
 // takes it, because a save made before a rename is still a save; the

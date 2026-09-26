@@ -45,6 +45,8 @@
 // "SMR" + the MAJOR version digit. Like level.smw's, it moves only when
 // the layout changes wholesale; a mismatched major is refused, not
 // guessed at. REGION_VERSION below is the minor revision within it.
+#define REGION_EXT     ".smr"
+#define REGION_EXT_WAS ".cmr"  // CraftMiner's (D-93)
 #define REGION_MAGIC   "SMR1"
 // And what CraftMiner wrote (D-91): read, never written. A region that
 // is compacted or rewritten comes back under the new name by itself.
@@ -62,7 +64,18 @@ static inline int region_local(int32_t c) {
     return (int)(c & (REGION_DIM - 1));
 }
 
-// Build "<dir>/r.<rx>.<rz>.smr". False if it would not fit.
+// Which extension region files are read and written under. ".smr",
+// unless the world being opened still carries CraftMiner's names --
+// then worldstore sets ".cmr" and that world is used UNDER ITS OWN
+// NAMES, read AND written, until the rename reaches it (D-93).
+//
+// A MODULE-WIDE SETTING because exactly one world is open at a time,
+// which is the same reason worldstore keeps one region directory. It
+// must be set before any chunk of that world is touched -- open_paths()
+// does it, beside the directory it belongs with.
+void region_set_ext(char const* ext);
+
+// Build "<dir>/r.<rx>.<rz><ext>". False if it would not fit.
 bool region_path(char* out, size_t cap, char const* dir, int32_t rx, int32_t rz);
 
 // Read one chunk. `c` must already carry cx/cz and have its planes.

@@ -75,12 +75,32 @@ static bool slug_reserved(char const* slug) {
     return strcmp(slug, SM_BENCH_SLUG) == 0;
 }
 
+static bool file_exists(char const* path) {
+    FILE* f = fopen(path, "rb");
+    if (f == NULL) return false;
+    fclose(f);
+    return true;
+}
+
 static void world_dir(char* out, size_t cap, char const* slug) {
     snprintf(out, cap, "%s/%s%s", s_base, group_of(slug), slug);
 }
 
+// A world's level file, UNDER WHICHEVER NAME IT HAS. Normally
+// `level.smw`; a world the rename has not reached still has CraftMiner's
+// `level.cmw`, and is then used under that name -- read and written
+// both -- until it does (D-93).
+//
+// WITHOUT THIS A HALF-MIGRATED WORLD READS AS AN EMPTY SLOT, because
+// every "is there a world here?" in this file is this path plus fopen.
+// The menu would offer the slot as free and the next world created
+// would be written straight over somebody's.
 static void level_path(char* out, size_t cap, char const* slug) {
-    snprintf(out, cap, "%s/%s%s/level.smw", s_base, group_of(slug), slug);
+    snprintf(out, cap, "%s/%s%s/" SM_LEVEL_FILE, s_base, group_of(slug), slug);
+    if (file_exists(out)) return;
+    char was[192];
+    snprintf(was, sizeof(was), "%s/%s%s/" SM_LEVEL_FILE_WAS, s_base, group_of(slug), slug);
+    if (file_exists(was)) snprintf(out, cap, "%s", was);
 }
 
 // --- Slugs ------------------------------------------------------------
@@ -652,6 +672,24 @@ static void open_paths(char const* slug) {
     snprintf(s_region_dir, sizeof(s_region_dir), "%s/%s%s/region", s_base, group_of(slug), slug);
     s_open          = true;
     s_unknown_cells = 0;
+
+    // And which names this world's terrain goes by. One scan of the
+    // region directory, once per open: a single `.cmr` means the rename
+    // has not reached this world, and every read AND write below must
+    // use its names, or the world would come up with no ground at all
+    // and then save fresh terrain beside the player's (D-93).
+    region_set_ext(REGION_EXT);
+    sm_dir_t* d = sm_dir_open(s_region_dir);
+    if (d == NULL) return;
+    char const* name;
+    while ((name = sm_dir_next(d, NULL)) != NULL) {
+        size_t const n = strlen(name);
+        if (n > 4 && strcmp(name + n - 4, REGION_EXT_WAS) == 0) {
+            region_set_ext(REGION_EXT_WAS);
+            break;
+        }
+    }
+    sm_dir_close(d);
 }
 
 // Make a world in the directory `slug`, which the caller has chosen.
@@ -857,9 +895,12 @@ bool worldstore_delete(char const* slug) {
     level_path(level, sizeof(level), slug);
     sm_remove(level);
     // The directories last, now they are empty. A slot counts as free
-    // only once its directory is gone (worldstore_adopt_legacy).
-    sm_remove(region);
-    sm_remove(dir);
+    // only once its directory is gone (worldstore_adopt_legacy) -- and
+    // that needs sm_rmdir, not sm_remove, which cannot take a directory
+    // and used to say it had (F-94). Deleting a world has been leaving
+    // its empty directory on the card ever since save slots arrived.
+    sm_rmdir(region);
+    sm_rmdir(dir);
 
     if (s_open && strcmp(s_open_slug, slug) == 0) worldstore_close();
     return !slug_exists(slug);

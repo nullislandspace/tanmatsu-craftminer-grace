@@ -90,8 +90,14 @@ static uint32_t get_u32(uint8_t const* p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
+static char s_ext[8] = REGION_EXT;
+
+void region_set_ext(char const* ext) {
+    snprintf(s_ext, sizeof(s_ext), "%s", (ext != NULL && *ext != '\0') ? ext : REGION_EXT);
+}
+
 bool region_path(char* out, size_t cap, char const* dir, int32_t rx, int32_t rz) {
-    int const n = snprintf(out, cap, "%s/r.%ld.%ld.smr", dir, (long)rx, (long)rz);
+    int const n = snprintf(out, cap, "%s/r.%ld.%ld%s", dir, (long)rx, (long)rz, s_ext);
     return n > 0 && (size_t)n < cap;
 }
 

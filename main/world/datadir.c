@@ -11,6 +11,35 @@
 #include "world/vfs_compat.h"
 #include "world/worldstore.h"
 
+// How deep the old directories go: an install directory is
+// <slug>/textures/<file> and a world is worlds/<slug>/region/<file>,
+// so three. Five is past either, and stops a directory that somehow
+// points at itself from taking the stack with it.
+#define RETIRE_DEPTH 5
+
+#define BATCH 12
+
+// THE MAIN TASK HAS AN 8.5 KB STACK, and this is the deepest call chain
+// in the program's start-up: retire -> wipe -> wipe -> ... An earlier
+// version of this file took 512-byte paths and a 24 x 64 name buffer in
+// every frame "so that `join` never has to refuse", and blew the stack
+// on the first card it ever ran on (F-93). Nothing here may be
+// generous.
+//
+// The longest path this really builds is the data directory, a world's
+// slug, "region" and a region file whose coordinates are both full
+// negative 32-bit numbers: 82 characters. 160 is twice that.
+#define DD_PATH 160
+#define DD_NAME 64
+
+// The name batches, out of the frame and into the app's statics -- which
+// are in PSRAM, where a few kilobytes cost nothing. `wipe` recurses, so
+// it gets one per depth; nothing else here is re-entrant, and all of it
+// runs once, on one task, before the game starts.
+static char s_batch[BATCH][DD_NAME];
+static char s_wipe[RETIRE_DEPTH + 1][BATCH][DD_NAME];
+static char s_slugs[SM_WORLDS_MAX][SM_WORLD_SLUG_MAX];
+
 // What a build from before the data directory existed (D-80) wrote
 // into its INSTALL directory. Nothing else there is the player's: the
 // textures and the music beside them are what the app shipped with,
@@ -32,6 +61,11 @@ static char const* const* entries_of(datadir_set_t set, size_t* n) {
     }
     *n = sizeof(INSTALL_ENTRIES) / sizeof(INSTALL_ENTRIES[0]);
     return INSTALL_ENTRIES;
+}
+
+bool datadir_exists(char const* path) {
+    struct stat st;
+    return path != NULL && stat(path, &st) == 0;
 }
 
 static bool exists(char const* path) {
@@ -56,7 +90,7 @@ int datadir_adopt(char const* old_base, char const* new_base, datadir_set_t set,
 
     int moved = 0;
     for (size_t i = 0; i < count; i++) {
-        char from[192], to[192], line[448];
+        char from[DD_PATH], to[DD_PATH], line[2 * DD_PATH + 48];
         snprintf(from, sizeof(from), "%s/%s", old_base, names[i]);
         snprintf(to, sizeof(to), "%s/%s", new_base, names[i]);
         if (!exists(from)) continue;
@@ -84,13 +118,7 @@ int datadir_adopt(char const* old_base, char const* new_base, datadir_set_t set,
 // what a directory handle does when the directory changes under it, so
 // the names are collected first and the handle closed before anything
 // moves. The batch is what bounds the memory that takes.
-#define BATCH 24
 
-// The longest path this ever builds: the data directory, a world's
-// slug, "region", and a region file whose coordinates are both full
-// negative 32-bit numbers. That is under 128 characters; the room here
-// is so that `join` never has to refuse, not because it might.
-#define DD_PATH 512
 
 // Build "a/b". False, and `out` empty, if it would not fit -- a path
 // that does not fit is one that must not be renamed HALF way.
@@ -102,9 +130,9 @@ static bool join(char* out, char const* a, char const* b) {
 }
 
 static int rename_batch(char const* dir, char const* from, char const* to, bool* more) {
-    char names[BATCH][64];
-    int  n   = 0;
-    *more    = false;
+    char(*names)[DD_NAME] = s_batch;
+    int n                 = 0;
+    *more                 = false;
 
     sm_dir_t* d = sm_dir_open(dir);
     if (d == NULL) return 0;
@@ -114,19 +142,19 @@ static int rename_batch(char const* dir, char const* from, char const* to, bool*
     while ((name = sm_dir_next(d, &is_dir)) != NULL) {
         if (is_dir) continue;
         size_t const len = strlen(name);
-        if (len <= flen || len >= sizeof(names[0])) continue;
+        if (len <= flen || len >= DD_NAME) continue;
         if (strcmp(name + len - flen, from) != 0) continue;
         if (n == BATCH) {
             *more = true;
             break;
         }
-        snprintf(names[n++], sizeof(names[0]), "%s", name);
+        snprintf(names[n++], DD_NAME, "%s", name);
     }
     sm_dir_close(d);
 
     int done = 0;
     for (int i = 0; i < n; i++) {
-        char         old_path[DD_PATH], new_path[DD_PATH], stem[sizeof(names[0])];
+        char         old_path[DD_PATH], new_path[DD_PATH], stem[DD_NAME];
         size_t const len = strlen(names[i]);
         snprintf(stem, sizeof(stem), "%.*s%s", (int)(len - flen), names[i], to);
         if (!join(old_path, dir, names[i]) || !join(new_path, dir, stem)) continue;
@@ -146,14 +174,38 @@ static int rename_ext(char const* dir, char const* from, char const* to) {
     return total;
 }
 
-// One world directory: its level file and its regions.
+// One world directory: its regions, and THEN its level file.
+//
+// THAT ORDER IS THE WHOLE SAFETY OF AN INTERRUPTED MIGRATION, and it is
+// the opposite of the obvious one. A card can be pulled, a badge can be
+// switched off, a task can run out of stack (F-93) -- so what matters is
+// what a half-renamed world looks like to the next start.
+//
+// Level file LAST, so that a world stops looking like CraftMiner's only
+// once it really is one. Worldstore finds a world under either name and
+// uses it under the name it has (D-93, `level_path`, `open_paths`), so a
+// world caught half way still opens, still has its terrain, and is
+// finished by the next start.
+//
+// Level file FIRST -- what this did until F-93 -- is the dangerous way
+// round. The world would be found under its new name, and then
+// `open_paths` would see a region directory of `.cmr` files it had
+// already been told to read as `.smr`... which is to say it would find
+// no terrain at all, generate fresh ground over the player's, and save
+// it beside the real regions. A world that refuses to load can be
+// fixed. One that loads as the WRONG world has already thrown the
+// player's building away.
+//
+// The two halves of D-93 cover each other: this order means the level
+// file is the last thing to change, and the name resolution means it
+// does not matter when it does.
 static int rename_world(char const* dir) {
     int  n = 0;
     char from[DD_PATH], to[DD_PATH], region[DD_PATH];
+    if (join(region, dir, "region")) n += rename_ext(region, ".cmr", ".smr");
     if (join(from, dir, "level.cmw") && join(to, dir, "level.smw")) {
         if (exists(from) && !exists(to) && sm_rename(from, to)) n++;
     }
-    if (join(region, dir, "region")) n += rename_ext(region, ".cmr", ".smr");
     return n;
 }
 
@@ -167,8 +219,8 @@ int datadir_rename_saves(char const* base, char* report, size_t report_len) {
 
     // The player's worlds. Their names are collected before any of them
     // is touched, for the same reason rename_batch does it.
-    char slugs[SM_WORLDS_MAX][SM_WORLD_SLUG_MAX];
-    int  ns = 0;
+    char(*slugs)[SM_WORLD_SLUG_MAX] = s_slugs;
+    int ns                          = 0;
     sm_dir_t* d = sm_dir_open(worlds);
     if (d != NULL) {
         char const* name;
@@ -179,13 +231,13 @@ int datadir_rename_saves(char const* base, char* report, size_t report_len) {
         // that is really a file (worlds.idx) simply has no level.cmw
         // and no region/ inside it, so it costs two failed opens.
         while ((name = sm_dir_next(d, NULL)) != NULL && ns < SM_WORLDS_MAX) {
-            if (name[0] == '.' || strlen(name) >= sizeof(slugs[0])) continue;
-            snprintf(slugs[ns++], sizeof(slugs[0]), "%s", name);
+            if (name[0] == '.' || strlen(name) >= SM_WORLD_SLUG_MAX) continue;
+            snprintf(slugs[ns++], SM_WORLD_SLUG_MAX, "%s", name);
         }
         sm_dir_close(d);
     }
     for (int i = 0; i < ns; i++) {
-        char dir[DD_PATH], line[DD_PATH + 64];
+        char dir[DD_PATH], line[DD_PATH + 48];
         if (!join(dir, worlds, slugs[i])) continue;
         int const n = rename_world(dir);
         if (n > 0) {
@@ -197,7 +249,7 @@ int datadir_rename_saves(char const* base, char* report, size_t report_len) {
 
     // The benchmark world, which lives beside worlds/ rather than in
     // it (worldstore.h), and the replays.
-    char other[DD_PATH], line[DD_PATH + 64];
+    char other[DD_PATH], line[DD_PATH + 48];
     if (!join(other, base, "bench")) return total;
     int n = rename_world(other);
     if (n > 0) {
@@ -219,12 +271,6 @@ int datadir_rename_saves(char const* base, char* report, size_t report_len) {
 
 // --- Getting rid of the old one ---------------------------------------
 
-// How deep the old directories go: an install directory is
-// <slug>/textures/<file> and a world is worlds/<slug>/region/<file>,
-// so three. Eight is far past either, and stops a directory that
-// somehow points at itself from taking the stack with it.
-#define RETIRE_DEPTH 8
-
 // Everything inside `path`, then nothing else -- `path` itself is the
 // caller's to remove, because the caller is the one that checked it.
 //
@@ -241,15 +287,15 @@ static int wipe(char const* path, int depth) {
         // Collected before anything goes, and in batches, for the same
         // reason rename_batch does it: nothing changes a directory
         // while it is holding that directory open.
-        char names[BATCH][64];
-        int  n = 0;
+        char(*names)[DD_NAME] = s_wipe[depth];
+        int n                 = 0;
 
         sm_dir_t* d = sm_dir_open(path);
         if (d == NULL) break;  // not a directory, or already gone
         char const* name;
         while (n < BATCH && (name = sm_dir_next(d, NULL)) != NULL) {
-            if (strlen(name) >= sizeof(names[0])) continue;
-            snprintf(names[n++], sizeof(names[0]), "%s", name);
+            if (strlen(name) >= DD_NAME) continue;
+            snprintf(names[n++], DD_NAME, "%s", name);
         }
         sm_dir_close(d);
         if (n == 0) break;
@@ -258,8 +304,8 @@ static int wipe(char const* path, int depth) {
         for (int i = 0; i < n; i++) {
             char child[DD_PATH];
             if (!join(child, path, names[i])) continue;
-            did += wipe(child, depth + 1);  // empties it, if it is one
-            if (sm_remove(child)) did++;    // then takes it, file or directory
+            did += wipe(child, depth + 1);          // empties it, if it is one
+            if (sm_remove(child) || sm_rmdir(child)) did++;  // then takes it, file or directory
         }
         // Nothing budged, so another round would find the same names
         // and fail at them again. Stop instead of spinning.
@@ -280,7 +326,7 @@ int datadir_retire(char const* dir, char const* keep, datadir_set_t set, char* r
     if (report != NULL && report_len > 0) report[0] = '\0';
     if (dir == NULL || keep == NULL) return -1;
 
-    char line[448];
+    char line[DD_PATH + 48];
 
     // The path has to be a real one, and not one that reaches the live
     // directory. `covers` catches both "it IS the live one" and "it is
@@ -314,7 +360,7 @@ int datadir_retire(char const* dir, char const* keep, datadir_set_t set, char* r
     }
 
     int n = wipe(dir, 0);
-    if (sm_remove(dir)) n++;
+    if (sm_rmdir(dir)) n++;
     if (exists(dir)) {
         snprintf(line, sizeof(line), "could not remove %s (%d entries went)", dir, n);
         add(report, report_len, line);

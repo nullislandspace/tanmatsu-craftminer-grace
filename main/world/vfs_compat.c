@@ -44,11 +44,18 @@ bool sm_mkdir_p(char const* path) {
 
 #include <dirent.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 bool sm_remove(char const* path) {
     if (remove(path) == 0) return true;
     // Already gone counts as success, to match the badge's f_unlink
     // returning FR_NO_FILE.
+    struct stat st;
+    return stat(path, &st) != 0;
+}
+
+bool sm_rmdir(char const* path) {
+    if (rmdir(path) == 0) return true;
     struct stat st;
     return stat(path, &st) != 0;
 }
@@ -94,6 +101,8 @@ void sm_dir_close(sm_dir_t* h) {
 
 // ---- Badge: FatFs, because the POSIX wrappers are not exported ------
 
+#include <unistd.h>
+
 #include "esp_heap_caps.h"
 #include "ff.h"
 
@@ -123,10 +132,25 @@ bool sm_remove(char const* path) {
     char cand[160];
     for (int i = 0; i < FAT_TRIES; i++) {
         fat_candidate(cand, sizeof(cand), path, i);
-        FRESULT const r = f_unlink(cand);
-        if (r == FR_OK || r == FR_NO_FILE) return true;
+        if (f_unlink(cand) == FR_OK) return true;
     }
-    return false;
+    // ONLY FR_OK COUNTS, and "gone" is a question for the filesystem
+    // rather than for f_unlink (F-94). A candidate spelling that names
+    // the wrong volume answers FR_NO_FILE too, and taking that for
+    // success made this return true without having removed anything --
+    // which is why sm_rename, whose loop accepts FR_OK alone, worked
+    // where this did not.
+    struct stat st;
+    return stat(path, &st) != 0;
+}
+
+bool sm_rmdir(char const* path) {
+    // `rmdir` is exported, so a directory needs none of the candidate
+    // spellings above -- it takes the VFS path exactly as given, the
+    // way `mkdir` does in sm_mkdir_p.
+    if (rmdir(path) == 0) return true;
+    struct stat st;
+    return stat(path, &st) != 0;
 }
 
 bool sm_rename(char const* from, char const* to) {
