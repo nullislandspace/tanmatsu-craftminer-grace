@@ -50,6 +50,7 @@ typedef enum {
     SM_STR_SETTINGS_GRAPHICS,           // settings.graphics
     SM_STR_SETTINGS_AUDIO,              // settings.audio
     SM_STR_SETTINGS_DISPLAY,            // settings.display
+    SM_STR_SETTINGS_LIVESTREAM,         // settings.livestream
     SM_STR_LANGUAGE_TITLE,              // language.title
     SM_STR_CONTROLS_TITLE,              // controls.title
     SM_STR_CONTROLS_GYRO,               // controls.gyro
@@ -83,7 +84,6 @@ typedef enum {
     SM_STR_DISPLAY_SCREEN,              // display.screen
     SM_STR_DISPLAY_KEYBOARD,            // display.keyboard
     SM_STR_DISPLAY_LEDS,                // display.leds
-    SM_STR_DISPLAY_LIVESTREAM,          // display.livestream
     SM_STR_PAUSE_TITLE,                 // pause.title
     SM_STR_PAUSE_RESUME,                // pause.resume
     SM_STR_PAUSE_SAVE,                  // pause.save

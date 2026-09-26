@@ -426,7 +426,33 @@ static void update_delete(void) {
     }
 }
 
-#define SETTINGS_ROWS 6
+// The framebuffer the menu was last drawn into. Only the livestream row
+// wants it -- se_stream_start() reads the frame's size, format and
+// orientation out of it -- and menu_update() is not given one. Set every
+// frame by menu_draw(), which always runs before a key can be pressed in
+// this screen.
+static pax_buf_t* s_fb;
+
+#define SETTINGS_ROWS 7
+
+// The stream is the one row here that is not saved and does not survive
+// a restart: turning it on takes the USB-C port away from the console
+// (se_stream.h), so a setting that persisted could lock the badge out of
+// its own debug link with nothing on screen to say why (D-95).
+static void toggle_livestream(void) {
+    if (se_stream_running()) {
+        se_stream_stop();
+        return;
+    }
+    // What the encoder is asked for. The game's rate varies with what is
+    // on screen, so fps_hint is not a promise -- it is what the rate
+    // control and the stream clock are scaled against.
+    se_stream_cfg_t const cfg = {.bitrate_kbit = 3000, .gop = 20, .fps_hint = 20, .audio = true};
+    // The row shows what the stream IS, so a refusal simply leaves the box
+    // unticked -- and everything that can fail happens before the link
+    // goes up, while there is still a console to say why (se_stream.h).
+    (void)se_stream_start(&cfg, s_fb);
+}
 
 static void update_settings(void) {
     int* cur = &s_cursor[SCR_SETTINGS];
@@ -438,6 +464,10 @@ static void update_settings(void) {
             case 2: go(SCR_GRAPHICS); break;
             case 3: go(SCR_AUDIO); break;
             case 4: go(SCR_DISPLAY); break;
+            // A toggle among the submenus, so OK flips it rather than
+            // opening anything. The one row in here that is not saved
+            // and does not survive a restart (D-95).
+            case 5: toggle_livestream(); break;
             default: go(s_settings_parent); break;
         }
     } else if (s_act & ACT_BACK) {
@@ -505,12 +535,7 @@ static void update_controls(void) {
 static sm_str_t const VIEW_NAMES[SETTINGS_VIEW_COUNT] = {SM_STR_VIEW_NEAR, SM_STR_VIEW_MEDIUM,
                                                          SM_STR_VIEW_FAR};
 #define GRAPHICS_ROWS 7
-#define DISPLAY_ROWS  5
-
-// The framebuffer the menu was last drawn into. Only the livestream row
-// wants it -- the encoder is sized from it (livestream.h) -- and
-// menu_update() is called without one. Set every frame by menu_draw(), which always runs before a key can be pressed in this screen.
-static pax_buf_t* s_fb;
+#define DISPLAY_ROWS  4
 
 static menu_cmd_t update_graphics(void) {
     menu_cmd_t cmd = {0};
@@ -585,26 +610,6 @@ static void update_audio(void) {
     if (s_act & ACT_BACK) go(SCR_SETTINGS);
 }
 
-// The stream is the one row here that is not saved and does not survive
-// a restart: turning it on takes the USB-C port away from the console
-// (se_stream.h), so a setting that persisted could lock the badge out of
-// its own debug link with nothing on screen to say why (D-95).
-static void toggle_livestream(void) {
-    if (se_stream_running()) {
-        se_stream_stop();
-        return;
-    }
-    // What the encoder is asked for. The game's rate varies with what is
-    // on screen, so fps_hint is not a promise -- it is what the rate
-    // control and the stream clock are scaled against.
-    se_stream_cfg_t const cfg = {.bitrate_kbit = 3000, .gop = 20, .fps_hint = 20, .audio = true};
-    if (se_stream_start(&cfg, s_fb) != ESP_OK) {
-        // The row shows what the stream IS, so a refusal simply leaves
-        // the box unticked. The console is still here to say why.
-        return;
-    }
-}
-
 static void update_display(void) {
     int* cur = &s_cursor[SCR_DISPLAY];
     nav(cur, DISPLAY_ROWS);
@@ -618,10 +623,7 @@ static void update_display(void) {
             default: break;
         }
     }
-    // The livestream is a toggle, so OK flips it. It is the one row here
-    // that is not saved and does not survive a restart (livestream.h).
-    if ((s_act & ACT_OK) && *cur == 3) toggle_livestream();
-    if ((s_act & ACT_OK) && *cur == 4) go(SCR_SETTINGS);
+    if ((s_act & ACT_OK) && *cur == 3) go(SCR_SETTINGS);
     if (s_act & ACT_BACK) go(SCR_SETTINGS);
 }
 
@@ -848,6 +850,10 @@ void menu_draw(pax_buf_t* fb) {
                 {.label = T(SM_STR_SETTINGS_GRAPHICS)},
                 {.label = T(SM_STR_SETTINGS_AUDIO)},
                 {.label = T(SM_STR_SETTINGS_DISPLAY)},
+                // Shows what the stream IS, not what was asked for: the
+                // link may refuse to come up, and then the row goes back
+                // to unchecked by itself (se_stream.h).
+                {.label = T(SM_STR_SETTINGS_LIVESTREAM), .kind = SE_MENU_VAL_CHECK, .checked = se_stream_running()},
                 {.label = T(SM_STR_COMMON_BACK)},
             };
             draw_list(fb, T(SM_STR_SETTINGS_TITLE), NULL, rows, SETTINGS_ROWS, s_cursor[SCR_SETTINGS],
@@ -942,10 +948,6 @@ void menu_draw(pax_buf_t* fb) {
                  .kind      = SE_MENU_VAL_RANGE,
                  .range_pct = se_hw_get_keyboard_brightness()},
                 {.label = T(SM_STR_DISPLAY_LEDS), .kind = SE_MENU_VAL_RANGE, .range_pct = se_hw_get_led_brightness()},
-                // Shows what the stream IS, not what was asked for: the
-                // link may refuse to come up, and then the row goes back
-                // to unchecked by itself (livestream.h).
-                {.label = T(SM_STR_DISPLAY_LIVESTREAM), .kind = SE_MENU_VAL_CHECK, .checked = se_stream_running()},
                 {.label = T(SM_STR_COMMON_BACK)},
             };
             draw_list(fb, T(SM_STR_DISPLAY_TITLE), T(SM_STR_DISPLAY_SUB), rows, DISPLAY_ROWS, s_cursor[SCR_DISPLAY],

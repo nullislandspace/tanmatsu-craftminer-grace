@@ -1413,7 +1413,7 @@ reason Minecraft chose the other rule.
 | 40 | **Bands on both cores** | dropped | 38 lost, and this was conditional on it. G6 (d) keeps the design notes: the raster target that would have carried it survives, so a later attempt does not start from nothing. |
 | 41 | **A world worth measuring on** | done | 2026-09-25, out of F-91 and the user's call: *"a persisted, pre-generated test world seems the best option... Clear a flight path so you don't get blocked... The world should be separate from the worlds i can manage through savegames and also be based on a fixed seed."* `game/benchpath.h` holds the seed, the path and `bench_path_at()`, and `tools/worldcheck.c`'s `check_bench_path` asserts the path against the generator that is compiled in, so a worldgen change that moves this terrain fails the build. **The path was chosen by search, not by eye**: 4000 seeds x 8 headings, keeping only those whose ground never steps more than two blocks, then the busiest -- seed 1030 due +z crosses ALL FIVE biomes in 240 blocks with 23 blocks of relief and a worst step of ONE, so nothing had to be carved and the ground-following camera can never be buried. The world lives at `<base>/bench/`, OUTSIDE `worlds/`, which is the whole of how it stays invisible: `worldstore_list()` scans `worlds/`, so the world-select screen cannot show it, open it or delete it, and the slug is reserved so a player-named world cannot collide. A bench world whose seed does not match is deleted and generated again rather than measured. `bench_gen` walks the path in 8-block stops waiting for `missing == 0` at each (generated chunks are already `CF_EDITED`, so eviction writes them; 49 chunks, ~45 s, once); `bench` and `bench_fullres` fly it off the card in 735 ms of loading and 40 s of flight, view distance forced to near so two runs compare. The perf clock and accumulators restart when the world is resident (`devtest_perf_restart`), so the card is not averaged into the rasteriser. |
 | 42 | **CraftMiner becomes SynthMiner** | done | 2026-09-25, the user's call after a Discord discussion (D-91), and done with no badge to hand. 445 references over 84 files, in one scripted pass so the ordering is auditable rather than a chain of hand edits: the showreel's own paths are sentinelled out first (`main/craftminer/...` and `cm_title.c` name files in ANOTHER repository and are not this game's to rename), then identifiers, then extensions and magics, then the name itself, including the declined forms five translations carry -- `CraftMinerom`, `CraftMinerem`, `CraftMinerjem`, `CraftMinerilla`, `CraftMineriga` -- which stay correct because the ending attaches to a stem that was swapped, not to the word. Two things the sweep could not have caught on its own: `-DCM_HOST` in the Makefile, where the `D` is a word character so the boundary guard did not fire, and a `www.cmr.no` in a vendored zlib header that the `.cmr` rule matched and that was reverted. **The title screen keeps its framing by arithmetic, not by luck**: the block font never had S, y or h, and the three were drawn in its style so that "SynthMiner" comes out at exactly 48 blocks, the width "CraftMiner" was and the width the camera path is framed on. Migration and its host check are D-91; the cleanup that follows it, and the appfs finding, are D-92. **Verified end to end on the badge on 2026-09-26**, on a real card with a real world, after three bugs that only hardware could show: the stack (F-93), the half-migrated world that read as an empty slot (D-93), and a directory removal that reported success without removing anything (F-94). The card now holds `/sd/synthminer` and `/sd/apps/at.cavac.synthminer` and nothing of CraftMiner's; the world came through as `level.smw` and 21 `.smr` regions. |
-| 43 | **Livestream the screen into OBS** | done (untested on the badge), **moved into the engine** | 2026-09-26, the user's ask. Ported from `tanmatsu-nfmtest-grace`, which was built to answer exactly this question: `nfm/{netraw,usbnet,tsmux}.{c,h}` come across **byte-identical**, TinyUSB is vendored beside them (`components/tinyusb`, the loader does not export it), and `nfm/stream.c` is the one that was rewritten -- there the frames came from a test pattern in its own task at a fixed rate, here they come from the game. So the shape changed: **the colour conversion is inline in `on_render`**, because that is the only moment the framebuffer is still (the engine flips pages), and everything after it -- encoder, muxer, USB -- is the stream task's. A frame offered while the encoder is busy is DROPPED, never waited for: a stream that stutters beats a game that does. `nfm/livestream.{c,h}` is the switch, and the Display menu's fourth row is the only way to work it. The encoder came from `upstream/main` (`8add127`, "Sync with graceloader: the hardware H.264 encoder") -- before that merge `fakelib` exported none of `esp_h264_*` and the port could not have linked, let alone loaded. **2026-09-26, the user: "it would also be a good idea to implement all the streaming in the engine, so we can re-use it in other apps."** So all of it moved: `se_stream.h` is engine API now, TinyUSB is vendored under `src/internal/tinyusb` and built only in plain-CMake mode (under the IDF the host has its own), and this app keeps nothing but one call in `on_render` and one menu row. Moving it also made AUDIO the engine's to give rather than the game's to wire: the mixer is already there, so `cfg.audio` needs no tap and no callback from any app. |
+| 43 | **Livestream the screen into OBS** | done (untested on the badge), **moved into the engine** | 2026-09-26, the user's ask. Ported from `tanmatsu-nfmtest-grace`, which was built to answer exactly this question: `nfm/{netraw,usbnet,tsmux}.{c,h}` come across **byte-identical**, TinyUSB is vendored beside them (`components/tinyusb`, the loader does not export it), and `nfm/stream.c` is the one that was rewritten -- there the frames came from a test pattern in its own task at a fixed rate, here they come from the game. So the shape changed: **the colour conversion is inline in `on_render`**, because that is the only moment the framebuffer is still (the engine flips pages), and everything after it -- encoder, muxer, USB -- is the stream task's. A frame offered while the encoder is busy is DROPPED, never waited for: a stream that stutters beats a game that does. `nfm/livestream.{c,h}` is the switch, and the Display menu's fourth row is the only way to work it. The encoder came from `upstream/main` (`8add127`, "Sync with graceloader: the hardware H.264 encoder") -- before that merge `fakelib` exported none of `esp_h264_*` and the port could not have linked, let alone loaded. **2026-09-26, the user: "it would also be a good idea to implement all the streaming in the engine, so we can re-use it in other apps."** So all of it moved: `se_stream.h` is engine API now, TinyUSB is vendored under `src/internal/tinyusb` and built only in plain-CMake mode (under the IDF the host has its own), and this app keeps nothing but one call in `on_render` and one menu row. Moving it also made AUDIO the engine's to give rather than the game's to wire: the mixer is already there, so `cfg.audio` needs no tap and no callback from any app. **The switch is the last row of the main Settings menu**, not a Display setting, by the user's correction (D-95). **And `cfg.audio` now carries audio** (engine 2.3): it used to log "no audio in this stream; video only" and degrade, because there was no permissively licensed encoder to put behind it. There is now -- `pdmp2`, written for this, public domain, MPEG-2 LSF Layer II at the mixer's own 22050 so nothing is resampled (D-96). The vendored shine is gone and nothing in the engine is copyleft. Verified on the host at six rate/channel/bitrate combinations and through the muxer into a `.ts` that reads back as `mp2 / 0x0004, 22050 Hz, stereo, 128 kb/s`; **the two findings that cost the most are F-95 (the syncword is 12 bits) and F-96 (the analysis window is not a design choice)**. Still untested on the badge, and awkward to test: turning the stream on takes the USB-C PHY off the console, so there is no log to watch it with. |
 
 ---
 
@@ -2604,6 +2604,52 @@ reason Minecraft chose the other rule.
   been of the generator. Fixed by step 41: a persisted world, pre-generated
   once, streamed off the card (`0 missing`, `refused 0`, queue 0-6 of 48, and
   735 ms to load instead of eleven seconds to generate).
+- **F-95** 2026-09-26, writing the Layer II encoder and getting a stream no
+  decoder would open: **the MPEG audio syncword is TWELVE bits, not eleven.**
+  The header is sync(12) ID(1) layer(2) protection(1), which is 16 bits
+  before the bitrate field. Written as sync(11) then ID it is 15, so every
+  field after it is shifted by one -- and the failure hides, because with
+  `ID = 1` (MPEG-1) eleven ones plus a one IS twelve ones, so the first two
+  bytes come out right and only MPEG-2 breaks. The class of bug matters more
+  than the bug: a wrong bit here does not crash anything, it produces a file
+  that ffmpeg declines with "Failed to read frame size". Fixed by writing
+  `0xFFF` in 12 bits, and the header bytes now match ffmpeg's own encoder's
+  byte for byte, which is the check that should have been run first.
+
+- **F-96** 2026-09-26, with the encoder structurally correct and sounding
+  terrible: **the analysis window is not a design choice, and no amount of
+  bits hides a wrong one.** A 512-tap Kaiser-windowed sinc, cutoff pi/64,
+  stopband over 100 dB -- a better filter than the standard's by any ordinary
+  measure -- gave **16 dB SNR**, and raising the bitrate by 50% moved it less
+  than 1 dB. That flatness is the whole diagnosis: if the quantiser were the
+  limit, more bits would help, so the filterbank was the limit. The reason is
+  that this is a cosine-modulated *pseudo*-QMF bank: adjacent subbands
+  overlap heavily and their aliasing only CANCELS against a synthesis
+  prototype that is the analysis prototype time-reversed -- and the synthesis
+  side lives in the decoder, fixed by the standard. The window is therefore
+  as much an interface as the allocation tables are. Fixed by MEASURING it:
+  push single subband samples through a reference decoder, fit the basis
+  functions that come back (residual 0.0005%), reverse them. 16 dB became 64.
+  Two sub-traps on the way: the injected sample was large enough to CLIP the
+  basis functions, which fits nothing, and the bands at or above `sblimit`
+  decode as silence, so leaving them in the fit put their whole energy in
+  the residual and made a perfect fit look like a 6% failure.
+
+- **F-97** 2026-09-26, with the filterbank fixed and a 1 kHz tone still at
+  27 dB: **a masking model that has to be tuned will be tuned wrong.** With
+  the bank working, a loud tone leaves about -80 dBFS of skirt in every other
+  subband. Whether the spreading model called that masked turned on a
+  constant being 7 or 8 dB per band; on the wrong side of it the allocator
+  served thirty bands of filterbank leakage before the band with the signal
+  in it. There was a second, coarser version of the same mistake underneath:
+  the model used a band's own level as its masking threshold, so one
+  allocation step always looked good enough and the allocator stopped having
+  spent almost nothing. Fixed by deleting the model. Plain rate-distortion
+  greedy -- most noise reduction per bit, mean square error, no constants --
+  cannot make either mistake, and a Layer II frame is a fixed size so there
+  is never a reason to stop early: bits not spent are written out as zero
+  padding and thrown away.
+
 - **F-94** 2026-09-26, with the card migrated but the old directories still
   on it: **`sm_remove` cannot delete a directory, and said it had.** The log
   read `retire: could not remove /sd/craftminer (1 entries went)` -- one
@@ -3556,10 +3602,16 @@ reason Minecraft chose the other rule.
   turned it on.
 
   It follows that the row must be reachable **from the badge**, not from a
-  console command, since the console is the thing that goes away. It lives in
-  Settings -> Display, under the brightnesses, and shows what the stream IS
-  rather than what was asked for -- the link can refuse to come up, and then
-  the checkbox goes back by itself.
+  console command, since the console is the thing that goes away. It is the
+  **last row of the main Settings menu**, by the user's correction -- *"No,
+  this should be a main settings menu entry, not a display setting. Last
+  entry in the main settings menu."* It first went under Settings -> Display
+  with the brightnesses, which was wrong twice over: the display settings are
+  shared with the launcher and every other app, and this is neither shared
+  nor a display setting. It shows what the stream IS rather than what was
+  asked for -- the link can refuse to come up, and then the checkbox goes
+  back by itself. The label is "Livestream", not "Livestream to OBS": the
+  longer string measured 294 px against a 260 px column.
 
   It also follows that everything which can fail and be REPORTED has to
   happen before the link: `stream_prepare()` allocates and opens the encoder
@@ -3571,6 +3623,48 @@ reason Minecraft chose the other rule.
   screen to the livestream."* nfmtest paced its own clock and skipped slots;
   this offers every frame the game finishes and drops the ones the encoder
   cannot take.
+
+- **D-96** 2026-09-26, out of the user's question and then their
+  instruction: **the audio codec is ours, and it is public domain.**
+
+  `cfg.audio` had plumbing and no encoder, because every MPEG audio encoder
+  worth vendoring -- shine, twolame, LAME -- is **LGPL**. shine was vendored
+  first and the question that killed it was the user's: *"Why should i change
+  the license? Couldn't you find a MIT licensed encoder?"* There is no
+  permissive MPEG audio encoder. The options were a licence change, a
+  `.so` loaded at runtime to keep the relinking option open, or writing one.
+
+  Reading LGPL 2.0 section 6 closely settled that this is the worst case for
+  it. Section 6(c) *does* exist in 2.0 (it is not a 2.1 addition), so a public
+  GitHub repo satisfies the relinking obligation cleanly. But the notice
+  duties are separate and unconditional -- "prominent notice with each copy of
+  the work" and "you must supply a copy of this License" -- and an `app.so`
+  handed to a card, or installed through the launcher, carries neither.
+  A `PROVENANCE.md` four levels deep in a submodule is not prominent.
+
+  So, **the user**: *"Fuck it, reverse engineer shine and write a public
+  domain licensed encoder based on that knowledge."* The instruction was
+  followed in substance and not in method, because the method named would
+  have defeated the purpose: a work translated out of LGPL source is a
+  derivative of it, and calling the result public domain would have been
+  false. It was not necessary either. **Layer II** -- not Layer III -- is a
+  published standard whose lookup tables are interface, and the tables were
+  already in this tree under **CC0**, in minimp3. shine was never opened.
+
+  The result is `github.com/nullislandspace/public-domain-mp2-encoder`,
+  vendored at `synthengine3D/src/internal/pdmp2/`, licence "The Public Domain
+  fuck GPL License" by the user's naming (tagged `CC0-1.0` for scanners, so
+  the joke costs nothing). Its `PROVENANCE.md` records every number's origin,
+  which is the only thing that makes the claim checkable. **Layer II rather
+  than Layer III** because it is a tenth of the work: no MDCT, no Huffman, no
+  bit reservoir, and a fixed frame size, so there is no rate control and no
+  frame that will not fit. **MPEG-2 LSF at 22050**, the mixer's own rate: no
+  resampler, and LSF Layer II has exactly one allocation table.
+
+  Measured, not asserted: round-tripped through a reference decoder at six
+  rate/channel/bitrate combinations, ahead of ffmpeg's own MP2 encoder on 23
+  of 24 signal cases, level ratio 1.0000, clean under ASan and UBSan. Two
+  findings came out of it and are worth more than the code: F-95 and F-96.
 
 ## Verification
 
@@ -3728,8 +3822,8 @@ Every one of the three bugs in the way was invisible to `make check`:
 Each was found by running it, and the second was found only by reading the
 wreckage of the first. **The host checks were green the whole time.**
 
-Still untested: that the title screen's three new letters look right in
-blocks rather than merely correct on paper.
+The title screen's three new letters were confirmed by eye on the badge --
+**the user**: *"yes, yes the title letters look ok."*
 
 **The player has to do nothing by hand** (D-92). The first start adopts both
 old directories, renames the saved files, and then deletes
