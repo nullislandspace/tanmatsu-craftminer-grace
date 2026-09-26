@@ -1,0 +1,124 @@
+# SynthEngine3D
+
+A small, reusable **game engine for [Tanmatsu](https://nicolaielectronics.nl/)
+graceloader apps** (ESP32-P4). It owns the parts every such game re-writes —
+the run loop, a software 3D renderer, an audio mixer, menus, input remapping,
+device settings and save files — so a game is *content + per-frame logic*, not
+boilerplate.
+
+Extracted from the game **Race the Synth**, which now consumes it as a git
+submodule like any other app. **2.0**: the public surface under `include/` is
+stable and versioned MAJOR.MINOR — minor versions may add to it, but breaking
+it requires a MAJOR bump.
+
+---
+
+## What it gives you
+
+| Subsystem | Header | What |
+|---|---|---|
+| **Application framework** | `se_run.h` | Inversion-of-control run loop: you call `se_run(&cfg, &cb, user)` once; the engine owns device bootstrap, the frame loop + delta-time, the input-queue pump, the device-global keys (volume / audio-jack / F1-exit), the page flip (triple-buffered, no copy), and a backdrop hook. Your game is a set of callbacks. |
+| **3D renderer** | `se_scene.h` | Per-pixel **z-buffered** software rasterizer + **6-DOF** pinhole camera + projection. Submit world-space triangles / wireframe edges / single-pixel points (`scene_point`, e.g. starfields); the engine projects, **clips at the near plane**, depth-tests and draws. Deferred: it accumulates the frame then `scene_render()`s it, with opt-in **frustum-cull** and **front-to-back ordering** passes (`scene_set_options`), a clipping **viewport**, per-frame **quarter-resolution** rendering (a quarter of the fill work, scaled back up by the PPA), and **pluggable renderers** (the built-in z-buffer, or your own). |
+| **Scene lighting** | `se_light.h` | Optional **single positional light**, shaded **per face at submit time** inside `scene_tri` (not per pixel). `brightness` is the directional share of total illumination; the rest is global fill, so a face turned away falls to a floor rather than to black. Winding-independent via `two_sided`. No shadows, no falloff, no specular. |
+| **Textures** | `se_texture.h` | Load / unload **PNG textures** (power-of-two, RGB565, **cut-out transparency** from the PNG's alpha), optionally into **internal SRAM**. `scene_textured_tri()` maps them onto triangles **perspective-correct**, nearest-texel, lit by `se_light` like flat triangles; a separate list, so flat triangles and edges are unchanged. |
+| **PPA compositor** | `se_ppa.h` | **ESP32-P4 PPA** hardware blit offload for 2D backdrops / sprite layers: fill / copy / colour-keyed blend on screen bands or sprite rects, an **ordered job queue + pump task** (non-blocking enqueue tagged with a job id, run in submission order; wait on a job id), the logical→raw orientation maths, and cache-line-aligned PSRAM layer caches — so the CPU stays free for the 3D scene. (P4-only; degrades to a no-op elsewhere.) |
+| **Audio** | `se_audio.h`, `se_audio_source.h`, `se_audio_dsp.h`, `se_voice.h`, `se_music_procedural.h`, `se_mp3.h` | 22050 Hz / s16 / stereo software mixer over the BSP I2S channel: one music slot + N SFX voices, app-pushed mute groups, idle power-down. DSP primitives (oscillators, envelopes, biquad), **pluggable synth voices** (`se_voice_t` note-on/off — built-in subtractive/noise, or your own; MIDI-ready), and a config-driven, seed-derived procedural music source with a voice per role (supply a `se_music_config_t`, or `NULL` for the synthwave preset), or an **MP3 playlist** from the SD card as the music source instead (`se_mp3.h`). |
+| **Splash screen** | `se_splash.h` | `se_splash()` draws the engine wordmark as real world-space geometry (Hershey strokes emitted through `scene_line`) flying toward the camera for ~1 s, then returns; `se_splash_ex()` sets the title, subtitle and duration. Blocking; call it from `on_init`. |
+| **UI / menus** | `se_ui.h` | Data-driven vertical list menus (label / checkbox / value / slider / custom-drawn rows), an engine-owned cursor state machine, and a blocking "press a key" capture for rebinds. |
+| **Input bindings** | `se_bindings.h` | Remappable, NVS-persisted key bindings: the game declares its controls + defaults; the engine loads, persists and answers them. |
+| **Device settings** | `se_hw.h` | The launcher-shared hardware settings (speaker/headphone volume, screen/keyboard/LED brightness): applied at boot, adjustable in-game (getters/setters for a settings menu), persisted back so they carry across apps. |
+| **Save framework** | `se_save.h`, `se_nbt.h` | N file-backed save slots with an engine-written "peek" header (timestamp / kind / a free-text summary) for slot-select screens. Game (de)serialises its own schema via two callbacks over the NBT primitive. |
+| **Vector text** | `se_text.h` | Hershey single-stroke vector text, rendered straight to the framebuffer. |
+| **Framebuffer leaves** | `se_direct565.h` | Hot `static inline` RGB565 pixel / line / triangle / dim-rect primitives (rotation + stride compile-folded). |
+| **Configuration** | `se_config.h` | Every compile-time default (display geometry, projection, audio gains, UI theme, slot count, …) as an overridable `#ifndef` macro. |
+| **Host harness** | `host/se_host.h` | Compile a game's scene and asset code with a plain host compiler and get every primitive it submits, with the badge's camera and projection, so a test can check what a frame *contains* — near-plane crossings, list overflows, object clearances, framing — in a second, with no device. See [`docs/testing.md`](docs/testing.md). |
+
+Include everything via the umbrella `#include "synthengine3d.h"`, or pull
+individual `se_*.h` headers.
+
+---
+
+## Quick start — hello triangle + sound
+
+```c
+#include "synthengine3d.h"
+
+static float s_angle = 0.0f;
+
+static void on_update(float dt, void* user) {
+    (void)user;
+    s_angle += dt;                 // spin
+}
+
+static void on_render(pax_buf_t* fb, void* user) {
+    (void)user;
+    render_set_camera(0.0f, 1.0f); // eye at x=0, height 1
+    scene_begin(fb);
+    float const c = cosf(s_angle), s = sinf(s_angle);
+    // a triangle standing at z = 4, rotating about the vertical axis
+    scene_tri(-c, 0.0f, 4.0f - s,   c, 0.0f, 4.0f + s,   0.0f, 2.0f, 4.0f,
+              0xFFFF31F1u, 0);
+    scene_render(SE_RENDER_ZBUFFER);
+}
+
+void app_main(void) {
+    static se_app_config_t const cfg = { .f1_exits = true,
+                                         .backdrop_argb = 0xFF101018u };
+    static se_app_callbacks_t const cb = { .on_update = on_update,
+                                           .on_render = on_render };
+    se_run(&cfg, &cb, NULL);        // never returns under graceloader
+}
+```
+
+That is a complete graceloader app: the engine boots the device, clears the
+screen to the backdrop colour each frame, runs your callbacks, flips at the refresh,
+and exits to the launcher on F1. See [`examples/minimal/`](examples/minimal/)
+for the same thing with comments, and [`docs/getting-started.md`](docs/getting-started.md)
+for adding audio, menus and a save file.
+
+---
+
+## Two build modes
+
+The same `CMakeLists.txt` builds two ways (see [`docs/integration.md`](docs/integration.md)):
+
+- **ESP-IDF component** — under `idf.py`, it registers a normal IDF component
+  (`idf_component_register`), so a full IDF app (e.g. graceloader itself) can
+  consume it, vendored or via the component registry (`idf_component.yml`).
+- **Plain-CMake object library** — under a hand-rolled `app.so` build (how
+  Race the Synth builds), it compiles to a relocatable OBJECT library folded
+  into the app's shared object.
+
+---
+
+## Public vs internal, stability, performance
+
+- **Public API = everything in `include/`** (the `se_*.h` headers + the
+  `synthengine3d.h` umbrella). This is the versioned surface.
+- **Internal = everything in `src/`** (including `src/internal/`). Never
+  include it from a game; it can change in any release.
+- **Versioning** (`se_version.h`): two parts. MAJOR = a game has to change
+  (incompatible public change), MINOR = everything else (compatible additions,
+  internal fixes). No patch number: games pin the engine by submodule commit.
+  See [`CHANGELOG.md`](CHANGELOG.md).
+- **Performance rule:** hot per-pixel leaves are `static inline` in public
+  headers (`se_direct565.h`, `se_text.h`) and *must stay inline* — never move
+  them behind a function-call/opaque boundary. Coarse, once-per-frame calls
+  (mixer, save, menu draw) are ordinary functions. See
+  [`docs/architecture.md`](docs/architecture.md#performance-contract).
+
+---
+
+## Docs
+
+- [`docs/getting-started.md`](docs/getting-started.md) — build an app step by step.
+- [`docs/architecture.md`](docs/architecture.md) — subsystems, the frame lifecycle, the IoC model, public vs internal, the performance contract.
+- [`docs/renderer.md`](docs/renderer.md) — the deferred 3D pipeline, camera, projection, z-buffer, lighting, textures (cut-out transparency), viewport, quarter resolution, custom renderers, statistics.
+- [`docs/ppa.md`](docs/ppa.md) — the ESP32-P4 PPA blit helper (2D backdrop / sprite offload, the quarter-resolution upscale, cache coherency).
+- [`docs/audio.md`](docs/audio.md) — the mixer, source contracts, DSP, voices, procedural music, MP3 playlists.
+- [`docs/ui.md`](docs/ui.md) — menus, the input-bindings/remap flow, device settings.
+- [`docs/save.md`](docs/save.md) — the save-slot framework + NBT.
+- [`docs/objects.md`](docs/objects.md) — the geometry-submission contract for 3D objects.
+- [`docs/configuration.md`](docs/configuration.md) — every `se_config.h` knob.
+- [`docs/integration.md`](docs/integration.md) — both build modes, dependencies, porting the display.
+- [`docs/testing.md`](docs/testing.md) — the host harness: run a game's scene code on a PC and check what each frame contains, with no device attached.

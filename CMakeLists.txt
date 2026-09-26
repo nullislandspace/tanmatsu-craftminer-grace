@@ -95,34 +95,9 @@ set(APP_SOURCES
     # Textures by name, cached.
     main/common/texcache.c
 
-    # Livestreaming the screen into OBS: the USB-C port as a network
-    # adapter, and every finished frame through the hardware H.264
-    # encoder into MPEG-TS over UDP. Ported from tanmatsu-nfmtest-grace
-    # (step 43); `nfm/stream.c` is the one that was rewritten, because
-    # there the frames came from a test pattern at a fixed rate and here
-    # they come from the game.
-    main/nfm/netraw.c
-    main/nfm/usbnet.c
-    main/nfm/tsmux.c
-    main/nfm/stream.c
-    main/nfm/livestream.c
 )
 
-# TinyUSB, vendored (components/tinyusb/PROVENANCE.md): device core,
-# CDC-NCM and the DWC2 port, configured by components/tusb_config.h.
-# graceloader does not export it -- it is the launcher's own USB stack
-# and stays private -- so an app that wants the port has to bring one.
-set(TINYUSB_SOURCES
-    components/tinyusb/src/tusb.c
-    components/tinyusb/src/common/tusb_fifo.c
-    components/tinyusb/src/device/usbd.c
-    components/tinyusb/src/class/net/ncm_device.c
-    components/tinyusb/src/portable/synopsys/dwc2/dcd_dwc2.c
-    components/tinyusb/src/portable/synopsys/dwc2/dwc2_common.c
-)
-list(APPEND APP_SOURCES ${TINYUSB_SOURCES})
-# Upstream code, kept byte-identical: its warnings are not ours to fix.
-set_source_files_properties(${TINYUSB_SOURCES} PROPERTIES COMPILE_OPTIONS "-w")
+
 
 # Automated device tests (main/testkit/, README "Automated device tests").
 # Opt-in: uncomment to build them in, and set where shots go. An app
@@ -158,9 +133,6 @@ configure_file(main/app_version.h.in ${CMAKE_CURRENT_BINARY_DIR}/generated/app_v
 # Include directories — add paths to your headers here
 set(APP_INCLUDES
     main
-    main/nfm
-    components
-    components/tinyusb/src
     include
     include/esp_additions/include
     ${CMAKE_CURRENT_BINARY_DIR}/generated

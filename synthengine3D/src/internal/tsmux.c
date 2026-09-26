@@ -8,6 +8,7 @@
 #define PID_PAT        0x0000
 #define PROGRAM_NUMBER 1
 #define STREAM_H264    0x1B
+#define STREAM_MPEG1_AUDIO 0x03
 
 // An access unit delimiter: nal_unit_type 9, primary_pic_type 7 ("any"),
 // then the rbsp stop bit.
@@ -20,6 +21,10 @@ uint32_t tsmux_crc32(uint8_t const* data, size_t len) {
         for (int b = 0; b < 8; b++) crc = (crc & 0x80000000u) ? (crc << 1) ^ 0x04C11DB7u : crc << 1;
     }
     return crc;
+}
+
+void tsmux_set_audio(tsmux_t* m, bool on) {
+    m->audio = on;
 }
 
 void tsmux_init(tsmux_t* m, tsmux_emit_t emit, void* ctx) {
@@ -86,12 +91,12 @@ static void write_tables(tsmux_t* m) {
     pat[n++]     = (uint8_t)crc;
     section_packet(m, PID_PAT, &m->cc_pat, pat, n);
 
-    // PMT: PCR and H.264 on the video PID.
-    uint8_t pmt[21];
+    // PMT: PCR and H.264 on the video PID, and the audio beside it.
+    uint8_t pmt[26];
     n        = 0;
     pmt[n++] = 0x02;  // table_id
     pmt[n++] = 0xB0;
-    pmt[n++] = 18;  // section_length: 9 header + 5 stream + 4 CRC
+    pmt[n++] = (uint8_t)(m->audio ? 23 : 18);  // 9 header + 5 per stream + 4 CRC
     pmt[n++] = PROGRAM_NUMBER >> 8;
     pmt[n++] = PROGRAM_NUMBER & 0xFF;
     pmt[n++] = 0xC1;
@@ -106,6 +111,13 @@ static void write_tables(tsmux_t* m) {
     pmt[n++] = TSMUX_PID_VIDEO & 0xFF;
     pmt[n++] = 0xF0;  // ES_info_length 0
     pmt[n++] = 0x00;
+    if (m->audio) {
+        pmt[n++] = STREAM_MPEG1_AUDIO;
+        pmt[n++] = (uint8_t)(0xE0 | (TSMUX_PID_AUDIO >> 8));
+        pmt[n++] = TSMUX_PID_AUDIO & 0xFF;
+        pmt[n++] = 0xF0;  // ES_info_length 0
+        pmt[n++] = 0x00;
+    }
     crc      = tsmux_crc32(pmt, n);
     pmt[n++] = (uint8_t)(crc >> 24);
     pmt[n++] = (uint8_t)(crc >> 16);
@@ -229,4 +241,59 @@ void tsmux_write(tsmux_t* m, uint8_t const* au, size_t len, uint64_t pts, bool k
         first = false;
     }
     flush(m);  // the rest of this access unit goes now, not with the next one
+}
+
+// --- audio ---------------------------------------------------------------
+//
+// Simpler than the video above: one frame is at most a couple of
+// kilobytes, there is no PCR to carry and no access unit delimiter to
+// prepend, and the PES length is KNOWN -- which for audio it must be,
+// since only video may leave it unbounded.
+void tsmux_write_audio(tsmux_t* m, uint8_t const* frame, size_t len, uint64_t pts) {
+    if (frame == NULL || len == 0) return;
+
+    uint8_t      pes[14];
+    size_t const pes_len = 3 + 5 + len;  // flags + header length byte + PTS + payload
+    pes[0]               = 0x00;
+    pes[1]               = 0x00;
+    pes[2]               = 0x01;
+    pes[3]               = 0xC0;  // audio stream 0
+    pes[4]               = (uint8_t)(pes_len >> 8);
+    pes[5]               = (uint8_t)pes_len;
+    pes[6]               = 0x80;  // '10', no scrambling
+    pes[7]               = 0x80;  // PTS only
+    pes[8]               = 5;     // PES_header_data_length
+    put_pts(pes + 9, pts);
+
+    src_t src = {.part = {pes, frame, NULL}, .len = {sizeof(pes), len, 0}};
+
+    bool first = true;
+    while (src_left(&src) > 0) {
+        size_t const left   = src_left(&src);
+        uint8_t*     p      = next_packet(m);
+        size_t       af_len = 0;
+        bool         has_af = false;
+        size_t       room   = TSMUX_PACKET - 4;
+        if (left < room) {
+            // Stuffing, so the payload ends the packet rather than being
+            // split across one that has nothing to follow it.
+            size_t const pad = room - left;
+            has_af           = true;
+            af_len           = pad == 1 ? 0 : pad - 1;
+            room             = left;
+        }
+        header(p, TSMUX_PID_AUDIO, first, has_af ? 3 : 1, m->cc_audio++);
+        size_t o = 4;
+        if (has_af) {
+            p[o++] = (uint8_t)af_len;
+            if (af_len > 0) {
+                p[o++] = 0x00;  // no flags
+                memset(p + o, 0xFF, af_len - 1);
+                o += af_len - 1;
+            }
+        }
+        src_copy(&src, p + o, TSMUX_PACKET - o);
+        first = false;
+    }
+    flush(m);
 }

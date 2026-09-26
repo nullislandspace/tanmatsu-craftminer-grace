@@ -56,7 +56,7 @@
 #include "ui/chest_ui.h"
 #include "ui/craft_ui.h"
 #include "ui/furnace_ui.h"
-#include "nfm/livestream.h"
+#include "se_stream.h"
 #include "ui/menu.h"
 #include "ui/settings.h"
 #include "ui/title.h"
@@ -1942,6 +1942,12 @@ static void on_render(pax_buf_t* fb, void* user) {
     (void)user;
     if (s_app == APP_LOADING) {
         draw_loading(fb);
+        // The loading screen is a screen like any other, and it is the
+        // one the stream would otherwise freeze on for the longest:
+        // generating a world takes seconds, and the bench world the best
+        // part of a minute. This branch returns, so the offer has to be
+        // made here as well as at the end.
+        se_stream_frame(fb);
         devtest_after_render(fb, 0);
         frame_stats();
         return;
@@ -2140,11 +2146,11 @@ static void on_render(pax_buf_t* fb, void* user) {
     }
 
     // And the same frame to OBS, if the player has asked for that
-    // (nfm/livestream.h). HERE, not after the present: this is the last
+    // (se_stream.h). HERE, not after the present: this is the last
     // moment the frame is ours, because the engine flips pages and the
     // next one is drawn into a different buffer while this is still on
     // the glass. A no-op, and one compare, when the stream is off.
-    livestream_frame(fb);
+    se_stream_frame(fb);
 
     devtest_after_render(fb, rast_us);
     frame_stats();
